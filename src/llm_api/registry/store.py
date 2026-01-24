@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Literal, Optional
 
-from llm_api.api.schemas import ModelInfo
+from llm_api.api.schemas import ModelCapabilities, ModelInfo, ModelSource
 from llm_api.config import get_settings
 
 
@@ -33,6 +33,49 @@ class ModelRegistry:
         self.ready = True
         if settings.persist_state:
             self._load_state()
+        # Auto-discover downloaded models
+        self._scan_local_models()
+
+    def _scan_local_models(self) -> None:
+        """Scan the models directory for downloaded GGUF files and register them."""
+        settings = get_settings()
+        models_dir = Path(settings.model_path)
+        if not models_dir.exists():
+            return
+        
+        for gguf_file in models_dir.glob("*.gguf"):
+            model_id = gguf_file.stem  # e.g., "tinyllama-1.1b-chat-v1.0.Q4_K_M"
+            if model_id in self.models:
+                continue  # Already registered
+            
+            # Parse model info from filename
+            name = model_id.replace(".Q4_K_M", "").replace(".Q8_0", "").replace(".Q5_K_M", "")
+            size_bytes = gguf_file.stat().st_size
+            
+            # Determine quantization from filename
+            quant = "unknown"
+            for q in ["Q4_K_M", "Q8_0", "Q5_K_M", "Q4_0", "Q5_0", "Q6_K", "Q2_K", "Q3_K"]:
+                if q in model_id:
+                    quant = q
+                    break
+            
+            model = ModelInfo(
+                id=model_id,
+                name=name,
+                version=quant,
+                modality="text",
+                provider="local",
+                local_path=str(gguf_file.name),
+                size_bytes=size_bytes,
+                status="available",
+                source=ModelSource(type="local", uri=str(gguf_file)),
+                capabilities=ModelCapabilities(
+                    max_context_tokens=2048,  # Default for most GGUF models
+                    output_formats=["text"],
+                    hardware_requirements=["CPU", "Metal", "CUDA"],
+                ),
+            )
+            self.models[model_id] = model
 
     def list_models(self, modality: Optional[str] = None) -> List[ModelInfo]:
         models = list(self.models.values())

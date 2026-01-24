@@ -194,3 +194,116 @@ async def get_artifact(artifact_id: str) -> JSONResponse:
     store = get_artifact_store()
     content = store.get_artifact_content(artifact_id)
     return JSONResponse({"artifact_id": artifact_id, "content_base64": encode_inline(content)})
+
+
+@api_router.get("/v1/models/{model_id}", dependencies=[Depends(require_api_key)])
+async def get_model_info(model_id: str) -> JSONResponse:
+    """Get detailed information about a specific model including parameters and capabilities."""
+    registry = get_registry()
+    model = registry.get_model(model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found")
+    return JSONResponse(jsonable_encoder(model))
+
+
+@api_router.get("/v1/schema", dependencies=[Depends(require_api_key)])
+async def get_api_schema() -> JSONResponse:
+    """Return API schema documentation including available parameters and their descriptions."""
+    schema = {
+        "generate": {
+            "description": "Generate text, images, or 3D content from prompts",
+            "endpoint": "POST /v1/generate",
+            "request": {
+                "model": {
+                    "type": "string",
+                    "required": False,
+                    "description": "Model ID to use. If omitted, uses the default model (local-text). "
+                                   "Can use provider:model format (e.g., 'openai:gpt-4') or model patterns "
+                                   "are auto-detected (e.g., 'gpt-4' → OpenAI, 'claude-3-opus' → Anthropic).",
+                    "examples": ["local-text", "gpt-4", "claude-3-opus", "openai:gpt-4-turbo", "tinyllama-1.1b-chat-v1.0.Q4_K_M"],
+                },
+                "modality": {
+                    "type": "string",
+                    "required": True,
+                    "enum": ["text", "image", "3d"],
+                    "description": "Type of content to generate.",
+                },
+                "input": {
+                    "type": "object",
+                    "required": True,
+                    "properties": {
+                        "prompt": {
+                            "type": "string",
+                            "description": "Text prompt for generation. Required for text and image generation.",
+                        },
+                        "images": {
+                            "type": "array",
+                            "description": "Base64-encoded images for vision models (optional).",
+                        },
+                    },
+                },
+                "parameters": {
+                    "type": "object",
+                    "required": False,
+                    "description": "Generation parameters (all optional).",
+                    "properties": {
+                        "temperature": {
+                            "type": "float",
+                            "range": [0.0, 2.0],
+                            "default": 0.7,
+                            "description": "Controls randomness. Lower = more deterministic, higher = more creative.",
+                        },
+                        "max_tokens": {
+                            "type": "integer",
+                            "min": 1,
+                            "default": 4096,
+                            "description": "Maximum number of tokens to generate.",
+                        },
+                        "format": {
+                            "type": "string",
+                            "description": "Output format hint (e.g., 'json', 'markdown'). Not all models support this.",
+                        },
+                    },
+                },
+                "stream": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": "If true, returns Server-Sent Events stream. Only supported for text modality.",
+                },
+            },
+        },
+        "models": {
+            "description": "List available models",
+            "endpoint": "GET /v1/models",
+            "query_params": {
+                "modality": {"type": "string", "description": "Filter by modality (text, image, 3d)"},
+                "limit": {"type": "integer", "description": "Max results per page"},
+                "cursor": {"type": "string", "description": "Pagination cursor"},
+            },
+        },
+        "model_detail": {
+            "description": "Get detailed model information",
+            "endpoint": "GET /v1/models/{model_id}",
+        },
+        "providers": {
+            "description": "List configured providers and their status",
+            "endpoint": "GET /v1/providers",
+        },
+        "download": {
+            "description": "Download a model from HuggingFace or URL",
+            "endpoint": "POST /v1/models/download",
+            "request": {
+                "source": {
+                    "type": "string",
+                    "required": True,
+                    "description": "HuggingFace repo ID (e.g., 'TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF') or direct URL",
+                },
+                "modality": {
+                    "type": "string",
+                    "required": True,
+                    "enum": ["text", "image", "3d"],
+                },
+            },
+        },
+    }
+    return JSONResponse(schema)
