@@ -37,3 +37,7 @@ artifacts/
 # OS
 .DS_Store
 Thumbs.db
+
+# Dart/Flutter
+clients/dart/.dart_tool/
+clients/dart/pubspec.lock
