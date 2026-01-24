@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway
 **Date**: January 24, 2026
-**Status**: Complete (Baseline + CR-2026-01-24-01)
+**Status**: Complete (Baseline + CR-2026-01-24-02)
 
 ## Assumptions
 - The standard API will be HTTP-based and JSON by default.
@@ -33,6 +33,9 @@
 - **SYS-REQ-017**: Support streaming responses (SSE) for text generation requests.
 - **SYS-REQ-018**: Automatically discover locally installed model files in storage and register them in the model catalog.
 - **SYS-REQ-019**: Provide a queryable API schema/parameter documentation endpoint for request parameters and model selection guidance.
+- **SYS-REQ-020**: Provide session management to associate multiple requests with a persistent conversational context.
+- **SYS-REQ-021**: Provide APIs to create, retrieve, list, update, and close sessions, including the ability to reset session context.
+- **SYS-REQ-022**: Support both backend-stored session state and client-supplied state tokens for iterative generation workflows.
 
 ## Non-Functional Requirements (System)
 - **SYS-NFR-001**: Secure secret storage for provider API keys (no secrets in logs).
@@ -50,6 +53,8 @@
 - **INT-REQ-003**: Provide a minimal client example for the standard API.
 - **INT-REQ-004**: Document supported authentication schemes and required headers/tokens.
 - **INT-REQ-005**: Provide an API endpoint that returns parameter documentation and usage examples.
+- **INT-REQ-006**: Provide session management endpoints and document them in the OpenAPI contract.
+- **INT-REQ-007**: Document how clients can supply or omit session state tokens per request.
 
 ## Data Requirements
 - **DATA-REQ-001**: Define request/response schemas for text, image, and 3D generation.
@@ -59,6 +64,8 @@
 - **DATA-REQ-005**: Maintain a model registry schema (name, version, modality, source, size, hardware requirements).
 - **DATA-REQ-006**: Store model capabilities metadata (supported modalities, context limits, output formats, required hardware).
 - **DATA-REQ-007**: Provide a machine-readable schema for request parameters and model selection guidance.
+- **DATA-REQ-008**: Store session metadata and message history (modality, inputs, outputs, timestamps) with configurable retention.
+- **DATA-REQ-009**: Represent provider/model state tokens in a standard field with passthrough support.
 
 ## Error Modes
 - For unsupported model features, return a standardized “feature not supported” error.
@@ -102,6 +109,9 @@ Stakeholder → System
 | SH-REQ-015 | SYS-REQ-016 | Artifact store |
 | SH-REQ-016 | SYS-REQ-018 | Model auto-discovery |
 | SH-REQ-017 | SYS-REQ-019 | Parameter documentation |
+| SH-REQ-018 | SYS-REQ-020 | Session management |
+| SH-REQ-019 | SYS-REQ-021 | Session lifecycle |
+| SH-REQ-020 | SYS-REQ-022 | Session state handoff |
 
 Requirements → Verification
 
@@ -126,3 +136,6 @@ Requirements → Verification
 | SYS-REQ-017 | Automated | TEST-SYS-007 | tests/system/ | Streaming |
 | SYS-REQ-018 | Automated | TEST-SYS-010 | tests/system/ | Auto-discovery |
 | SYS-REQ-019 | Automated | TEST-SYS-011 | tests/system/ | Schema endpoint |
+| SYS-REQ-020 | Automated | TEST-SYS-012 | tests/system/ | Sessions |
+| SYS-REQ-021 | Automated | TEST-SYS-013 | tests/system/ | Session lifecycle |
+| SYS-REQ-022 | Automated | TEST-SYS-014 | tests/system/ | Session state tokens |

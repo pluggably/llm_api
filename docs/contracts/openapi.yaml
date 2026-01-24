@@ -96,6 +96,124 @@ paths:
               schema:
                 type: object
 
+  /v1/sessions:
+    post:
+      summary: Create a new session
+      operationId: createSession
+      tags: [Sessions]
+      security:
+        - apiKey: []
+      responses:
+        '201':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+    get:
+      summary: List sessions
+      operationId: listSessions
+      tags: [Sessions]
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Sessions list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionList'
+
+  /v1/sessions/{sessionId}:
+    get:
+      summary: Get session details
+      operationId: getSession
+      tags: [Sessions]
+      security:
+        - apiKey: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '404':
+          description: Session not found
+    delete:
+      summary: Close a session
+      operationId: closeSession
+      tags: [Sessions]
+      security:
+        - apiKey: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+
+  /v1/sessions/{sessionId}/reset:
+    post:
+      summary: Reset session context
+      operationId: resetSession
+      tags: [Sessions]
+      security:
+        - apiKey: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Session reset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+
+  /v1/sessions/{sessionId}/generate:
+    post:
+      summary: Generate with session context
+      operationId: generateWithSession
+      tags: [Sessions]
+      security:
+        - apiKey: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerateRequest'
+      responses:
+        '200':
+          description: Successful generation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResponse'
+
   /v1/providers:
     get:
       summary: List supported providers and configuration status
@@ -239,6 +357,13 @@ components:
         model:
           type: string
           description: Model ID (optional; uses default if omitted)
+        session_id:
+          type: string
+          description: Optional session ID to reuse context
+        state_tokens:
+          type: object
+          additionalProperties: true
+          description: Optional provider/model-specific state passthrough
         modality:
           type: string
           enum: [text, image, 3d]
@@ -276,6 +401,11 @@ components:
           type: string
         modality:
           type: string
+        session_id:
+          type: string
+        state_tokens:
+          type: object
+          additionalProperties: true
         output:
           type: object
           properties:
@@ -445,6 +575,29 @@ components:
           type: number
         error:
           type: string
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [active, closed]
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+
+    SessionList:
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
 
   responses:
     ValidationError:

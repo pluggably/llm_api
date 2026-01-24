@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway
 **Date**: January 24, 2026
-**Status**: Approved (Baseline + CR-2026-01-24-01)
+**Status**: Approved (Baseline + CR-2026-01-24-02)
 
 ## Problem Statement
 I need a single, standard API that I can host on a home server or in the cloud to interface with many LLM providers and local/open-source models. The API should abstract provider differences and enable a consistent client experience.
@@ -41,6 +41,9 @@ I need a single, standard API that I can host on a home server or in the cloud t
 - **SH-REQ-015**: Provide artifact storage for large outputs (images, 3D) with downloadable URLs.
 - **SH-REQ-016**: Automatically discover locally installed models in storage so they appear in the model catalog.
 - **SH-REQ-017**: Provide a clear, queryable description of request parameters and model-specific guidance for API consumers.
+- **SH-REQ-018**: Support chat/session management for multi-turn interactions across text, image, and 3D modalities.
+- **SH-REQ-019**: Allow clients to create, list, update, and close sessions, including resetting or branching a session when needed.
+- **SH-REQ-020**: Support both backend-managed session state and client-supplied state (tokens/variables) for iterative generation workflows.
 
 ## Non-Functional Requirements (Stakeholder)
 - **SH-NFR-001**: Secure handling of API keys/secrets for commercial providers.
@@ -75,6 +78,7 @@ I need a single, standard API that I can host on a home server or in the cloud t
 5. Deploy the service on a home server and in the cloud.
 6. Install a local model file and have it automatically appear in the model catalog.
 7. Query API documentation to learn supported parameters and how to pass them.
+8. Start a session, send multiple related requests, then close or reset the session.
 
 ## Edge Cases / Risks
 - Local model performance insufficient for real-time use.
@@ -87,6 +91,8 @@ I need a single, standard API that I can host on a home server or in the cloud t
 - Deployment works on both home server and cloud with documented steps.
 - Installed local models appear in the catalog without manual registration.
 - API consumers can retrieve parameter documentation from the service.
+- Multi-turn requests within a session produce coherent, stateful behavior across calls.
+- Clients can start and end sessions and see them reflected in session listings.
 
 ## Decisions (Resolved Open Questions)
 - **API shape**: Custom schema (not strictly OpenAI-compatible), but similar patterns.
@@ -128,3 +134,6 @@ Stakeholder → System
 | SH-REQ-015 | SYS-REQ-016 | Artifact store |
 | SH-REQ-016 | SYS-REQ-018 | Model auto-discovery |
 | SH-REQ-017 | SYS-REQ-019 | Parameter documentation |
+| SH-REQ-018 | SYS-REQ-020 | Session management |
+| SH-REQ-019 | SYS-REQ-021 | Session lifecycle |
+| SH-REQ-020 | SYS-REQ-022 | Session state handoff |

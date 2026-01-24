@@ -17,6 +17,8 @@ from llm_api.api.schemas import (
     ModelInfo,
     ProvidersResponse,
     ProviderStatus,
+    Session,
+    SessionList,
 )
 from llm_api.auth import require_api_key
 from llm_api.config import get_settings
@@ -31,6 +33,7 @@ from llm_api.router.selector import (
     select_backend,
 )
 from llm_api.adapters import ProviderError, map_provider_error
+from llm_api.sessions import get_session_store
 
 
 api_router = APIRouter()
@@ -55,8 +58,21 @@ def _artifact_inline_threshold_bytes() -> int:
 async def generate(request: GenerateRequest) -> JSONResponse | StreamingResponse:
     settings = get_settings()
     registry = get_registry()
+    session_store = get_session_store()
 
     model_id = request.model
+    session_id = request.session_id
+    session = None
+    if session_id:
+        session = session_store.get_session(session_id)
+        if not session:
+            raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+        if session.status != "active":
+            raise HTTPException(status_code=400, detail="Session is closed")
+
+    effective_state_tokens = request.state_tokens
+    if session and effective_state_tokens is None:
+        effective_state_tokens = session.state_tokens
 
     try:
         selection = select_backend(model_id, registry, settings, modality=request.modality)
@@ -88,6 +104,14 @@ async def generate(request: GenerateRequest) -> JSONResponse | StreamingResponse
                 yield f"data: {token}\n\n"
             yield "data: [DONE]\n\n"
 
+        if session:
+            session_store.append_message(
+                session_id,
+                request.modality,
+                request.input.model_dump(mode="json"),
+                {"stream": True},
+                effective_state_tokens,
+            )
         return StreamingResponse(event_stream(), media_type="text/event-stream")
 
     request_id = str(uuid.uuid4())
@@ -128,10 +152,67 @@ async def generate(request: GenerateRequest) -> JSONResponse | StreamingResponse
         request_id=request_id,
         model=model_id,
         modality=request.modality,
+        session_id=session_id,
+        state_tokens=effective_state_tokens,
         output=output,
         usage=usage,
     )
+    if session:
+        session_store.append_message(
+            session_id,
+            request.modality,
+            request.input.model_dump(mode="json"),
+            jsonable_encoder(output),
+            effective_state_tokens,
+        )
     return JSONResponse(jsonable_encoder(response))
+
+
+@api_router.post("/v1/sessions", dependencies=[Depends(require_api_key)])
+async def create_session() -> JSONResponse:
+    session_store = get_session_store()
+    session = session_store.create_session()
+    return JSONResponse(jsonable_encoder(session.to_public()), status_code=201)
+
+
+@api_router.get("/v1/sessions", dependencies=[Depends(require_api_key)])
+async def list_sessions() -> JSONResponse:
+    session_store = get_session_store()
+    sessions = session_store.list_sessions()
+    return JSONResponse(jsonable_encoder(SessionList(sessions=sessions)))
+
+
+@api_router.get("/v1/sessions/{session_id}", dependencies=[Depends(require_api_key)])
+async def get_session(session_id: str) -> JSONResponse:
+    session_store = get_session_store()
+    session = session_store.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    return JSONResponse(jsonable_encoder(session.to_public()))
+
+
+@api_router.delete("/v1/sessions/{session_id}", dependencies=[Depends(require_api_key)])
+async def close_session(session_id: str) -> JSONResponse:
+    session_store = get_session_store()
+    session = session_store.close_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    return JSONResponse(jsonable_encoder(session.to_public()))
+
+
+@api_router.post("/v1/sessions/{session_id}/reset", dependencies=[Depends(require_api_key)])
+async def reset_session(session_id: str) -> JSONResponse:
+    session_store = get_session_store()
+    session = session_store.reset_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    return JSONResponse(jsonable_encoder(session.to_public()))
+
+
+@api_router.post("/v1/sessions/{session_id}/generate", dependencies=[Depends(require_api_key)], response_model=None)
+async def generate_with_session(session_id: str, request: GenerateRequest) -> JSONResponse | StreamingResponse:
+    session_request = request.model_copy(update={"session_id": session_id})
+    return await generate(session_request)
 
 
 @api_router.get("/v1/models", dependencies=[Depends(require_api_key)])

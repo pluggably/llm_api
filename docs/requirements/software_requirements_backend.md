@@ -3,7 +3,7 @@
 **Project**: Pluggably LLM API Gateway
 **Component**: Backend Service (single deployable)
 **Date**: January 24, 2026
-**Status**: Complete (Baseline + CR-2026-01-24-01)
+**Status**: Complete (Baseline + CR-2026-01-24-02)
 
 ## User Stories
 
@@ -285,6 +285,48 @@ So that I know what fields to send and how to use them
 
 ---
 
+**Story ID**: US-015
+**Title**: Session-aware generation
+**Priority**: High
+**Story Points**: 8
+
+As a developer
+I want to create a session and send multiple related requests
+So that multi-turn interactions retain context across text, image, and 3D requests
+
+**Acceptance Criteria**:
+- [x] API supports creating a session and returning a session ID
+- [x] Requests can reference a session ID to reuse context
+- [x] Session context is appended per request with modality and outputs
+- [x] Requests can optionally include provider/model state tokens for iterative updates
+
+**Traceability**: SYS-REQ-020, DATA-REQ-008
+
+**Status**: Complete
+
+---
+
+**Story ID**: US-016
+**Title**: Session lifecycle management
+**Priority**: High
+**Story Points**: 5
+
+As a developer
+I want to list, reset, and close sessions
+So that I can control and restart conversational context
+
+**Acceptance Criteria**:
+- [x] API supports listing sessions with metadata and last activity
+- [x] API supports resetting a session context
+- [x] API supports closing or archiving a session
+- [x] Closed sessions preserve state tokens for audit (configurable retention)
+
+**Traceability**: SYS-REQ-021, INT-REQ-006
+
+**Status**: Complete
+
+---
+
 ## Traceability
 System → Software
 
@@ -309,6 +351,9 @@ System → Software
 | SYS-REQ-017 | Backend | US-011 | Streaming |
 | SYS-REQ-018 | Backend | US-013 | Model auto-discovery |
 | SYS-REQ-019 | Backend | US-014 | Parameter documentation |
+| SYS-REQ-020 | Backend | US-015 | Session management |
+| SYS-REQ-021 | Backend | US-016 | Session lifecycle |
+| SYS-REQ-022 | Backend | US-015, US-016 | Session state handoff |
 
 ## Definition of Ready / Done
 **Ready**

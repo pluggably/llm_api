@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway
 **Date**: January 24, 2026
-**Status**: Complete (Baseline + CR-2026-01-24-01)
+**Status**: Complete (Baseline + CR-2026-01-24-02)
 
 ## Test Strategy
 - Prioritize automated unit and integration tests.
@@ -61,6 +61,40 @@
   - Parameter docs include temperature, max_tokens, format, stream
   - Model selection guidance is present
 - **Traceability**: SYS-REQ-019, INT-REQ-005, DATA-REQ-007
+
+**TEST-SYS-012**: Session creation and reuse
+- **Purpose**: Verify session creation and multi-turn requests
+- **Steps**:
+  1. Create a session
+  2. Send a text request with session_id
+  3. Send a follow-up request with same session_id
+- **Expected**:
+  - Session ID is returned and accepted
+  - Session context is reused
+- **Traceability**: SYS-REQ-020, DATA-REQ-008
+
+**TEST-SYS-013**: Session lifecycle management
+- **Purpose**: Verify list/reset/close session APIs
+- **Steps**:
+  1. List sessions
+  2. Reset a session
+  3. Close a session
+- **Expected**:
+  - Session list shows metadata
+  - Reset clears context
+  - Closed sessions are marked inactive
+- **Traceability**: SYS-REQ-021, INT-REQ-006
+
+**TEST-SYS-014**: Session state token passthrough
+- **Purpose**: Verify client-supplied state tokens are accepted and returned
+- **Steps**:
+  1. Create a session
+  2. Send a generate request with `state_tokens`
+  3. Send a follow-up request without tokens
+- **Expected**:
+  - Response includes updated state tokens
+  - Session preserves tokens when omitted on subsequent calls
+- **Traceability**: SYS-REQ-022, DATA-REQ-009
 
 ## Integration Test Specifications
 
@@ -165,6 +199,8 @@ Requirements → Verification
 | SYS-REQ-017 | Automated | TEST-SYS-007 | tests/system/ | |
 | SYS-REQ-018 | Automated | TEST-SYS-010 | tests/system/ | |
 | SYS-REQ-019 | Automated | TEST-SYS-011 | tests/system/ | |
+| SYS-REQ-020 | Automated | TEST-SYS-012 | tests/system/ | |
+| SYS-REQ-021 | Automated | TEST-SYS-013 | tests/system/ | |
 
 ## Definition of Ready / Done
 **Ready**

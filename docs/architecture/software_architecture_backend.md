@@ -3,7 +3,7 @@
 **Project**: Pluggably LLM API Gateway
 **Component**: Backend Service (single deployable)
 **Date**: January 24, 2026
-**Status**: Approved (Baseline + CR-2026-01-24-01)
+**Status**: Approved (Baseline + CR-2026-01-24-02)
 
 ## Overview
 This document defines the software architecture for the backend service, including module structure, interfaces between modules, and key interaction flows.
@@ -21,6 +21,7 @@ graph LR
     Storage[Storage Manager]
     Config[Config Manager]
     Obs[Observability]
+    Sessions[Session Manager]
     DB[(Metadata DB)]
 
     API --> Auth
@@ -28,12 +29,14 @@ graph LR
     API --> Obs
     Router --> Adapters
     Router --> Runner
+    Router --> Sessions
     Runner --> Registry
     Registry --> Downloader
     Registry --> DB
     Downloader --> Storage
     Runner --> Storage
     API --> Config
+    API --> Sessions
 ```
 
 ## Module/Package Structure
@@ -47,6 +50,7 @@ graph LR
 - `storage/`: storage limits, cache/retention policies
 - `config/`: env/config file loading
 - `observability/`: logging, metrics, tracing
+- `sessions/`: session store and history management
 - `db/`: metadata persistence (models, jobs, tokens)
 
 ## Interface Definitions (Module-Level)
@@ -58,6 +62,8 @@ graph LR
 - **Jobs → Storage**: download/cleanup operations
 - **API → Registry**: list models, register/download endpoints
 - **API → Registry**: model detail lookup for catalog and discovery results
+- **API → Sessions**: create/list/update/close session APIs
+- **Router → Sessions**: append messages and fetch session context
 
 ## Sequence Diagrams (Mermaid)
 
@@ -119,6 +125,25 @@ sequenceDiagram
     Registry-->>Registry: register discovered models
 ```
 
+### Session Request Flow
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant API as API Layer
+    participant Router as Router
+    participant Sessions as Session Manager
+    participant Runner as Local Runner
+
+    C->>API: POST /v1/sessions/{id}/generate
+    API->>Router: route(request)
+    Router->>Sessions: load session context
+    Router->>Runner: run with context
+    Runner-->>Router: response
+    Router->>Sessions: append response
+    Router-->>API: normalized response
+    API-->>C: 200 + response
+```
+
 ## Technology & Framework Choices (Draft)
 - **Framework**: FastAPI (async, OpenAPI generation)
 - **DB**: SQLite initially (upgradeable to Postgres)
@@ -158,6 +183,8 @@ System → Software
 | SYS-REQ-015 | Backend | US-010 | |
 | SYS-REQ-018 | Backend | US-013 | Model auto-discovery |
 | SYS-REQ-019 | Backend | US-014 | Parameter documentation |
+| SYS-REQ-020 | Backend | US-015 | Session management |
+| SYS-REQ-021 | Backend | US-016 | Session lifecycle |
 
 ## Definition of Ready / Done
 **Ready**

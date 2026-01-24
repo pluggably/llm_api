@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     artifact_expiry_secs: int = 3600
     artifact_inline_threshold_kb: int = 256
 
+    session_retention_minutes: int = 0
+
     metrics_enabled: bool = True
 
     persist_state: bool = False

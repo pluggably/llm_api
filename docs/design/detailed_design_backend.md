@@ -3,7 +3,7 @@
 **Project**: Pluggably LLM API Gateway
 **Component**: Backend Service
 **Date**: January 24, 2026
-**Status**: Approved (Baseline + CR-2026-01-24-01)
+**Status**: Approved (Baseline + CR-2026-01-24-02)
 
 ## Overview
 This document details module responsibilities, data structures, and key flows for the backend service.
@@ -80,6 +80,8 @@ parameters:
   temperature: number
   max_tokens: integer
   format: string
+session_id: string
+state_tokens: object  # provider/model-specific state passthrough
 ```
 
 ### Standard Response
@@ -95,6 +97,8 @@ usage:
   prompt_tokens: integer
   completion_tokens: integer
   total_tokens: integer
+session_id: string
+state_tokens: object
 ```
 
 ### Response Delivery Options
@@ -155,6 +159,20 @@ flowchart TD
   F --> G[Expose via catalog]
 ```
 
+### Session Lifecycle Flow
+```mermaid
+flowchart TD
+  A[Create Session] --> B[Return session_id]
+  B --> C[Use session_id in requests]
+  C --> D[Append messages to session]
+  D --> E{Reset requested?}
+  E -->|Yes| F[Clear session context]
+  E -->|No| G[Continue]
+  G --> H{Close requested?}
+  H -->|Yes| I[Archive session]
+  H -->|No| C
+```
+
 ### Storage Cleanup Flow
 ```mermaid
 flowchart TD
@@ -169,6 +187,12 @@ flowchart TD
 - Standard error envelope with code, message, and details
 - Map provider errors to internal error codes
 - Return validation errors for missing fields or unsupported modalities
+
+## Session Strategy
+- Store session metadata (id, created_at, last_used_at, status) and message history.
+- Allow session-scoped generation for text, image, and 3D requests.
+- Provide reset and close operations that affect subsequent context retrieval.
+- Support optional `state_tokens` passthrough for iterative updates (e.g., image refinement tokens).
 
 ## Model Discovery Strategy
 - Scan the configured `model_path` on startup for supported local model formats (e.g., `.gguf`).
@@ -316,6 +340,8 @@ Requirements → Design
 | SYS-REQ-017 | Standard Response (streaming via SSE) | |
 | SYS-REQ-018 | Model Discovery Strategy, Startup Model Discovery Flow | |
 | SYS-REQ-019 | Parameter Documentation Strategy | |
+| SYS-REQ-020 | Session Strategy, Session Lifecycle Flow | |
+| SYS-REQ-021 | Session Strategy, Session Lifecycle Flow | |
 
 ## Definition of Ready / Done
 **Ready**

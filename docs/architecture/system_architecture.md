@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway
 **Date**: January 24, 2026
-**Status**: Approved (Baseline + CR-2026-01-24-01)
+**Status**: Approved (Baseline + CR-2026-01-24-02)
 
 ## Overview
 This document defines the system-level architecture for a standard API that routes requests to commercial APIs, free/public APIs (if available), and local OSS models. It also covers model registry/download, storage management, and observability.
@@ -28,6 +28,7 @@ Primary system elements:
 5. **Storage Manager**: Enforces storage limits, cache/retention policies.
 6. **Observability**: Structured logs, metrics, request tracing.
 7. **Configuration Manager**: Manages API keys, endpoints, model paths.
+8. **Session Manager**: Stores and retrieves session context and history.
 
 ## System Element Diagram (Mermaid)
 ```mermaid
@@ -60,10 +61,12 @@ graph LR
 ## Interface Definitions (Summary)
 - **Client → Gateway**: Standard HTTP API (OpenAPI contract required).
 - **Client → Gateway**: API schema/parameter documentation endpoint.
+- **Client → Gateway**: Session management endpoints (create/list/update/close).
 - **Gateway → Adapters**: Provider-specific API calls (HTTP).
 - **Gateway → Local Runner**: Internal RPC or in-process call.
 - **Registry/Downloader → Storage**: Filesystem or object storage abstraction.
 - **Gateway → Observability**: Logs/metrics interface.
+ - **Gateway → Session Manager**: Store and retrieve session state.
 
 ## Data Flow Diagram (Mermaid)
 ```mermaid
@@ -143,3 +146,5 @@ System → Software (per software component)
 | SYS-REQ-017 | Backend | US-011 | Streaming |
 | SYS-REQ-018 | Backend | US-013 | Model auto-discovery |
 | SYS-REQ-019 | Backend | US-014 | Parameter documentation |
+| SYS-REQ-020 | Backend | US-015 | Session management |
+| SYS-REQ-021 | Backend | US-016 | Session lifecycle |

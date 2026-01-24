@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -33,6 +33,8 @@ class GenerateParameters(BaseModel):
 
 class GenerateRequest(BaseModel):
     model: Optional[str] = None
+    session_id: Optional[str] = None
+    state_tokens: Optional[Dict[str, Any]] = None
     modality: Literal["text", "image", "3d"]
     input: GenerateInput
     parameters: Optional[GenerateParameters] = None
@@ -56,6 +58,8 @@ class GenerateResponse(BaseModel):
     request_id: str
     model: str
     modality: Literal["text", "image", "3d"]
+    session_id: Optional[str] = None
+    state_tokens: Optional[Dict[str, Any]] = None
     output: GenerateOutput
     usage: Usage
 
@@ -98,6 +102,17 @@ class ProviderStatus(BaseModel):
 
 class ProvidersResponse(BaseModel):
     providers: List[ProviderStatus]
+
+
+class Session(BaseModel):
+    id: str
+    status: Literal["active", "closed"]
+    created_at: datetime
+    last_used_at: Optional[datetime] = None
+
+
+class SessionList(BaseModel):
+    sessions: List[Session]
 
 
 class ModelDownloadSource(BaseModel):
