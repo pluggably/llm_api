@@ -3,7 +3,7 @@
 **Project**: Pluggably LLM API Gateway
 **Component**: Backend Service (single deployable)
 **Date**: January 24, 2026
-**Status**: Complete
+**Status**: Complete (Baseline + CR-2026-01-24-01)
 
 ## User Stories
 
@@ -245,6 +245,46 @@ So that responses stay lightweight and clients can fetch artifacts separately
 
 ---
 
+**Story ID**: US-013
+**Title**: Auto-discover local models
+**Priority**: High
+**Story Points**: 5
+
+As an operator
+I want local model files to be auto-discovered
+So that installed models appear in the catalog without manual registration
+
+**Acceptance Criteria**:
+- [x] On service startup, local model files under the configured model path are scanned
+- [x] Discovered models appear in the model catalog with size, version (quantization), and local path
+- [x] Discovery does not overwrite explicit registry entries
+
+**Traceability**: SYS-REQ-018, DATA-REQ-005, DATA-REQ-006
+
+**Status**: Complete
+
+---
+
+**Story ID**: US-014
+**Title**: Parameter documentation endpoint
+**Priority**: High
+**Story Points**: 3
+
+As a developer
+I want to query parameter documentation from the API
+So that I know what fields to send and how to use them
+
+**Acceptance Criteria**:
+- [x] API exposes an endpoint that returns parameter descriptions and examples
+- [x] Documentation includes model selection guidance and supported values
+- [x] Documentation is consistent with OpenAPI contract
+
+**Traceability**: SYS-REQ-019, INT-REQ-005, DATA-REQ-007
+
+**Status**: Complete
+
+---
+
 ## Traceability
 System → Software
 
@@ -267,6 +307,8 @@ System → Software
 | SYS-REQ-015 | Backend | US-010 | |
 | SYS-REQ-016 | Backend | US-012 | Artifact store |
 | SYS-REQ-017 | Backend | US-011 | Streaming |
+| SYS-REQ-018 | Backend | US-013 | Model auto-discovery |
+| SYS-REQ-019 | Backend | US-014 | Parameter documentation |
 
 ## Definition of Ready / Done
 **Ready**

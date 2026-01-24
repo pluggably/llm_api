@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway
 **Date**: January 24, 2026
-**Status**: Approved
+**Status**: Approved (Baseline + CR-2026-01-24-01)
 
 ## Overview
 This document defines the system-level architecture for a standard API that routes requests to commercial APIs, free/public APIs (if available), and local OSS models. It also covers model registry/download, storage management, and observability.
@@ -24,7 +24,7 @@ Primary system elements:
 1. **API Gateway**: Exposes standard API, auth, routing, validation.
 2. **Provider Adapters**: Normalizes calls to external APIs.
 3. **Local Model Runner**: Executes local OSS models (text/image/3D).
-4. **Model Registry & Downloader**: Tracks model metadata, handles downloads/updates.
+4. **Model Registry & Downloader**: Tracks model metadata, handles downloads/updates, and auto-discovers local model files.
 5. **Storage Manager**: Enforces storage limits, cache/retention policies.
 6. **Observability**: Structured logs, metrics, request tracing.
 7. **Configuration Manager**: Manages API keys, endpoints, model paths.
@@ -59,6 +59,7 @@ graph LR
 
 ## Interface Definitions (Summary)
 - **Client → Gateway**: Standard HTTP API (OpenAPI contract required).
+- **Client → Gateway**: API schema/parameter documentation endpoint.
 - **Gateway → Adapters**: Provider-specific API calls (HTTP).
 - **Gateway → Local Runner**: Internal RPC or in-process call.
 - **Registry/Downloader → Storage**: Filesystem or object storage abstraction.
@@ -140,3 +141,5 @@ System → Software (per software component)
 | SYS-REQ-015 | Backend | US-010 | |
 | SYS-REQ-016 | Backend | US-012 | Artifact store |
 | SYS-REQ-017 | Backend | US-011 | Streaming |
+| SYS-REQ-018 | Backend | US-013 | Model auto-discovery |
+| SYS-REQ-019 | Backend | US-014 | Parameter documentation |

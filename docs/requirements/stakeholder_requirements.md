@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway
 **Date**: January 24, 2026
-**Status**: Approved
+**Status**: Approved (Baseline + CR-2026-01-24-01)
 
 ## Problem Statement
 I need a single, standard API that I can host on a home server or in the cloud to interface with many LLM providers and local/open-source models. The API should abstract provider differences and enable a consistent client experience.
@@ -39,6 +39,8 @@ I need a single, standard API that I can host on a home server or in the cloud t
 - **SH-REQ-013**: Provide an endpoint to list available models and their capabilities.
 - **SH-REQ-014**: Support streaming responses for text generation (SSE).
 - **SH-REQ-015**: Provide artifact storage for large outputs (images, 3D) with downloadable URLs.
+- **SH-REQ-016**: Automatically discover locally installed models in storage so they appear in the model catalog.
+- **SH-REQ-017**: Provide a clear, queryable description of request parameters and model-specific guidance for API consumers.
 
 ## Non-Functional Requirements (Stakeholder)
 - **SH-NFR-001**: Secure handling of API keys/secrets for commercial providers.
@@ -71,6 +73,8 @@ I need a single, standard API that I can host on a home server or in the cloud t
 3. Switch the backend for the same client request with no code changes.
 4. Run an image or 3D model generation request through the same API pattern.
 5. Deploy the service on a home server and in the cloud.
+6. Install a local model file and have it automatically appear in the model catalog.
+7. Query API documentation to learn supported parameters and how to pass them.
 
 ## Edge Cases / Risks
 - Local model performance insufficient for real-time use.
@@ -81,6 +85,8 @@ I need a single, standard API that I can host on a home server or in the cloud t
 - Client can switch providers with no changes to request schema.
 - At least one commercial and one local OSS model are successfully invoked through the API.
 - Deployment works on both home server and cloud with documented steps.
+- Installed local models appear in the catalog without manual registration.
+- API consumers can retrieve parameter documentation from the service.
 
 ## Decisions (Resolved Open Questions)
 - **API shape**: Custom schema (not strictly OpenAI-compatible), but similar patterns.
@@ -120,3 +126,5 @@ Stakeholder → System
 | SH-REQ-013 | SYS-REQ-015 | |
 | SH-REQ-014 | SYS-REQ-017 | Streaming |
 | SH-REQ-015 | SYS-REQ-016 | Artifact store |
+| SH-REQ-016 | SYS-REQ-018 | Model auto-discovery |
+| SH-REQ-017 | SYS-REQ-019 | Parameter documentation |

@@ -58,6 +58,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/ModelCatalog'
 
+  /v1/models/{modelId}:
+    get:
+      summary: Get detailed model information
+      operationId: getModelInfo
+      tags: [Models]
+      security:
+        - apiKey: []
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelInfo'
+        '404':
+          description: Model not found
+
+  /v1/schema:
+    get:
+      summary: Get API schema and parameter documentation
+      operationId: getSchema
+      tags: [Operations]
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: API schema and parameter documentation
+          content:
+            application/json:
+              schema:
+                type: object
+
   /v1/providers:
     get:
       summary: List supported providers and configuration status
@@ -338,6 +376,16 @@ components:
               type: array
               items:
                 type: string
+        source:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [huggingface, url, local]
+            uri:
+              type: string
+        size_bytes:
+          type: integer
         local_path:
           type: string
         last_used_at:

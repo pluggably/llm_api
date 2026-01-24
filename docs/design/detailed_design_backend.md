@@ -3,7 +3,7 @@
 **Project**: Pluggably LLM API Gateway
 **Component**: Backend Service
 **Date**: January 24, 2026
-**Status**: Approved
+**Status**: Approved (Baseline + CR-2026-01-24-01)
 
 ## Overview
 This document details module responsibilities, data structures, and key flows for the backend service.
@@ -141,6 +141,18 @@ flowchart TD
     D --> E{Success?}
     E -->|Yes| F[Mark model available]
     E -->|No| G[Record failure]
+
+```
+
+### Startup Model Discovery Flow
+```mermaid
+flowchart TD
+  A[Service Startup] --> B[Load Default Registry Entries]
+  B --> C[Scan model_path for local model files]
+  C --> D{Known model?}
+  D -->|Yes| E[Skip]
+  D -->|No| F[Register model metadata]
+  F --> G[Expose via catalog]
 ```
 
 ### Storage Cleanup Flow
@@ -157,6 +169,17 @@ flowchart TD
 - Standard error envelope with code, message, and details
 - Map provider errors to internal error codes
 - Return validation errors for missing fields or unsupported modalities
+
+## Model Discovery Strategy
+- Scan the configured `model_path` on startup for supported local model formats (e.g., `.gguf`).
+- Derive `id`, `name`, `version/quantization`, `size_bytes`, and `local_path` from filenames.
+- Do not overwrite explicit registry entries or persisted metadata.
+- Mark discovered models as `available` and include capabilities defaults (context size, output formats, hardware hints).
+
+## Parameter Documentation Strategy
+- Provide a read-only schema endpoint that returns parameter descriptions, defaults, and examples.
+- Keep schema aligned with OpenAPI definitions and request validators.
+- Include model-selection guidance (provider:model, pattern detection) in the schema response.
 
 ## Auth Strategy (Draft)
 - API key authentication (required)
@@ -291,6 +314,8 @@ Requirements → Design
 | SYS-REQ-015 | Registry Entry + Catalog Endpoint (via Registry) | |
 | SYS-REQ-016 | Response Delivery Options, Artifact Response | |
 | SYS-REQ-017 | Standard Response (streaming via SSE) | |
+| SYS-REQ-018 | Model Discovery Strategy, Startup Model Discovery Flow | |
+| SYS-REQ-019 | Parameter Documentation Strategy | |
 
 ## Definition of Ready / Done
 **Ready**

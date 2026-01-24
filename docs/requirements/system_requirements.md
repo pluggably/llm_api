@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway
 **Date**: January 24, 2026
-**Status**: Complete
+**Status**: Complete (Baseline + CR-2026-01-24-01)
 
 ## Assumptions
 - The standard API will be HTTP-based and JSON by default.
@@ -31,6 +31,8 @@
 - **SYS-REQ-015**: Provide an API endpoint to list available models and their capabilities.
 - **SYS-REQ-016**: Provide artifact storage for large outputs (images, 3D meshes) with signed, expiring download URLs.
 - **SYS-REQ-017**: Support streaming responses (SSE) for text generation requests.
+- **SYS-REQ-018**: Automatically discover locally installed model files in storage and register them in the model catalog.
+- **SYS-REQ-019**: Provide a queryable API schema/parameter documentation endpoint for request parameters and model selection guidance.
 
 ## Non-Functional Requirements (System)
 - **SYS-NFR-001**: Secure secret storage for provider API keys (no secrets in logs).
@@ -47,6 +49,7 @@
 - **INT-REQ-002**: If streaming is supported, provide SSE/WebSocket contract.
 - **INT-REQ-003**: Provide a minimal client example for the standard API.
 - **INT-REQ-004**: Document supported authentication schemes and required headers/tokens.
+- **INT-REQ-005**: Provide an API endpoint that returns parameter documentation and usage examples.
 
 ## Data Requirements
 - **DATA-REQ-001**: Define request/response schemas for text, image, and 3D generation.
@@ -55,6 +58,7 @@
 - **DATA-REQ-004**: Include a standardized model selection field in requests.
 - **DATA-REQ-005**: Maintain a model registry schema (name, version, modality, source, size, hardware requirements).
 - **DATA-REQ-006**: Store model capabilities metadata (supported modalities, context limits, output formats, required hardware).
+- **DATA-REQ-007**: Provide a machine-readable schema for request parameters and model selection guidance.
 
 ## Error Modes
 - For unsupported model features, return a standardized “feature not supported” error.
@@ -96,6 +100,8 @@ Stakeholder → System
 | SH-REQ-013 | SYS-REQ-015 | |
 | SH-REQ-014 | SYS-REQ-017 | Streaming |
 | SH-REQ-015 | SYS-REQ-016 | Artifact store |
+| SH-REQ-016 | SYS-REQ-018 | Model auto-discovery |
+| SH-REQ-017 | SYS-REQ-019 | Parameter documentation |
 
 Requirements → Verification
 
@@ -118,3 +124,5 @@ Requirements → Verification
 | SYS-REQ-015 | Automated | TEST-SYS-002 | tests/system/ | |
 | SYS-REQ-016 | Automated | TEST-SYS-006 | tests/system/ | Artifact store |
 | SYS-REQ-017 | Automated | TEST-SYS-007 | tests/system/ | Streaming |
+| SYS-REQ-018 | Automated | TEST-SYS-010 | tests/system/ | Auto-discovery |
+| SYS-REQ-019 | Automated | TEST-SYS-011 | tests/system/ | Schema endpoint |

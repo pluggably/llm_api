@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway
 **Date**: January 24, 2026
-**Status**: Complete
+**Status**: Complete (Baseline + CR-2026-01-24-01)
 
 ## Test Strategy
 - Prioritize automated unit and integration tests.
@@ -41,6 +41,26 @@
 - **Expected**:
   - Status updates from queued → running → completed
 - **Traceability**: SYS-REQ-010, SYS-REQ-013
+
+**TEST-SYS-010**: Local model auto-discovery
+- **Purpose**: Verify locally installed models are discovered and listed
+- **Preconditions**: At least one `.gguf` file present under model storage path
+- **Steps**:
+  1. Start the service
+  2. Call model catalog endpoint
+- **Expected**:
+  - Discovered model appears with size, local path, and status
+- **Traceability**: SYS-REQ-018, DATA-REQ-005, DATA-REQ-006
+
+**TEST-SYS-011**: Parameter schema endpoint
+- **Purpose**: Verify schema endpoint returns parameter documentation
+- **Steps**:
+  1. Call schema endpoint
+  2. Inspect parameters section
+- **Expected**:
+  - Parameter docs include temperature, max_tokens, format, stream
+  - Model selection guidance is present
+- **Traceability**: SYS-REQ-019, INT-REQ-005, DATA-REQ-007
 
 ## Integration Test Specifications
 
@@ -143,6 +163,8 @@ Requirements → Verification
 | SYS-REQ-015 | Automated | TEST-SYS-002 | tests/system/ | |
 | SYS-REQ-016 | Automated | TEST-SYS-006 | tests/system/ | |
 | SYS-REQ-017 | Automated | TEST-SYS-007 | tests/system/ | |
+| SYS-REQ-018 | Automated | TEST-SYS-010 | tests/system/ | |
+| SYS-REQ-019 | Automated | TEST-SYS-011 | tests/system/ | |
 
 ## Definition of Ready / Done
 **Ready**

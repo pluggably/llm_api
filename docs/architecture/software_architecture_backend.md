@@ -3,7 +3,7 @@
 **Project**: Pluggably LLM API Gateway
 **Component**: Backend Service (single deployable)
 **Date**: January 24, 2026
-**Status**: Approved
+**Status**: Approved (Baseline + CR-2026-01-24-01)
 
 ## Overview
 This document defines the software architecture for the backend service, including module structure, interfaces between modules, and key interaction flows.
@@ -57,6 +57,7 @@ graph LR
 - **Registry → DB**: CRUD model metadata, capabilities
 - **Jobs → Storage**: download/cleanup operations
 - **API → Registry**: list models, register/download endpoints
+- **API → Registry**: model detail lookup for catalog and discovery results
 
 ## Sequence Diagrams (Mermaid)
 
@@ -102,6 +103,20 @@ sequenceDiagram
     Storage-->>Jobs: progress updates
     Jobs-->>Registry: update status
     API-->>Admin: job id
+
+```
+
+### Startup Model Discovery Flow
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant Registry as Registry
+    participant Storage as Model Storage
+
+    App->>Registry: load defaults
+    Registry->>Storage: scan model path for local files
+    Storage-->>Registry: list of local model files
+    Registry-->>Registry: register discovered models
 ```
 
 ## Technology & Framework Choices (Draft)
@@ -141,6 +156,8 @@ System → Software
 | SYS-REQ-013 | Backend | US-004 | |
 | SYS-REQ-014 | Backend | US-007 | |
 | SYS-REQ-015 | Backend | US-010 | |
+| SYS-REQ-018 | Backend | US-013 | Model auto-discovery |
+| SYS-REQ-019 | Backend | US-014 | Parameter documentation |
 
 ## Definition of Ready / Done
 **Ready**
