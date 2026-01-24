@@ -1,0 +1,13 @@
+name: pluggably_llm_client
+version: 0.1.0
+publish_to: none
+description: Dart/Flutter client for the Pluggably LLM API Gateway
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  http: ^1.1.0
+
+dev_dependencies:
+  test: ^1.24.0

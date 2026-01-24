@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway
 **Date**: January 24, 2026
-**Status**: Approved (Baseline + CR-2026-01-24-02)
+**Status**: Approved (Baseline + CR-2026-01-24-03)
 
 ## Overview
 This document defines the system-level architecture for a standard API that routes requests to commercial APIs, free/public APIs (if available), and local OSS models. It also covers model registry/download, storage management, and observability.
@@ -148,3 +148,5 @@ System → Software (per software component)
 | SYS-REQ-019 | Backend | US-014 | Parameter documentation |
 | SYS-REQ-020 | Backend | US-015 | Session management |
 | SYS-REQ-021 | Backend | US-016 | Session lifecycle |
+| SYS-REQ-023 | Client Library | US-CL-001 | Client SDK |
+| SYS-REQ-024 | Client Library | US-CL-002 | Session helpers |

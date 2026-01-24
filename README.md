@@ -27,7 +27,7 @@ export LLM_API_API_KEY=your-secret-key
 ### Run the Server
 
 ```bash
-uvicorn llm_api.main:app --reload --port 8080
+PYTHONPATH=src uvicorn llm_api.main:app --reload --port 8080
 ```
 
 ### Health Check

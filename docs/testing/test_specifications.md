@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway
 **Date**: January 24, 2026
-**Status**: Complete (Baseline + CR-2026-01-24-02)
+**Status**: Complete (Baseline + CR-2026-01-24-03)
 
 ## Test Strategy
 - Prioritize automated unit and integration tests.
@@ -95,6 +95,25 @@
   - Response includes updated state tokens
   - Session preserves tokens when omitted on subsequent calls
 - **Traceability**: SYS-REQ-022, DATA-REQ-009
+
+**TEST-UNIT-006**: Client library request/response models
+- **Purpose**: Verify SDK request/response serialization matches API schema (Python and Dart/Flutter)
+- **Steps**:
+  1. Construct SDK request in Python and Dart/Flutter
+  2. Serialize to JSON
+  3. Compare against OpenAPI schema expectations
+- **Expected**:
+  - Fields and types match API contract in both clients
+- **Traceability**: SYS-REQ-023, DATA-REQ-010
+
+**TEST-UNIT-007**: Client session helpers
+- **Purpose**: Verify SDK session helper methods call correct endpoints in both clients
+- **Steps**:
+  1. Invoke create/reset/close helpers
+  2. Inspect constructed URLs and payloads
+- **Expected**:
+  - Endpoints and payloads match contract
+- **Traceability**: SYS-REQ-024, INT-REQ-008
 
 ## Integration Test Specifications
 

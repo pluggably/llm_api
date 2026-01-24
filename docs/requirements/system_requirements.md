@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway
 **Date**: January 24, 2026
-**Status**: Complete (Baseline + CR-2026-01-24-02)
+**Status**: Complete (Baseline + CR-2026-01-24-03)
 
 ## Assumptions
 - The standard API will be HTTP-based and JSON by default.
@@ -36,6 +36,8 @@
 - **SYS-REQ-020**: Provide session management to associate multiple requests with a persistent conversational context.
 - **SYS-REQ-021**: Provide APIs to create, retrieve, list, update, and close sessions, including the ability to reset session context.
 - **SYS-REQ-022**: Support both backend-stored session state and client-supplied state tokens for iterative generation workflows.
+- **SYS-REQ-023**: Provide client libraries (Python and Dart/Flutter) with typed request/response models for all API endpoints.
+- **SYS-REQ-024**: Provide session helper utilities in each client library for create/reset/close flows.
 
 ## Non-Functional Requirements (System)
 - **SYS-NFR-001**: Secure secret storage for provider API keys (no secrets in logs).
@@ -55,6 +57,7 @@
 - **INT-REQ-005**: Provide an API endpoint that returns parameter documentation and usage examples.
 - **INT-REQ-006**: Provide session management endpoints and document them in the OpenAPI contract.
 - **INT-REQ-007**: Document how clients can supply or omit session state tokens per request.
+- **INT-REQ-008**: Provide client library documentation and versioning aligned with the API contract (Python and Dart/Flutter).
 
 ## Data Requirements
 - **DATA-REQ-001**: Define request/response schemas for text, image, and 3D generation.
@@ -66,6 +69,7 @@
 - **DATA-REQ-007**: Provide a machine-readable schema for request parameters and model selection guidance.
 - **DATA-REQ-008**: Store session metadata and message history (modality, inputs, outputs, timestamps) with configurable retention.
 - **DATA-REQ-009**: Represent provider/model state tokens in a standard field with passthrough support.
+- **DATA-REQ-010**: Share request/response schemas between server and client to ensure compatibility.
 
 ## Error Modes
 - For unsupported model features, return a standardized “feature not supported” error.
@@ -112,6 +116,8 @@ Stakeholder → System
 | SH-REQ-018 | SYS-REQ-020 | Session management |
 | SH-REQ-019 | SYS-REQ-021 | Session lifecycle |
 | SH-REQ-020 | SYS-REQ-022 | Session state handoff |
+| SH-REQ-021 | SYS-REQ-023 | Client library |
+| SH-REQ-022 | SYS-REQ-024 | Session helpers |
 
 Requirements → Verification
 
@@ -139,3 +145,5 @@ Requirements → Verification
 | SYS-REQ-020 | Automated | TEST-SYS-012 | tests/system/ | Sessions |
 | SYS-REQ-021 | Automated | TEST-SYS-013 | tests/system/ | Session lifecycle |
 | SYS-REQ-022 | Automated | TEST-SYS-014 | tests/system/ | Session state tokens |
+| SYS-REQ-023 | Automated | TEST-UNIT-006 | client/tests/unit/ | SDK models |
+| SYS-REQ-024 | Automated | TEST-UNIT-007 | client/tests/unit/ | Session helpers |
