@@ -1,0 +1,74 @@
+"""
+TEST-UNIT-005: Config loading
+Traceability: SYS-REQ-006
+"""
+import os
+
+import pytest
+from pydantic import ValidationError
+
+from llm_api.config import get_settings
+
+
+class TestConfigLoading:
+    """Unit tests for configuration loading."""
+
+    def test_load_from_env_vars(self, monkeypatch):
+        monkeypatch.setenv("LLM_API_API_KEY", "env-key")
+        monkeypatch.setenv("LLM_API_PORT", "9090")
+        monkeypatch.setenv("LLM_API_MODEL_PATH", "/tmp/models")
+        get_settings.cache_clear()
+        settings = get_settings()
+        assert settings.port == 9090
+        assert str(settings.model_path) == "/tmp/models"
+
+    def test_load_from_yaml_file(self, tmp_path, monkeypatch):
+        config = tmp_path / "config.yaml"
+        config.write_text(
+            """
+server:
+  port: 7777
+storage:
+  model_path: /tmp/models
+auth:
+  api_key: yaml-key
+"""
+        )
+        monkeypatch.setenv("LLM_API_CONFIG_FILE", str(config))
+        monkeypatch.delenv("LLM_API_MODEL_PATH", raising=False)
+        get_settings.cache_clear()
+        settings = get_settings()
+        assert settings.port == 7777
+        assert str(settings.model_path) == "/tmp/models"
+
+    def test_env_vars_override_yaml(self, tmp_path, monkeypatch):
+        config = tmp_path / "config.yaml"
+        config.write_text(
+            """
+server:
+  port: 8000
+auth:
+  api_key: yaml-key
+"""
+        )
+        monkeypatch.setenv("LLM_API_CONFIG_FILE", str(config))
+        monkeypatch.setenv("LLM_API_PORT", "9000")
+        monkeypatch.setenv("LLM_API_API_KEY", "env-key")
+        get_settings.cache_clear()
+        settings = get_settings()
+        assert settings.port == 9000
+
+    def test_required_fields_raise_on_missing(self, monkeypatch):
+        monkeypatch.delenv("LLM_API_API_KEY", raising=False)
+        monkeypatch.delenv("LLM_API_CONFIG_FILE", raising=False)
+        get_settings.cache_clear()
+        with pytest.raises(ValidationError):
+            get_settings()
+
+    def test_default_values_applied(self, monkeypatch):
+        monkeypatch.setenv("LLM_API_API_KEY", "env-key")
+        monkeypatch.delenv("LLM_API_CONFIG_FILE", raising=False)
+        monkeypatch.delenv("LLM_API_MODEL_PATH", raising=False)
+        get_settings.cache_clear()
+        settings = get_settings()
+        assert settings.port == 8080
