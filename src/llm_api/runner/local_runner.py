@@ -6,6 +6,7 @@ import os
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
+from typing import Optional
 
 from llm_api.adapters.base import ProviderError
 from llm_api.config import get_settings
@@ -54,16 +55,51 @@ def _load_shap_e():
     return xm, model, diffusion, device
 
 
+def _find_model_file(model_path: Path) -> Optional[Path]:
+    """Find the first valid GGUF model file in the model path."""
+    if model_path.is_file():
+        return model_path
+    if model_path.is_dir():
+        # Look for GGUF files
+        gguf_files = list(model_path.glob("*.gguf"))
+        if gguf_files:
+            return gguf_files[0]
+        # Fall back to any model file
+        for ext in [".bin", ".safetensors", ".pt"]:
+            files = list(model_path.glob(f"*{ext}"))
+            if files:
+                return files[0]
+    return None
+
+
 @dataclass
 class LocalRunner:
     """Local OSS runtime runner."""
 
-    def generate_text(self, prompt: str) -> str:
+    def generate_text(self, prompt: str, model_path: Optional[Path] = None) -> str:
         settings = get_settings()
-        model_path = settings.local_text_model_path or (settings.model_path / "llama.gguf")
-        if not model_path.exists():
-            raise ProviderError(400, f"Missing local text model at {model_path}")
-        llama = _load_llama(str(model_path))
+        
+        # Priority: explicit path > settings path > default
+        if model_path and model_path.exists():
+            resolved_path = model_path
+        elif model_path:
+            # Try relative to model_path setting
+            resolved_path = settings.model_path / model_path
+        elif settings.local_text_model_path:
+            resolved_path = settings.local_text_model_path
+        else:
+            resolved_path = settings.model_path / "llama.gguf"
+        
+        # Try to find the actual model file
+        actual_file = _find_model_file(resolved_path)
+        if not actual_file:
+            # Try scanning the models directory for any GGUF
+            actual_file = _find_model_file(settings.model_path)
+        
+        if not actual_file or not actual_file.exists():
+            raise ProviderError(400, f"Missing local text model at {resolved_path}")
+        
+        llama = _load_llama(str(actual_file))
         output = llama(prompt, max_tokens=128)
         return output["choices"][0]["text"]
 

@@ -63,7 +63,7 @@ def client_factory(tmp_path):
 def patch_local_runner(monkeypatch):
     from llm_api.runner.local_runner import LocalRunner
 
-    monkeypatch.setattr(LocalRunner, "generate_text", lambda self, prompt: f"local:{prompt}")
+    monkeypatch.setattr(LocalRunner, "generate_text", lambda self, prompt, model_path=None: f"local:{prompt}")
     monkeypatch.setattr(LocalRunner, "generate_image", lambda self, prompt: b"LOCAL_IMAGE")
     monkeypatch.setattr(LocalRunner, "generate_3d", lambda self, prompt: b"LOCAL_3D")
 

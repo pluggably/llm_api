@@ -58,10 +58,21 @@ auth:
         settings = get_settings()
         assert settings.port == 9000
 
-    def test_required_fields_raise_on_missing(self, monkeypatch):
+    def test_required_fields_raise_on_missing(self, monkeypatch, tmp_path):
+        # Clear all possible sources of the API key
         monkeypatch.delenv("LLM_API_API_KEY", raising=False)
         monkeypatch.delenv("LLM_API_CONFIG_FILE", raising=False)
+        
+        # Change to a directory without .env file
+        import os
+        monkeypatch.chdir(tmp_path)
+        
+        # Use a non-existent config file path
+        monkeypatch.setenv("LLM_API_CONFIG_FILE", str(tmp_path / "nonexistent.yaml"))
+        
+        # Clear any cached settings
         get_settings.cache_clear()
+        
         with pytest.raises(ValidationError):
             get_settings()
 

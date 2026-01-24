@@ -4,7 +4,11 @@ Traceability: SYS-REQ-011
 import pytest
 
 from llm_api.config import Settings
-from llm_api.router.selector import ModelNotFoundError, select_backend
+from llm_api.router.selector import (
+    ModelNotFoundError,
+    ProviderNotConfiguredError,
+    select_backend,
+)
 from llm_api.registry.store import ModelRegistry
 from llm_api.api.schemas import ModelInfo
 from llm_api.adapters import OpenAIAdapter, LocalAdapter
@@ -14,17 +18,20 @@ class TestModelSelectionLogic:
     """Unit tests for model routing and selection."""
 
     def test_routes_to_openai_for_gpt_model(self, mock_registry):
-        settings = Settings(api_key="test-key")
+        """Test that gpt-4 routes to OpenAI when API key is configured."""
+        settings = Settings(api_key="test-key", openai_api_key="sk-test-key")
         selection = select_backend("gpt-4", mock_registry, settings)
         assert isinstance(selection.adapter, OpenAIAdapter)
 
     def test_routes_to_local_for_oss_model(self, mock_registry):
+        """Test that local models route to LocalAdapter."""
         settings = Settings(api_key="test-key")
         selection = select_backend("deepseek-r1", mock_registry, settings)
         assert isinstance(selection.adapter, LocalAdapter)
 
     def test_fallback_when_primary_unavailable(self, mock_registry):
-        settings = Settings(api_key="test-key")
+        """Test fallback to alternate model when primary is disabled."""
+        settings = Settings(api_key="test-key", openai_api_key="sk-test-key")
         fallback = ModelInfo(
             id="gpt-3.5",
             name="gpt-3.5",
@@ -39,11 +46,20 @@ class TestModelSelectionLogic:
         assert selection.model.id == "gpt-3.5"
 
     def test_raises_on_unknown_model(self, mock_registry):
+        """Test that unknown models raise ModelNotFoundError."""
         settings = Settings(api_key="test-key")
         with pytest.raises(ModelNotFoundError):
             select_backend("unknown-model", mock_registry, settings)
 
     def test_uses_default_when_no_model_specified(self, mock_registry):
-        settings = Settings(api_key="test-key", default_model="gpt-4")
+        """Test that default model is used when none specified."""
+        settings = Settings(api_key="test-key", openai_api_key="sk-test-key", default_model="gpt-4")
         selection = select_backend(None, mock_registry, settings)
         assert selection.model.id == "gpt-4"
+
+    def test_provider_not_configured_raises_error(self, mock_registry):
+        """Test that missing API key raises ProviderNotConfiguredError."""
+        settings = Settings(api_key="test-key")  # No openai_api_key
+        with pytest.raises(ProviderNotConfiguredError) as exc_info:
+            select_backend("gpt-4", mock_registry, settings)
+        assert "OpenAI API key not configured" in str(exc_info.value)

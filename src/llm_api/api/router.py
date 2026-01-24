@@ -24,7 +24,12 @@ from llm_api.jobs import get_job_store
 from llm_api.jobs.downloader import DownloadService
 from llm_api.registry import get_registry
 from llm_api.storage import encode_inline, get_artifact_store
-from llm_api.router.selector import ModelNotFoundError, ProviderNotSupportedError, select_backend
+from llm_api.router.selector import (
+    ModelNotFoundError,
+    ProviderNotSupportedError,
+    ProviderNotConfiguredError,
+    select_backend,
+)
 from llm_api.adapters import ProviderError, map_provider_error
 
 
@@ -52,27 +57,20 @@ async def generate(request: GenerateRequest) -> JSONResponse | StreamingResponse
     registry = get_registry()
 
     model_id = request.model
-    if model_id and ":" in model_id and not registry.get_model(model_id):
-        provider, raw_model_id = model_id.split(":", 1)
-        inferred = ModelInfo(
-            id=raw_model_id,
-            name=raw_model_id,
-            version="latest",
-            modality=request.modality,
-            provider=provider,
-            status="available",
-        )
-        registry.add_model(inferred)
-        model_id = raw_model_id
 
     try:
-        selection = select_backend(model_id, registry, settings)
+        selection = select_backend(model_id, registry, settings, modality=request.modality)
     except ModelNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ProviderNotSupportedError as exc:
         raise HTTPException(
             status_code=400,
             detail={"code": "unsupported_provider", "message": str(exc)},
+        ) from exc
+    except ProviderNotConfiguredError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "provider_not_configured", "message": str(exc)},
         ) from exc
 
     model_id = selection.model.id
