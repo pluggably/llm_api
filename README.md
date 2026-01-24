@@ -134,6 +134,70 @@ curl -X POST http://localhost:8080/v1/generate \
 
 ---
 
+## Client Libraries
+
+### Python Client
+
+Install locally from the repo:
+```bash
+pip install -e clients/python
+```
+
+Example:
+```python
+from llm_api_client import PluggablyClient, GenerateInput, GenerateRequest
+
+client = PluggablyClient("http://localhost:8080", "your-key")
+response = client.generate(
+    GenerateRequest(
+        modality="text",
+        input=GenerateInput(prompt="Hello from Python")
+    )
+)
+print(response.output.text)
+```
+
+Session helper:
+```python
+session = client.create_session()
+handle = client.session(session.id)
+reply = handle.generate(
+    GenerateRequest(modality="text", input=GenerateInput(prompt="Hi"))
+)
+```
+
+### Dart/Flutter Client
+
+Add to your Dart/Flutter project using a path dependency:
+```yaml
+dependencies:
+  pluggably_llm_client:
+    path: ../llm_api/clients/dart
+```
+
+Example:
+```dart
+import 'package:pluggably_llm_client/pluggably_client.dart';
+
+final client = PluggablyClient(baseUrl: 'http://localhost:8080', apiKey: 'your-key');
+final response = await client.generate(
+  GenerateRequest(
+    modality: 'text',
+    input: GenerateInput(prompt: 'Hello from Dart'),
+  ),
+);
+print(response.output['text']);
+```
+
+Session helper:
+```dart
+final session = await client.createSession();
+final reply = await client.generateWithSession(
+  session.id,
+  GenerateRequest(modality: 'text', input: GenerateInput(prompt: 'Hi')),
+);
+```
+
 ## Model Management
 
 ### List Available Models

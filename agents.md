@@ -251,6 +251,13 @@ Before any code is written, present all documentation for review:
   2. Update `docs/requirements/software_requirements_[software_name].md` with status
   3. Update any tracking documents
 
+### Phase 6.5: Pre-Push Review Checkpoint
+- **Process**:
+  1. Prepare a concise change summary (files touched + key behavior changes)
+  2. Provide test results and any skipped tests
+  3. Request explicit user approval to push commits
+  4. **Do not push to git until approval is granted**
+
 ## Documentation Standards
 
 ### File Organization

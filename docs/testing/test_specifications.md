@@ -133,6 +133,32 @@
   - Registry updated for evicted models
 - **Traceability**: SYS-REQ-012
 
+**TEST-INT-003**: Python client end-to-end flow
+- **Purpose**: Verify Python client exercises core endpoints against a running server
+- **Preconditions**: Server running locally; API key configured
+- **Steps**:
+  1. Create a session using Python client
+  2. Generate text in-session
+  3. List models and providers
+  4. Close the session
+- **Expected**:
+  - All calls succeed with typed responses
+  - Session lifecycle endpoints behave correctly
+- **Traceability**: SYS-REQ-023, SYS-REQ-024
+
+**TEST-INT-004**: Dart/Flutter client end-to-end flow
+- **Purpose**: Verify Dart/Flutter client exercises core endpoints against a running server
+- **Preconditions**: Server running locally; API key configured; Dart SDK installed
+- **Steps**:
+  1. Create a session using Dart client
+  2. Generate text in-session
+  3. List models and providers
+  4. Close the session
+- **Expected**:
+  - All calls succeed with typed responses
+  - Session lifecycle endpoints behave correctly
+- **Traceability**: SYS-REQ-023, SYS-REQ-024
+
 ## Unit Test Specifications
 
 **TEST-UNIT-001**: Request validation
@@ -220,6 +246,9 @@ Requirements → Verification
 | SYS-REQ-019 | Automated | TEST-SYS-011 | tests/system/ | |
 | SYS-REQ-020 | Automated | TEST-SYS-012 | tests/system/ | |
 | SYS-REQ-021 | Automated | TEST-SYS-013 | tests/system/ | |
+| SYS-REQ-022 | Automated | TEST-SYS-014 | tests/system/ | |
+| SYS-REQ-023 | Automated | TEST-UNIT-006, TEST-INT-003, TEST-INT-004 | tests/client/unit/, tests/client/integration/ | |
+| SYS-REQ-024 | Automated | TEST-UNIT-007, TEST-INT-003, TEST-INT-004 | tests/client/unit/, tests/client/integration/ | |
 
 ## Definition of Ready / Done
 **Ready**
