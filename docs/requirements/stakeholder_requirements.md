@@ -88,6 +88,9 @@ I need a single, standard API and a cross-platform UI that I can host on a home 
 - **SH-REQ-042**: Cancel in-flight generation requests.
 - **SH-REQ-043**: Regenerate/retry responses with same or modified parameters.
 - **SH-REQ-044**: Allow users to choose (via API or frontend) whether to fall back to a default model while the requested model is loading, or to wait for the requested model.
+- **SH-REQ-045**: Ensure client applications and SDKs use the exact backend API endpoints and request schemas (no contract drift).
+- **SH-REQ-046**: Maintain a clear, up-to-date API endpoint reference for consumers.
+- **SH-REQ-047**: Use a shared Dart client library in the frontend to avoid duplicated SDK logic.
 
 ## Non-Functional Requirements (Stakeholder)
 - **SH-NFR-001**: Secure handling of API keys/secrets for commercial providers.
@@ -241,6 +244,9 @@ Stakeholder → System
 | SH-REQ-042 | SYS-REQ-047 | Request cancellation |
 | SH-REQ-043 | SYS-REQ-048 | Regenerate/retry |
 | SH-REQ-044 | SYS-REQ-052, SYS-REQ-053 | Fallback configuration |
+| SH-REQ-045 | SYS-REQ-055, SYS-REQ-056, SYS-REQ-057, SYS-REQ-058, SYS-REQ-059, SYS-REQ-060 | Endpoint alignment |
+| SH-REQ-046 | SYS-REQ-061 | API endpoint reference |
+| SH-REQ-047 | SYS-REQ-062 | Shared Dart client usage |
 | SH-REQ-024 | SYS-REQ-026 | Model selection UI |
 | SH-REQ-025 | SYS-REQ-027 | Dynamic parameters |
 | SH-REQ-026 | SYS-REQ-028 | Chat UI |

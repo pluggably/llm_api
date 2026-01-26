@@ -28,6 +28,7 @@ This document describes UI structure, state management, data flow, and schema-dr
 - Settings drawer renders schema-driven fields (string/number/boolean/enum/slider).
 - Image and 3D UIs are pending (placeholders in requirements).
 - Layout auto-switch/lock is not yet implemented beyond responsive breakpoints.
+- Frontend uses the shared Dart client package (`clients/dart`) for API calls.
 
 ## State Model (Sketch)
 ```yaml

@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:plugai/sdk/models.dart';
+import 'package:pluggably_llm_client/models.dart';
 import 'package:plugai/widgets/chat_bubble.dart';
 
 void main() {

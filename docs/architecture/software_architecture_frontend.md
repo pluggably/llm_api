@@ -14,7 +14,7 @@ graph LR
     App[PlugAI App Shell]
     Nav[Navigation & Routing]
     State[State Management]
-    SDK[Dart Client SDK]
+    SDK[Shared Dart Client SDK]
     Models[Model Catalog UI]
     Params[Settings Drawer]
     Chat[Chat UI]
@@ -49,7 +49,7 @@ graph LR
 ## Module/Package Structure
 - `app/`: root app, routing, theme, shell
 - `state/`: state management (models, sessions, settings, auth)
-- `sdk/`: Dart client wrapper, typed models
+- external: `clients/dart` package (`pluggably_llm_client`)
 - `features/models/`: model catalog, modality tabs
 - `features/settings/`: dynamic parameter drawer
 - `features/chat/`: chat UI and streaming renderer
@@ -65,7 +65,7 @@ graph LR
 
 ## Interface Definitions
 - **UI → State**: user actions update app state (selected model, parameters, session)
-- **State → SDK**: state triggers SDK calls (models, schema, generate, sessions)
+- **State → SDK**: state triggers shared Dart client calls (models, schema, generate, sessions)
 - **SDK → API**: HTTP requests to backend
 
 ## Sequence Diagrams (Mermaid)

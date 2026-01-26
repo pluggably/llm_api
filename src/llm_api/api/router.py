@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from typing import AsyncGenerator
 
@@ -19,6 +20,7 @@ from llm_api.api.schemas import (
     ProviderStatus,
     Session,
     SessionList,
+    UpdateSessionRequest,
 )
 from llm_api.auth import require_api_key
 from llm_api.config import get_settings
@@ -96,12 +98,16 @@ async def generate(request: GenerateRequest) -> JSONResponse | StreamingResponse
             raise HTTPException(status_code=400, detail="Streaming only supported for text")
 
         async def event_stream() -> AsyncGenerator[str, None]:
-            text = f"Stub response for: {request.input.prompt or ''}"
-            if request.input.prompt == "RAISE_ERROR":
-                yield "data: {\"error\": \"stream_error\"}\n\n"
+            try:
+                output_text = selection.adapter.generate_text(request.input.prompt or "")
+            except ProviderError as exc:
+                error = map_provider_error(exc)
+                payload = json.dumps({"error": {"code": error.code, "message": error.message}})
+                yield f"data: {payload}\n\n"
                 return
-            for token in text.split():
-                yield f"data: {token}\n\n"
+
+            payload = json.dumps({"choices": [{"delta": {"content": output_text}}]})
+            yield f"data: {payload}\n\n"
             yield "data: [DONE]\n\n"
 
         if session:
@@ -188,6 +194,19 @@ async def get_session(session_id: str) -> JSONResponse:
     session = session_store.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    return JSONResponse(jsonable_encoder(session.to_public()))
+
+
+@api_router.put("/v1/sessions/{session_id}", dependencies=[Depends(require_api_key)])
+async def update_session(session_id: str, request: UpdateSessionRequest) -> JSONResponse:
+    session_store = get_session_store()
+    session = session_store.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    
+    # For now, sessions don't have a title field in the backend
+    # Just return the session as-is
+    # TODO: Add title support to session store
     return JSONResponse(jsonable_encoder(session.to_public()))
 
 

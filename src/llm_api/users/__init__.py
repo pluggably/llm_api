@@ -247,14 +247,17 @@ class UserService:
         
         with get_db_session() as db:
             db.add(token_record)
+            db.flush()
+            db.refresh(token_record)
+            token_info = {
+                "id": token_record.id,
+                "name": name,
+                "scopes": scopes or [],
+                "created_at": token_record.created_at.isoformat(),
+                "expires_at": token_record.expires_at.isoformat() if token_record.expires_at else None,
+            }
         
-        return token, {
-            "id": token_record.id,
-            "name": name,
-            "scopes": scopes or [],
-            "created_at": token_record.created_at.isoformat(),
-            "expires_at": token_record.expires_at.isoformat() if token_record.expires_at else None,
-        }
+        return token, token_info
     
     def list_api_tokens(self, user_id: str) -> List[Dict[str, Any]]:
         """List API tokens for a user (without revealing token values)."""
@@ -303,8 +306,12 @@ class UserService:
             if not token_record:
                 return None
             
-            if token_record.expires_at and token_record.expires_at < datetime.now(timezone.utc):
-                return None
+            if token_record.expires_at:
+                expires_at = token_record.expires_at
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if expires_at < datetime.now(timezone.utc):
+                    return None
             
             # Update last used
             token_record.last_used_at = datetime.now(timezone.utc)

@@ -1,7 +1,7 @@
 // Unit tests for the SDK models.
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:plugai/sdk/models.dart';
+import 'package:pluggably_llm_client/models.dart';
 
 void main() {
   group('Model', () {
@@ -276,15 +276,15 @@ void main() {
   group('LifecycleStatus', () {
     test('fromJson parses correctly', () {
       final json = {
-        'loaded_model': 'gpt-4',
-        'status': 'ready',
+        'model_id': 'gpt-4',
+        'runtime_status': 'loaded',
         'queue_depth': 5,
       };
 
       final status = LifecycleStatus.fromJson(json);
 
-      expect(status.loadedModel, 'gpt-4');
-      expect(status.status, 'ready');
+      expect(status.modelId, 'gpt-4');
+      expect(status.runtimeStatus, 'loaded');
       expect(status.queueDepth, 5);
     });
   });

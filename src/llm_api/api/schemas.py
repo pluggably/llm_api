@@ -111,6 +111,10 @@ class Session(BaseModel):
     last_used_at: Optional[datetime] = None
 
 
+class UpdateSessionRequest(BaseModel):
+    title: Optional[str] = None
+
+
 class SessionList(BaseModel):
     sessions: List[Session]
 

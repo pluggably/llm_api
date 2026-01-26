@@ -327,6 +327,26 @@ So that I can control and restart conversational context
 
 ---
 
+**Story ID**: US-035
+**Title**: Session update endpoint
+**Priority**: Medium
+**Story Points**: 2
+
+As a developer
+I want to update session metadata via a PUT endpoint
+So that clients can rename or update session fields
+
+**Acceptance Criteria**:
+- [x] API supports `PUT /v1/sessions/{session_id}`
+- [x] Request accepts optional `title`
+- [x] Response returns updated session object
+
+**Traceability**: SYS-REQ-060
+
+**Status**: Complete
+
+---
+
 **Story ID**: US-017
 **Title**: Persistent model registry
 **Priority**: High
@@ -740,6 +760,7 @@ System → Software
 | SYS-REQ-051 | Backend | US-032 | Get loaded models |
 | SYS-REQ-052 | Backend | US-033 | Default pinned model |
 | SYS-REQ-053 | Backend | US-034 | Fallback configuration |
+| SYS-REQ-060 | Backend | US-035 | Session update endpoint |
 
 ## Definition of Ready / Done
 **Ready**

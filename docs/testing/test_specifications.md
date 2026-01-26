@@ -117,6 +117,60 @@
 
 ## Integration Test Specifications
 
+**TEST-INT-CR001-001**: Auth endpoint alignment
+- **Purpose**: Verify frontend SDK uses `/v1/users/*` auth endpoints
+- **Steps**:
+  1. Call `register()` in frontend SDK with mock client
+  2. Call `login()` in frontend SDK with mock client
+- **Expected**:
+  - Requests hit `/v1/users/register` and `/v1/users/login`
+- **Traceability**: SYS-REQ-055
+
+**TEST-INT-CR001-002**: Generate endpoint alignment
+- **Purpose**: Verify frontend SDK uses `/v1/generate` with correct schema
+- **Steps**:
+  1. Call `generate()` in frontend SDK with mock client
+- **Expected**:
+  - Request hits `/v1/generate`
+  - Body includes `model`, `modality`, `input`, `parameters`
+- **Traceability**: SYS-REQ-056
+
+**TEST-INT-CR001-003**: Lifecycle endpoint alignment
+- **Purpose**: Verify lifecycle endpoints include `model_id` in path
+- **Steps**:
+  1. Call `getModelStatus()` in frontend SDK with mock client
+  2. Call `loadModel()` in frontend SDK with mock client
+  3. Call `unloadModel()` in frontend SDK with mock client
+- **Expected**:
+  - Requests hit `/v1/models/{model_id}/status|load|unload`
+- **Traceability**: SYS-REQ-057
+
+**TEST-INT-CR001-004**: Request endpoint alignment
+- **Purpose**: Verify request endpoints use plural `/v1/requests/*`
+- **Steps**:
+  1. Call `getRequestStatus()` in frontend SDK with mock client
+  2. Call `cancelRequest()` in frontend SDK with mock client
+- **Expected**:
+  - Requests hit `/v1/requests/{request_id}/status|cancel`
+- **Traceability**: SYS-REQ-058
+
+**TEST-INT-CR001-005**: User resource endpoint alignment
+- **Purpose**: Verify user tokens and provider keys use `/v1/users/*` without `/me`
+- **Steps**:
+  1. Call `listUserTokens()` in frontend SDK with mock client
+  2. Call `listProviderKeys()` in frontend SDK with mock client
+- **Expected**:
+  - Requests hit `/v1/users/tokens` and `/v1/users/provider-keys`
+- **Traceability**: SYS-REQ-059
+
+**TEST-INT-CR001-006**: Session update endpoint
+- **Purpose**: Verify backend provides PUT `/v1/sessions/{session_id}`
+- **Steps**:
+  1. Call update session endpoint
+- **Expected**:
+  - Returns updated session object
+- **Traceability**: SYS-REQ-060
+
 **TEST-INT-001**: Provider adapter error mapping
 - **Purpose**: Ensure provider errors map to standard error codes
 - **Steps**:
@@ -160,6 +214,26 @@
 - **Traceability**: SYS-REQ-023, SYS-REQ-024
 
 ## Manual Test Specifications
+
+**TEST-MAN-CR001-001**: API endpoint reference review
+- **Purpose**: Verify API endpoint reference is complete and accurate
+- **Steps**:
+  1. Open `docs/api_endpoints.md`
+  2. Confirm endpoints and schemas match backend implementation
+- **Expected**:
+  - All documented endpoints exist and are accurate
+- **Traceability**: SYS-REQ-061
+
+**TEST-MAN-CR002-001**: Shared Dart client usage
+- **Purpose**: Verify frontend uses the shared Dart client package
+- **Steps**:
+  1. Open frontend `pubspec.yaml` and confirm path dependency on `../clients/dart`
+  2. Search frontend codebase for imports from `pluggably_llm_client`
+  3. Confirm `frontend/lib/sdk` is no longer referenced
+- **Expected**:
+  - Frontend depends on shared package and uses its models/client
+  - No local SDK usage remains
+- **Traceability**: SYS-REQ-062
 
 **TEST-MAN-004**: Frontend model selection and dynamic parameters
 - **Purpose**: Verify model selection and schema-driven parameter panel in the frontend

@@ -68,6 +68,14 @@
 - **SYS-REQ-051**: Provide an endpoint to list currently loaded models.
 - **SYS-REQ-052**: Support a default "pinned" model that remains loaded and can serve as an optional fallback during cold-start of other models.
 - **SYS-REQ-053**: Allow users to choose (via API parameter or frontend option) whether to fall back to a default/pinned model while the requested model is loading, or to wait for the requested model.
+- **SYS-REQ-055**: Align authentication endpoints for client SDKs with backend implementation (`/v1/users/register`, `/v1/users/login`).
+- **SYS-REQ-056**: Align generation endpoint and schema for client SDKs (`/v1/generate` with `{model, modality, input, parameters?, stream?}`).
+- **SYS-REQ-057**: Align lifecycle endpoints to include `model_id` in path (`/v1/models/{model_id}/status|load|unload`).
+- **SYS-REQ-058**: Align request management endpoints to use plural form (`/v1/requests/{request_id}/status|cancel`).
+- **SYS-REQ-059**: Align user resource endpoints to `/v1/users/tokens` and `/v1/users/provider-keys` (no `/me` prefix).
+- **SYS-REQ-060**: Provide session update endpoint (`PUT /v1/sessions/{session_id}`).
+- **SYS-REQ-061**: Maintain a comprehensive API endpoint reference document for consumers.
+- **SYS-REQ-062**: Frontend must use the shared Dart client package (`clients/dart`) for API calls.
 
 ## Non-Functional Requirements (System)
 - **SYS-NFR-001**: Secure secret storage for provider API keys (no secrets in logs).
@@ -184,6 +192,9 @@ Stakeholder → System
 | SH-REQ-042 | SYS-REQ-047 | Request cancellation |
 | SH-REQ-043 | SYS-REQ-048 | Regenerate/retry |
 | SH-REQ-044 | SYS-REQ-052, SYS-REQ-053 | Fallback configuration |
+| SH-REQ-045 | SYS-REQ-055, SYS-REQ-056, SYS-REQ-057, SYS-REQ-058, SYS-REQ-059, SYS-REQ-060 | Endpoint alignment |
+| SH-REQ-046 | SYS-REQ-061 | API endpoint reference |
+| SH-REQ-047 | SYS-REQ-062 | Shared Dart client usage |
 
 Requirements → Verification
 
@@ -243,3 +254,11 @@ Requirements → Verification
 | SYS-REQ-052 | Automated | TEST-INT-016 | tests/integration/ | Default pinned model |
 | SYS-REQ-053 | Automated | TEST-INT-017 | tests/integration/ | Fallback configuration |
 | SYS-REQ-054 | Automated | TEST-SYS-017 | tests/system/ | Session survives model spindown |
+| SYS-REQ-055 | Automated | TEST-INT-CR001-001 | frontend/test/sdk/api_client_test.dart | Auth endpoints |
+| SYS-REQ-056 | Automated | TEST-INT-CR001-002 | frontend/test/sdk/api_client_test.dart | Generate endpoint/schema |
+| SYS-REQ-057 | Automated | TEST-INT-CR001-003 | frontend/test/sdk/api_client_test.dart | Lifecycle endpoints |
+| SYS-REQ-058 | Automated | TEST-INT-CR001-004 | frontend/test/sdk/api_client_test.dart | Request endpoints |
+| SYS-REQ-059 | Automated | TEST-INT-CR001-005 | frontend/test/sdk/api_client_test.dart | User resource endpoints |
+| SYS-REQ-060 | Automated | TEST-INT-CR001-006 | src/llm_api/api/router.py | Session update endpoint |
+| SYS-REQ-061 | Manual | TEST-MAN-CR001-001 | docs/api_endpoints.md | API reference review |
+| SYS-REQ-062 | Manual | TEST-MAN-CR002-001 | docs/testing/manual_test_procedures.md | Frontend uses shared Dart client |

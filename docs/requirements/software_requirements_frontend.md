@@ -392,6 +392,47 @@ So that my first request is fast
 
 ---
 
+**Story ID**: US-FE-021
+**Title**: API endpoint alignment with backend
+**Priority**: High
+**Story Points**: 3
+
+As a frontend developer
+I want the SDK to call the exact backend endpoints and schemas
+So that the UI can successfully communicate with the API
+
+**Acceptance Criteria**:
+- [x] Auth endpoints use `/v1/users/register` and `/v1/users/login`
+- [x] Generation uses `/v1/generate` with `{model, modality, input, parameters?, stream?}`
+- [x] Lifecycle endpoints include `model_id` in the path
+- [x] Request status/cancel uses `/v1/requests/{request_id}`
+- [x] User tokens and provider keys use `/v1/users/*` without `/me`
+
+**Traceability**: SYS-REQ-055, SYS-REQ-056, SYS-REQ-057, SYS-REQ-058, SYS-REQ-059
+**Status**: Complete
+
+---
+
+**Story ID**: US-FE-022
+**Title**: Use shared Dart client package
+**Priority**: High
+**Story Points**: 3
+
+As a frontend developer
+I want the frontend to use the shared Dart client package from `clients/dart`
+So that SDK logic is centralized and consistent with other consumers
+
+**Acceptance Criteria**:
+- [x] Frontend depends on the `pluggably_llm_client` package via path dependency
+- [x] Frontend replaces `frontend/lib/sdk` usage with shared client imports
+- [x] Existing API behavior remains unchanged
+- [x] Frontend tests updated to use shared client models
+
+**Traceability**: SYS-REQ-062
+**Status**: Complete
+
+---
+
 ## Traceability: System → Software
 
 | System Req ID | Software Component | User Story ID(s) | Notes |
@@ -416,6 +457,12 @@ So that my first request is fast
 | SYS-REQ-048 | Frontend | US-FE-018 | Regenerate |
 | SYS-REQ-049 | Frontend | US-FE-020 | Pre-load model |
 | SYS-REQ-050 | Frontend | US-FE-016 | Model loading state |
+| SYS-REQ-055 | Frontend | US-FE-021 | Auth endpoint alignment |
+| SYS-REQ-056 | Frontend | US-FE-021 | Generate endpoint alignment |
+| SYS-REQ-057 | Frontend | US-FE-021 | Lifecycle endpoint alignment |
+| SYS-REQ-058 | Frontend | US-FE-021 | Request endpoint alignment |
+| SYS-REQ-059 | Frontend | US-FE-021 | User resource endpoint alignment |
+| SYS-REQ-062 | Frontend | US-FE-022 | Shared Dart client usage |
 
 ## Definition of Done
 - User stories and acceptance criteria defined

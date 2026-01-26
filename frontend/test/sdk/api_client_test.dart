@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import 'package:plugai/sdk/api_client.dart';
+import 'package:pluggably_llm_client/api_client.dart';
 
 void main() {
   group('LlmApiClient', () {
@@ -97,9 +97,9 @@ void main() {
       test('sends load request correctly', () async {
         final mockClient = MockClient((request) async {
           expect(request.method, 'POST');
-          expect(request.url.path, '/v1/models/load');
+          expect(request.url.path, '/v1/models/llama-3/load');
           final body = jsonDecode(request.body);
-          expect(body['model_id'], 'llama-3');
+          // model_id is now in path, not body
           return http.Response(
             jsonEncode({'model_id': 'llama-3', 'status': 'loading'}),
             200,
@@ -118,9 +118,9 @@ void main() {
       test('sends unload request correctly', () async {
         final mockClient = MockClient((request) async {
           expect(request.method, 'POST');
-          expect(request.url.path, '/v1/models/unload');
-          final body = jsonDecode(request.body);
-          expect(body['model_id'], 'llama-3');
+          expect(request.url.path, '/v1/models/llama-3/unload');
+          // model_id is now in path, not body
+          // Body contains only force flag
           return http.Response('{}', 200);
         });
 
@@ -165,7 +165,7 @@ void main() {
         });
 
         client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
-        final session = await client.createSession(title: 'New Chat');
+        final session = await client.createSession();
 
         expect(session.id, 'new-session');
       });
@@ -187,10 +187,11 @@ void main() {
       test('sends generation request correctly', () async {
         final mockClient = MockClient((request) async {
           expect(request.method, 'POST');
-          expect(request.url.path, '/v1/completions');
+          expect(request.url.path, '/v1/generate');
           final body = jsonDecode(request.body);
           expect(body['model'], 'gpt-4');
-          expect(body['prompt'], 'Hello');
+          expect(body['modality'], 'text');
+          expect(body['input']['prompt'], 'Hello');
           return http.Response(
             jsonEncode({
               'id': 'gen-1',
@@ -213,7 +214,7 @@ void main() {
       test('login returns auth response', () async {
         final mockClient = MockClient((request) async {
           expect(request.method, 'POST');
-          expect(request.url.path, '/v1/auth/login');
+          expect(request.url.path, '/v1/users/login');
           return http.Response(
             jsonEncode({
               'access_token': 'jwt-token',
@@ -232,7 +233,7 @@ void main() {
       test('register with invite token', () async {
         final mockClient = MockClient((request) async {
           expect(request.method, 'POST');
-          expect(request.url.path, '/v1/auth/register');
+          expect(request.url.path, '/v1/users/register');
           final body = jsonDecode(request.body);
           expect(body['invite_token'], 'invite-123');
           return http.Response(
@@ -274,7 +275,7 @@ void main() {
     group('user tokens', () {
       test('listUserTokens returns tokens', () async {
         final mockClient = MockClient((request) async {
-          expect(request.url.path, '/v1/users/me/tokens');
+          expect(request.url.path, '/v1/users/tokens');
           return http.Response(
             jsonEncode([
               {'id': 'token-1', 'name': 'Token 1', 'created_at': '2026-01-26T10:00:00Z'},
@@ -314,7 +315,7 @@ void main() {
     group('provider keys', () {
       test('listProviderKeys returns keys', () async {
         final mockClient = MockClient((request) async {
-          expect(request.url.path, '/v1/users/me/provider-keys');
+          expect(request.url.path, '/v1/users/provider-keys');
           return http.Response(
             jsonEncode([
               {
@@ -360,13 +361,13 @@ void main() {
     });
 
     group('lifecycle', () {
-      test('getLifecycleStatus returns status', () async {
+      test('getModelStatus returns status', () async {
         final mockClient = MockClient((request) async {
-          expect(request.url.path, '/v1/models/status');
+          expect(request.url.path, '/v1/models/gpt-4/status');
           return http.Response(
             jsonEncode({
-              'loaded_model': 'gpt-4',
-              'status': 'ready',
+              'model_id': 'gpt-4',
+              'runtime_status': 'loaded',
               'queue_depth': 0,
             }),
             200,
@@ -374,10 +375,10 @@ void main() {
         });
 
         client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
-        final status = await client.getLifecycleStatus();
+        final status = await client.getModelStatus('gpt-4');
 
-        expect(status.loadedModel, 'gpt-4');
-        expect(status.status, 'ready');
+        expect(status.modelId, 'gpt-4');
+        expect(status.runtimeStatus, 'loaded');
       });
 
       test('getLoadedModels returns list', () async {
@@ -403,7 +404,7 @@ void main() {
       test('cancelRequest calls correct endpoint', () async {
         final mockClient = MockClient((request) async {
           expect(request.method, 'POST');
-          expect(request.url.path, '/v1/request/req-123/cancel');
+          expect(request.url.path, '/v1/requests/req-123/cancel');
           return http.Response('{}', 200);
         });
 

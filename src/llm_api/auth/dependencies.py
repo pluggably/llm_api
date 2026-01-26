@@ -1,6 +1,7 @@
 from fastapi import Header, HTTPException, Request
 
 from llm_api.config import get_settings
+from llm_api.users import get_user_service
 
 
 def _validate_jwt(token: str, secret: str) -> bool:
@@ -43,11 +44,11 @@ async def require_api_key(
         if settings.jwt_secret and _validate_jwt(token, settings.jwt_secret):
             return
         
-        # TODO: Try user API token validation via UserService
-        # user_info = get_user_service().validate_api_token(token)
-        # if user_info:
-        #     request.state.user = user_info
-        #     return
+        # Try user API token validation via UserService
+        user_info = get_user_service().validate_api_token(token)
+        if user_info:
+            request.state.user = user_info
+            return
         
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 

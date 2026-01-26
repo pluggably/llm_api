@@ -37,6 +37,15 @@ curl http://localhost:8080/health
 # {"status": "ok"}
 ```
 
+### Test User
+
+A test user has been created for development and testing:
+
+- **Email**: test@example.com
+- **Password**: testpass123
+
+See [docs/test_credentials.md](docs/test_credentials.md) for details.
+
 ---
 
 ## Frontend (PlugAI)
