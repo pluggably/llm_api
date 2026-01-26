@@ -135,10 +135,20 @@ void main() {
         final mockClient = MockClient((request) async {
           expect(request.url.path, '/v1/sessions');
           return http.Response(
-            jsonEncode([
-              {'id': 'session-1', 'title': 'Chat 1'},
-              {'id': 'session-2', 'title': 'Chat 2'},
-            ]),
+            jsonEncode({
+              'sessions': [
+                {
+                  'id': 'session-1',
+                  'title': 'Chat 1',
+                  'created_at': '2026-01-26T10:00:00Z',
+                },
+                {
+                  'id': 'session-2',
+                  'title': 'Chat 2',
+                  'created_at': '2026-01-26T10:05:00Z',
+                },
+              ],
+            }),
             200,
           );
         });
@@ -321,6 +331,7 @@ void main() {
               {
                 'id': 'key-1',
                 'provider': 'openai',
+                'credential_type': 'api_key',
                 'masked_key': 'sk-****',
                 'created_at': '2026-01-26T10:00:00Z'
               },
@@ -341,11 +352,13 @@ void main() {
           expect(request.method, 'POST');
           final body = jsonDecode(request.body);
           expect(body['provider'], 'anthropic');
+          expect(body['credential_type'], 'api_key');
           expect(body['api_key'], 'sk-ant-123');
           return http.Response(
             jsonEncode({
               'id': 'key-2',
               'provider': 'anthropic',
+              'credential_type': 'api_key',
               'masked_key': 'sk-****',
               'created_at': '2026-01-26T10:00:00Z',
             }),

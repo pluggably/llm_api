@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Client Library
-**Date**: January 24, 2026
+**Date**: January 26, 2026
 **Status**: Updated (Pending Approval)
 
 ## User Stories
@@ -227,6 +227,65 @@ So that I can show wait indicators
 
 ---
 
+**Story ID**: US-CL-012
+**Title**: Hugging Face model search
+**Priority**: Medium
+**Story Points**: 3
+
+As a developer
+I want SDK methods to search Hugging Face models
+So that the frontend can add models via the API
+
+**Acceptance Criteria**:
+- [ ] SDK exposes `searchModels(query, source="huggingface")`
+- [ ] Results include model id, name, tags, modality hints
+- [ ] Pagination tokens are surfaced
+
+**Traceability**: SYS-REQ-063
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-CL-013
+**Title**: Session metadata support
+**Priority**: Medium
+**Story Points**: 2
+
+As a developer
+I want session models to include title and timestamps
+So that the UI can show session names and message timing
+
+**Acceptance Criteria**:
+- [ ] Session list parsing supports `{sessions: [...]}` shape
+- [ ] Session models include `title`, `created_at`, `last_used_at`
+- [ ] Message models include `created_at`
+
+**Traceability**: SYS-REQ-065, SYS-REQ-066, SYS-REQ-067
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-CL-014
+**Title**: Health check helper
+**Priority**: Low
+**Story Points**: 1
+
+As a developer
+I want an SDK method to call the health endpoint
+So that the UI can show a connection test result
+
+**Acceptance Criteria**:
+- [ ] SDK exposes `getHealth()`
+- [ ] Returns status string or throws on failure
+
+**Traceability**: SYS-REQ-068
+
+**Status**: Not Started
+
+---
+
 ## Traceability
 System → Software
 
@@ -246,6 +305,11 @@ System → Software
 | SYS-REQ-049 | Client Library | US-CL-007 | Prepare/load model |
 | SYS-REQ-050 | Client Library | US-CL-008 | Model runtime status |
 | SYS-REQ-051 | Client Library | US-CL-009 | Get loaded models |
+| SYS-REQ-063 | Client Library | US-CL-012 | Hugging Face search |
+| SYS-REQ-065 | Client Library | US-CL-013 | Sessions list parsing |
+| SYS-REQ-066 | Client Library | US-CL-013 | Session naming metadata |
+| SYS-REQ-067 | Client Library | US-CL-013 | Message timestamps |
+| SYS-REQ-068 | Client Library | US-CL-014 | Health check helper |
 
 ## Definition of Ready / Done
 **Ready**

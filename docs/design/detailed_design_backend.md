@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Backend Service
-**Date**: January 24, 2026
+**Date**: January 26, 2026
 **Status**: Updated (Pending Approval)
 
 ## Overview
@@ -61,6 +61,16 @@ usage: string
 parameters: object
 tags: [string]
 updated_at: datetime
+```
+
+### Hugging Face Search Result
+```yaml
+id: string             # e.g., "deepseek-ai/DeepSeek-R1"
+name: string
+tags: [string]
+modality_hints: [text|image|3d]
+downloads: integer
+last_modified: datetime
 ```
 
 ### Model Download Job
@@ -125,6 +135,41 @@ options:
   revision: string
   sha256: string
   allow_large: boolean
+```
+
+### Provider Credential
+```yaml
+id: string
+user_id: string
+provider: string
+credential_type: [api_key|endpoint_key|oauth_token|service_account]
+encrypted_payload: string
+created_at: datetime
+updated_at: datetime
+```
+
+**Provider Credential Map (initial)**
+- **openai**: api_key
+- **anthropic**: api_key
+- **google**: api_key
+- **xai**: api_key
+- **azure**: endpoint_key (endpoint + api_key)
+- **huggingface**: api_key (token)
+
+### Session Summary
+```yaml
+id: string
+title: string|null
+created_at: datetime
+last_used_at: datetime
+```
+
+### Session Message
+```yaml
+id: string
+role: user|assistant
+content: string
+created_at: datetime
 ```
 
 ### Standard Request (Text/Image/3D)
@@ -260,6 +305,28 @@ flowchart TD
     E -->|Yes| F[Mark model available]
     E -->|No| G[Record failure]
 
+```
+
+### Hugging Face Search Flow
+```mermaid
+flowchart TD
+  A[Search request] --> B[Validate query]
+  B --> C[Query Hugging Face API]
+  C --> D[Normalize results]
+  D --> E[Return paginated response]
+```
+
+### Session Naming Flow
+```mermaid
+flowchart TD
+  A[Create/update session] --> B[Persist title]
+  B --> C[Return session summary]
+```
+
+### Health Check Flow
+```mermaid
+flowchart TD
+  A[GET /health] --> B[Return status ok]
 ```
 
 ### Download Deduplication Flow
@@ -633,6 +700,12 @@ Requirements → Design
 | SYS-REQ-051 | Model Status (loaded models list) | |
 | SYS-REQ-052 | Model Lifecycle Config (default_models), Model Lifecycle Flow | |
 | SYS-REQ-053 | Fallback Chain Flow, Configuration Schema | |
+| SYS-REQ-063 | Hugging Face Search Result, Hugging Face Search Flow | |
+| SYS-REQ-064 | Provider Credential | |
+| SYS-REQ-065 | Session Summary | |
+| SYS-REQ-066 | Session Naming Flow | |
+| SYS-REQ-067 | Session Message | |
+| SYS-REQ-068 | Health Check Flow | |
 
 ## Definition of Ready / Done
 **Ready**

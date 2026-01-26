@@ -8,7 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:plugai/state/providers.dart';
 import 'package:plugai/features/models/models_page.dart';
-import 'package:plugai/features/sessions/sessions_page.dart';
+import 'package:plugai/features/sessions/sessions_rail.dart';
 import 'package:plugai/features/settings/settings_page.dart';
 
 void main() {
@@ -55,22 +55,21 @@ void main() {
     });
   });
 
-  group('SessionsPage', () {
-    testWidgets('has floating action button to create session', (tester) async {
+  group('SessionsRail', () {
+    testWidgets('renders new session button', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             sharedPreferencesProvider.overrideWithValue(prefs),
           ],
           child: const MaterialApp(
-            home: SessionsPage(),
+            home: Scaffold(body: SessionsRail()),
           ),
         ),
       );
 
       await tester.pump();
 
-      expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.byIcon(Icons.add), findsOneWidget);
     });
   });
@@ -92,6 +91,7 @@ void main() {
 
       // Just verify the page renders
       expect(find.byType(SettingsPage), findsOneWidget);
+      expect(find.text('Test Connection'), findsOneWidget);
     });
   });
 }

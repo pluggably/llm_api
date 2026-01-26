@@ -63,6 +63,11 @@
 - ✅ Pre-load model button
 - ✅ UI layout auto-switch by modality/device
 
+### Frontend (MVP gaps)
+- [ ] Add-model workflow with search/filter by modality or use-case.
+- [ ] Profile UI for commercial provider credentials (API keys + non-key auth types).
+- [ ] Sessions list parsing fixes (frontend + API contract alignment).
+
 ### Client SDKs
 - ✅ Python client library
 - ✅ Dart/Flutter client library
@@ -137,6 +142,9 @@ These items are captured but not yet prioritized:
 - Integration with vector databases for RAG
 - Image editing/inpainting workflows
 - Video generation support
+- Session naming
+- Message/prompt timestamping in sessions
+- Settings connection test button
 
 ---
 
@@ -161,4 +169,4 @@ To propose a new feature:
 
 ---
 
-**Last Updated**: January 24, 2026
+**Last Updated**: January 26, 2026

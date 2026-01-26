@@ -15,6 +15,7 @@ from llm_api.config import get_settings
 from llm_api.registry.store import ModelRegistry
 from llm_api.api.schemas import ModelInfo
 from llm_api.storage import artifact_store
+from llm_api.adapters.base import ProviderError
 from llm_api.registry import store as registry_store
 from llm_api.jobs import store as job_store
 from llm_api.observability import metrics
@@ -63,7 +64,12 @@ def client_factory(tmp_path):
 def patch_local_runner(monkeypatch):
     from llm_api.runner.local_runner import LocalRunner
 
-    monkeypatch.setattr(LocalRunner, "generate_text", lambda self, prompt, model_path=None: f"local:{prompt}")
+    def _generate_text(self, prompt, model_path=None):
+        if prompt == "RAISE_ERROR":
+            raise ProviderError(500, "Simulated error")
+        return f"local:{prompt}"
+
+    monkeypatch.setattr(LocalRunner, "generate_text", _generate_text)
     monkeypatch.setattr(LocalRunner, "generate_image", lambda self, prompt: b"LOCAL_IMAGE")
     monkeypatch.setattr(LocalRunner, "generate_3d", lambda self, prompt: b"LOCAL_3D")
 

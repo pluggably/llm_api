@@ -273,6 +273,30 @@ Response:
 }
 ```
 
+### Search Hugging Face Models
+
+```bash
+curl -H "X-API-Key: your-key" \
+  "http://localhost:8080/v1/models/search?source=huggingface&query=llama"
+```
+
+Response:
+```json
+{
+  "results": [
+    {
+      "id": "meta-llama/Llama-3",
+      "name": "meta-llama/Llama-3",
+      "tags": ["text-generation"],
+      "modality_hints": ["text"],
+      "downloads": 100,
+      "last_modified": "2026-01-26T00:00:00Z"
+    }
+  ],
+  "next_cursor": "20"
+}
+```
+
 ### Check Download Progress
 
 ```bash
@@ -367,6 +391,15 @@ Run tests:
 ```bash
 pytest -q
 ```
+
+Generate test reports (backend JUnit + Flutter JSON):
+```bash
+./scripts/generate_test_report.sh
+```
+
+Reports are written to:
+- reports/pytest.xml
+- reports/flutter_test.json
 
 Run with auto-reload:
 ```bash

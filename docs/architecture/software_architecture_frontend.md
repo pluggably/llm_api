@@ -26,6 +26,8 @@ graph LR
     Profile[Profile & Preferences]
     Tokens[API Tokens UI]
     Layout[Layout Controller]
+    AddModel[Add Model UI]
+    ConnectionTest[Connection Test]
 
     App --> Nav
     App --> State
@@ -37,6 +39,8 @@ graph LR
     App --> Profile
     App --> Tokens
     App --> Layout
+    App --> AddModel
+    App --> ConnectionTest
     Models --> SDK
     Params --> SDK
     Chat --> SDK
@@ -44,6 +48,8 @@ graph LR
     ThreeD --> SDK
     Sessions --> SDK
     Keys --> SDK
+    AddModel --> SDK
+    ConnectionTest --> SDK
 ```
 
 ## Module/Package Structure
@@ -52,6 +58,7 @@ graph LR
 - external: `clients/dart` package (`pluggably_llm_client`)
 - `features/models/`: model catalog, modality tabs
 - `features/settings/`: dynamic parameter drawer
+- `features/health/`: connection test UI
 - `features/chat/`: chat UI and streaming renderer
 - `features/images/`: image gallery UI
 - `features/three_d/`: 3D viewer UI
@@ -60,12 +67,13 @@ graph LR
 - `features/auth/`: invite-only registration, login/logout
 - `features/profile/`: user preferences
 - `features/tokens/`: user API tokens
+- `features/add_model/`: Hugging Face search + model download flow
 - `features/layout/`: auto-switch and manual layout selection
 - `widgets/`: shared UI components
 
 ## Interface Definitions
 - **UI → State**: user actions update app state (selected model, parameters, session)
-- **State → SDK**: state triggers shared Dart client calls (models, schema, generate, sessions)
+- **State → SDK**: state triggers shared Dart client calls (models, schema, generate, sessions, model search, health)
 - **SDK → API**: HTTP requests to backend
 
 ## Sequence Diagrams (Mermaid)
@@ -105,6 +113,42 @@ sequenceDiagram
     UI-->>U: streaming response
 ```
 
+### Add Model (Hugging Face Search + Download)
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as Add Model UI
+    participant SDK as Dart SDK
+    participant API as LLM API
+
+    U->>UI: Search Hugging Face
+    UI->>SDK: searchModels(query, source=huggingface)
+    SDK->>API: GET /v1/models/search
+    API-->>SDK: search results
+    SDK-->>UI: results
+    U->>UI: Select model to download
+    UI->>SDK: downloadModel(model)
+    SDK->>API: POST /v1/models/download
+    API-->>SDK: job accepted
+    SDK-->>UI: download status
+```
+
+### Settings Connection Test
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as Settings UI
+    participant SDK as Dart SDK
+    participant API as LLM API
+
+    U->>UI: Click Test Connection
+    UI->>SDK: getHealth()
+    SDK->>API: GET /health
+    API-->>SDK: {status: ok}
+    SDK-->>UI: success
+    UI-->>U: green check
+```
+
 ## Technology & Framework Choices
 - **Framework**: Flutter (web + mobile)
 - **State**: Riverpod
@@ -135,6 +179,12 @@ System → Software
 | SYS-REQ-038 | Frontend | US-FE-012 | User preferences |
 | SYS-REQ-039 | Frontend | US-FE-013 | User API tokens |
 | SYS-REQ-041 | Frontend | US-FE-014 | UI auto-switch/lock |
+| SYS-REQ-063 | Frontend | US-FE-023 | Add model flow |
+| SYS-REQ-064 | Frontend | US-FE-024 | Provider credentials UI |
+| SYS-REQ-065 | Frontend | US-FE-025 | Left-pane sessions list |
+| SYS-REQ-066 | Frontend | US-FE-026 | Session naming |
+| SYS-REQ-067 | Frontend | US-FE-027 | Message timestamps |
+| SYS-REQ-068 | Frontend | US-FE-028 | Connection test |
 
 ## Definition of Ready / Done
 **Ready**

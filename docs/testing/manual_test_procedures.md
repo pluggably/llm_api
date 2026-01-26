@@ -1,16 +1,21 @@
 # Manual Test Procedures
 
 **Project**: Pluggably LLM API Gateway
-**Date**: January 24, 2026
-**Status**: Ready for Execution
+**Date**: January 26, 2026
+**Status**: Updated (Pending Approval)
 
 ## TEST-MAN-001: Large model download on constrained host
 **Purpose**: Validate long-running download behavior and disk usage handling
+**Automation**: Covered by automated system tests `TEST-SYS-003` in [tests/system/test_model_download_workflow.py](tests/system/test_model_download_workflow.py).
+Manual run only if validating real storage constraints in a live environment.
 **Preconditions**: Server running; limited disk quota configured
 **Steps**:
-1. Trigger download of a large model (e.g., multi-GB)
-2. Observe progress status endpoint
-3. Let download complete or exceed storage limit
+1. Start the backend with storage limits configured (set max storage and retention in config).
+2. Open the API client (curl/Postman) and call `POST /v1/models/download` with a multi-GB model.
+3. Record the returned job ID.
+4. Poll `GET /v1/jobs/{job_id}` every 10–15 seconds.
+5. If the download completes, confirm status = completed and progress = 100.
+6. If the storage limit is exceeded, confirm status = failed and error includes storage limit details.
 **Expected Results**:
 - Status updates show progress
 - If storage limit is exceeded, download fails gracefully with a clear error
@@ -20,19 +25,26 @@
 **Purpose**: Validate local runner on GPU-only model
 **Preconditions**: Host with GPU, compatible drivers, model available
 **Steps**:
-1. Download a GPU-only model
-2. Execute a request using that model
+1. Verify GPU drivers are installed and visible to the backend.
+2. Download a GPU-only model via `POST /v1/models/download`.
+3. Wait for job completion.
+4. Send a generation request using the GPU-only model ID.
+5. Inspect logs to confirm GPU backend usage.
 **Expected Results**:
 - Response generated successfully
 - Logs include hardware backend info
 
 ## TEST-MAN-003: Artifact download via URL
 **Purpose**: Validate artifact URL response flow
+**Automation**: Covered by automated system tests `TEST-SYS-006` in [tests/system/test_artifact_store.py](tests/system/test_artifact_store.py).
+Manual run only if validating real artifact storage backends.
 **Preconditions**: Artifact store enabled
 **Steps**:
-1. Generate image/3D output that exceeds inline payload limit
-2. Receive response with artifact URL
-3. Download artifact via URL
+1. Set artifact inline threshold low (or choose a large output model) to force artifact storage.
+2. Send an image/3D generation request that exceeds the threshold.
+3. Confirm the response contains artifact URLs with expiration timestamps.
+4. Open the artifact URL in a browser or download with curl.
+5. Verify the download succeeds and content matches expected format.
 **Expected Results**:
 - URL is valid and downloadable
 - URL expires after configured TTL
@@ -41,9 +53,13 @@
 **Purpose**: Validate model selection and schema-driven parameter panel
 **Preconditions**: Frontend running; backend running; API key configured
 **Steps**:
-1. Open the frontend and select a text model
-2. Open the settings pane and confirm parameter inputs render from schema
-3. Switch to an image model and confirm parameters update dynamically
+1. Launch the frontend and log in if required.
+2. Navigate to Models.
+3. Select a text model.
+4. Open the settings pane/drawer.
+5. Verify inputs match `/v1/schema` (types, defaults, labels).
+6. Switch to an image model and reopen settings.
+7. Confirm parameters update to image-specific settings.
 **Expected Results**:
 - Model list and modality filtering work
 - Parameter panel updates with the selected model schema
@@ -52,9 +68,11 @@
 **Purpose**: Validate streaming responses in the chat UI
 **Preconditions**: Frontend running; backend streaming enabled
 **Steps**:
-1. Select a text model
-2. Send a prompt in the chat UI
-3. Observe streaming response in the chat bubble
+1. Select a text model.
+2. Enter a prompt in the chat input.
+3. Click Send.
+4. Confirm the assistant bubble shows streaming updates (token-by-token).
+5. Confirm the final response finishes and the “Thinking…” indicator disappears.
 **Expected Results**:
 - Response appears incrementally in the UI
 
@@ -62,9 +80,11 @@
 **Purpose**: Validate image generation gallery and download
 **Preconditions**: Frontend running; image model available
 **Steps**:
-1. Select an image model and enter a prompt
-2. Generate images and observe the gallery
-3. Download an image
+1. Select an image model in the Models list.
+2. Enter a prompt and submit generation.
+3. Wait for images to appear in the gallery grid.
+4. Click an image to preview.
+5. Use the download action and confirm the file saves locally.
 **Expected Results**:
 - Images display in a gallery
 - Download succeeds
@@ -73,9 +93,11 @@
 **Purpose**: Validate 3D preview and download
 **Preconditions**: Frontend running; 3D model available
 **Steps**:
-1. Select a 3D model and enter a prompt
-2. Generate and view the 3D preview
-3. Download the 3D asset
+1. Select a 3D model in the Models list.
+2. Enter a prompt and submit generation.
+3. Wait for the 3D preview to load.
+4. Rotate/zoom the model to confirm interactivity.
+5. Download the asset and confirm file integrity.
 **Expected Results**:
 - 3D viewer renders and supports interaction
 - Download succeeds
@@ -84,8 +106,10 @@
 **Purpose**: Validate frontend API base URL configuration
 **Preconditions**: Frontend hosted separately; backend reachable
 **Steps**:
-1. Configure API base URL in frontend settings
-2. Verify requests go to the configured backend
+1. Open Settings.
+2. Enter the API base URL and press Enter to save.
+3. Navigate to Models and refresh.
+4. Verify the model list is fetched from the configured backend.
 **Expected Results**:
 - Frontend successfully communicates with configured backend
 
@@ -93,10 +117,11 @@
 **Purpose**: Validate chat/session creation and maintained context in the UI
 **Preconditions**: Frontend running; backend sessions enabled
 **Steps**:
-1. Create a new chat session
-2. Send a prompt and receive a response
-3. Send a follow-up prompt in the same session
-4. Switch to a new session and verify context isolation
+1. Create a new session from the left-pane sessions list.
+2. Send a prompt and wait for a response.
+3. Send a follow-up prompt and verify context continuity.
+4. Create or switch to another session.
+5. Verify the new session history does not include the previous conversation.
 **Expected Results**:
 - Context is preserved within a session
 - Context does not leak across sessions
@@ -105,9 +130,11 @@
 **Purpose**: Validate per-user commercial provider API keys
 **Preconditions**: Frontend and backend running; user key management enabled
 **Steps**:
-1. Enter a commercial provider key in user settings
-2. Run a request targeting that provider
-3. Remove or replace the key
+1. Open Profile → Provider Credentials.
+2. Add a provider credential (API key or appropriate type).
+3. Confirm it appears in the list with masked value.
+4. Run a request using a model that targets that provider.
+5. Remove or replace the credential and confirm behavior changes.
 **Expected Results**:
 - Requests succeed with user-provided key
 - Key changes take effect immediately and are isolated per user
@@ -116,9 +143,10 @@
 **Purpose**: Validate user-created API keys for OSS model access
 **Preconditions**: Backend OSS key management enabled
 **Steps**:
-1. Create a new OSS access key
-2. Use the key to call the API
-3. Revoke the key and retry
+1. Create a new OSS access key from the UI or API.
+2. Call the API using the new key and confirm access.
+3. Revoke the key.
+4. Retry the API call and confirm access is denied.
 **Expected Results**:
 - Access granted with valid key
 - Access denied after revocation
@@ -127,9 +155,11 @@
 **Purpose**: Validate invite-only registration and login/logout flows
 **Preconditions**: Backend running with invite requirement enabled
 **Steps**:
-1. Attempt registration without invite token
-2. Register with a valid invite token
-3. Log in and log out
+1. Attempt to register without an invite token.
+2. Confirm registration is rejected.
+3. Register with a valid invite token.
+4. Log in and confirm an auth token is issued.
+5. Log out and confirm the token is cleared locally.
 **Expected Results**:
 - Registration without invite is rejected
 - Registration with invite succeeds
@@ -139,9 +169,9 @@
 **Purpose**: Validate profile preferences persistence
 **Preconditions**: Authenticated user
 **Steps**:
-1. Set preferred model and UI defaults
-2. Restart app or refresh session
-3. Confirm preferences persist and apply
+1. Open Profile and set preferred model and UI defaults.
+2. Close and reopen the app (or refresh).
+3. Verify the preferred model and defaults are applied.
 **Expected Results**:
 - Preferences are saved and restored
 - Preferred model selected by default
@@ -150,9 +180,10 @@
 **Purpose**: Validate user-created API tokens for LLM API access
 **Preconditions**: Authenticated user
 **Steps**:
-1. Create a new API token
-2. Use the token to call the API
-3. Revoke the token and retry
+1. Create a new API token.
+2. Copy the token (shown once) and call the API.
+3. Revoke the token.
+4. Retry the API call and confirm access is denied.
 **Expected Results**:
 - Token grants access while active
 - Revoked token is rejected
@@ -161,10 +192,12 @@
 **Purpose**: Validate layout switching by modality/device and user override
 **Preconditions**: Frontend running; user profile available
 **Steps**:
-1. Enable auto mode and select a text model
-2. Switch to an image/3D model
-3. Test on mobile viewport
-4. Lock a layout and verify no auto-switching
+1. Set layout mode to Auto.
+2. Select a text model and verify Chat layout.
+3. Switch to image/3D model and verify Studio layout.
+4. Resize to mobile width and verify Compact layout.
+5. Set mode to Locked and choose a layout.
+6. Switch models and confirm layout does not change.
 **Expected Results**:
 - Text models use Chat layout
 - Image/3D use Studio layout
@@ -175,10 +208,10 @@
 **Purpose**: Validate model cards show download status badges
 **Preconditions**: Frontend running; backend running with download worker
 **Steps**:
-1. Trigger a model download from the UI or API
-2. Observe the model card in the catalog
-3. Wait for download to complete or fail
-4. Verify status badge updates
+1. Start a model download from the Add Model flow.
+2. Observe the model card in the catalog list.
+3. Wait for status to update (Downloading → Ready or Failed).
+4. Confirm status badges update without a page refresh.
 **Expected Results**:
 - Downloading models show ⌛ badge with progress
 - Completed models show ✓ Ready badge
@@ -189,10 +222,10 @@
 **Purpose**: Validate regenerate/retry functionality
 **Preconditions**: Frontend running; completed generation
 **Steps**:
-1. Generate a response
-2. Click regenerate button
-3. Optionally modify parameters
-4. Submit regeneration
+1. Generate a response in chat.
+2. Click Regenerate on the assistant message.
+3. Adjust parameters in settings (optional).
+4. Submit regeneration and verify a new response appears.
 **Expected Results**:
 - New response generated
 - Option to keep or replace original
@@ -202,11 +235,10 @@
 **Purpose**: Validate model runtime status display
 **Preconditions**: Frontend running; models available
 **Steps**:
-1. View unloaded model card
-2. Click "Load" button
-3. Observe loading state
-4. Verify loaded state
-5. Send request and observe busy state
+1. View a model card marked as Unloaded.
+2. Click Load and observe loading spinner.
+3. Confirm status changes to Loaded.
+4. Send a request and verify Busy state appears.
 **Expected Results**:
 - Status shows: Unloaded → Loading → Loaded → Busy
 - Loading shows spinner
@@ -216,8 +248,69 @@
 **Purpose**: Validate request cancellation from UI
 **Preconditions**: Frontend running; model loaded
 **Steps**:
-1. Send a request
-2. Click cancel button while processing
+1. Send a request that takes noticeable time.
+2. Click Cancel while processing.
+3. Confirm the request stops and UI updates.
+
+## TEST-MAN-MVP-001: Add model via Hugging Face search
+**Purpose**: Validate add-model flow for Hugging Face search and download
+**Automation**: Backend search is covered by `TEST-SYS-MVP-004` in [tests/system/test_mvp_model_search.py](tests/system/test_mvp_model_search.py). Manual run validates UI flow.
+**Preconditions**: Frontend running; backend running; Hugging Face reachable
+**Steps**:
+1. Open Models.
+2. Click Add Model.
+3. Enter a search query and press Enter.
+4. Select a model from the results.
+5. Confirm download starts and status appears.
+**Expected Results**:
+- Results display with model metadata
+- Download starts and status updates
+
+## TEST-MAN-MVP-002: Provider credential types
+**Purpose**: Validate provider credentials UI for different auth types
+**Preconditions**: Authenticated user
+**Steps**:
+1. Open Profile → Provider Credentials.
+2. Add an API key provider and save.
+3. Add an endpoint+key provider (e.g., Azure) and save.
+4. Add an OAuth token provider (if applicable) and save.
+**Expected Results**:
+- Fields match provider requirements
+- Save succeeds
+
+## TEST-MAN-MVP-003: Left-pane sessions list
+**Purpose**: Validate sessions list in left pane and switching
+**Automation**: Session contract and naming are covered by `TEST-SYS-MVP-001/002` in [tests/system/test_mvp_sessions_contract.py](tests/system/test_mvp_sessions_contract.py). Manual run validates UI behavior.
+**Preconditions**: Sessions available
+**Steps**:
+1. Open the left-pane Sessions list.
+2. Click a session.
+3. Verify the chat history switches.
+4. Rename a session and confirm list updates.
+**Expected Results**:
+- Sessions display correctly
+- Switching updates context
+
+## TEST-MAN-MVP-004: Message timestamps
+**Purpose**: Validate message timestamps display
+**Automation**: Message timestamps are covered by `TEST-SYS-MVP-003` in [tests/system/test_mvp_sessions_contract.py](tests/system/test_mvp_sessions_contract.py). Manual run validates UI display.
+**Preconditions**: Active session with messages
+**Steps**:
+1. Send a prompt and receive a response.
+2. Verify timestamps show for both user and assistant messages.
+**Expected Results**:
+- Timestamps rendered for prompts/responses
+
+## TEST-MAN-MVP-005: Settings connection test
+**Purpose**: Validate health check button
+**Automation**: Health endpoint is covered by `TEST-SYS-004` in [tests/system/test_health_readiness.py](tests/system/test_health_readiness.py). Manual run validates UI indicator.
+**Preconditions**: Backend reachable at configured base URL
+**Steps**:
+1. Open Settings.
+2. Click Test Connection.
+3. Confirm a green check appears on success.
+**Expected Results**:
+- Green check on success; error message on failure
 3. Observe result
 **Expected Results**:
 - Cancel button visible during processing

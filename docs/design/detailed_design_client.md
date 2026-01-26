@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Client Library
-**Date**: January 24, 2026
+**Date**: January 26, 2026
 **Status**: Updated (Pending Approval)
 
 ## Overview
@@ -57,6 +57,35 @@ status: [active|revoked]
 created_at: datetime
 ```
 
+### Session Summary Model
+```yaml
+id: string
+title: string|null
+created_at: datetime
+last_used_at: datetime
+```
+
+### Message Model
+```yaml
+id: string
+role: user|assistant
+content: string
+created_at: datetime
+```
+
+### Hugging Face Search Result
+```yaml
+id: string
+name: string
+tags: [string]
+modality_hints: [text|image|3d]
+```
+
+### Health Check Response
+```yaml
+status: string
+```
+
 ### Generate Request/Response
 Matches server schema from OpenAPI; include `session_id` and `state_tokens` fields.
 
@@ -97,6 +126,12 @@ Matches server schema from OpenAPI; include `session_id` and `state_tokens` fiel
 - create_user_token(label)
 - revoke_user_token(token_id)
 
+## Model Search Helpers
+- search_models(query, source="huggingface", modality?)
+
+## Health Check Helper
+- get_health()
+
 ## Traceability
 Requirements → Design
 
@@ -109,6 +144,11 @@ Requirements → Design
 | SYS-REQ-037 | Auth/Profile Helpers | |
 | SYS-REQ-038 | Auth/Profile Helpers | |
 | SYS-REQ-039 | User API Token Helpers | |
+| SYS-REQ-063 | Model Search Helpers | |
+| SYS-REQ-065 | Session Summary Model | |
+| SYS-REQ-066 | Session Summary Model | |
+| SYS-REQ-067 | Message Model | |
+| SYS-REQ-068 | Health Check Helper | |
 
 ## Definition of Ready / Done
 **Ready**

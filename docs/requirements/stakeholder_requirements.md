@@ -1,7 +1,7 @@
 # Stakeholder Requirements
 
 **Project**: Pluggably LLM API Gateway + Cross-Platform Frontend (working name: PlugAI)
-**Date**: January 24, 2026
+**Date**: January 26, 2026
 **Status**: Updated (Pending Approval)
 
 ## Problem Statement
@@ -42,6 +42,12 @@ I need a single, standard API and a cross-platform UI that I can host on a home 
 - Ability to cancel long-running requests.
 - Ability to regenerate/retry responses.
 - Option to fall back to a default model while requested model is loading, or choose to wait for the requested model.
+- Add models from the UI by searching Hugging Face and downloading new models; include text search to filter large model lists.
+- Manage commercial provider credentials from the profile UI, including non-API-key auth types when required.
+- Manage and switch sessions from the left-pane sessions list (no separate sessions page), with reliable display.
+- Name sessions for easier organization.
+- Track timestamps for prompts/commands/messages within sessions.
+- Test API connectivity from the settings UI (health endpoint success shown with a green check).
 
 ## High-Level Functional Requirements (Stakeholder)
 - **SH-REQ-001**: Provide a single, standard HTTP API for text, image, and 3D generation (multimodal).
@@ -91,6 +97,12 @@ I need a single, standard API and a cross-platform UI that I can host on a home 
 - **SH-REQ-045**: Ensure client applications and SDKs use the exact backend API endpoints and request schemas (no contract drift).
 - **SH-REQ-046**: Maintain a clear, up-to-date API endpoint reference for consumers.
 - **SH-REQ-047**: Use a shared Dart client library in the frontend to avoid duplicated SDK logic.
+- **SH-REQ-048**: Provide a UI workflow to search Hugging Face and download/register new models, with text search for large catalogs.
+- **SH-REQ-049**: Allow users to manage commercial provider credentials with support for non-API-key auth methods.
+- **SH-REQ-050**: Allow users to manage and switch sessions from a left-pane sessions list (no separate sessions page).
+- **SH-REQ-051**: Allow users to name sessions.
+- **SH-REQ-052**: Track timestamps for prompts/commands/messages in sessions.
+- **SH-REQ-053**: Provide a settings UI action to test API connectivity and show a green check on success.
 
 ## Non-Functional Requirements (Stakeholder)
 - **SH-NFR-001**: Secure handling of API keys/secrets for commercial providers.
@@ -176,6 +188,12 @@ I need a single, standard API and a cross-platform UI that I can host on a home 
 - Users can cancel in-flight requests.
 - Users can regenerate responses with modified parameters.
 - Users can choose (via API or UI) to use a fallback model while the preferred model loads, or to wait.
+- Users can add/register models from the UI by searching Hugging Face and filtering large lists.
+- Users can manage commercial provider credentials, including non-API-key auth types.
+- Users can manage and switch sessions from the left-pane sessions list.
+- Users can name sessions and see those names in lists.
+- Messages include timestamps for prompts/commands/responses.
+- Users can test API connectivity from settings and receive a green check on success.
 
 ## Decisions (Resolved Open Questions)
 - **API shape**: Custom schema (not strictly OpenAI-compatible), but similar patterns.
@@ -247,6 +265,12 @@ Stakeholder → System
 | SH-REQ-045 | SYS-REQ-055, SYS-REQ-056, SYS-REQ-057, SYS-REQ-058, SYS-REQ-059, SYS-REQ-060 | Endpoint alignment |
 | SH-REQ-046 | SYS-REQ-061 | API endpoint reference |
 | SH-REQ-047 | SYS-REQ-062 | Shared Dart client usage |
+| SH-REQ-048 | SYS-REQ-063 | Add model workflow + search/filter |
+| SH-REQ-049 | SYS-REQ-064 | Provider credentials (non-API-key) |
+| SH-REQ-050 | SYS-REQ-065 | Sessions list contract |
+| SH-REQ-051 | SYS-REQ-066 | Session naming |
+| SH-REQ-052 | SYS-REQ-067 | Session/message timestamps |
+| SH-REQ-053 | SYS-REQ-068 | API connection test |
 | SH-REQ-024 | SYS-REQ-026 | Model selection UI |
 | SH-REQ-025 | SYS-REQ-027 | Dynamic parameters |
 | SH-REQ-026 | SYS-REQ-028 | Chat UI |

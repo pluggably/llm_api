@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Backend Service (single deployable)
-**Date**: January 24, 2026
+**Date**: January 26, 2026
 **Status**: Updated (Pending Approval)
 
 ## User Stories
@@ -344,6 +344,125 @@ So that clients can rename or update session fields
 **Traceability**: SYS-REQ-060
 
 **Status**: Complete
+
+---
+
+**Story ID**: US-036
+**Title**: Sessions list contract
+**Priority**: High
+**Story Points**: 3
+
+As a developer
+I want the sessions list endpoint to return a consistent JSON shape
+So that clients can reliably render the left-pane sessions list
+
+**Acceptance Criteria**:
+- [ ] `GET /v1/sessions` returns `{ "sessions": [...] }`
+- [ ] Each session includes id, title (nullable), last_used_at, created_at
+- [ ] Response schema documented in OpenAPI
+
+**Traceability**: SYS-REQ-065
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-037
+**Title**: Session naming support
+**Priority**: Medium
+**Story Points**: 3
+
+As a developer
+I want sessions to support titles
+So that users can name and find conversations
+
+**Acceptance Criteria**:
+- [ ] Session create accepts optional `title`
+- [ ] Session update persists `title`
+- [ ] Session list and get endpoints return `title`
+
+**Traceability**: SYS-REQ-066
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-038
+**Title**: Session message timestamps
+**Priority**: Medium
+**Story Points**: 3
+
+As a developer
+I want messages to store timestamps
+So that clients can display prompt/response timing
+
+**Acceptance Criteria**:
+- [ ] Session messages include `created_at` timestamps
+- [ ] Session history returns timestamps for prompts and outputs
+- [ ] Timestamps are timezone-aware ISO 8601
+
+**Traceability**: SYS-REQ-067
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-039
+**Title**: Hugging Face model search endpoint
+**Priority**: High
+**Story Points**: 5
+
+As a developer
+I want an API endpoint to search Hugging Face for models
+So that the UI can add new models from a catalog
+
+**Acceptance Criteria**:
+- [ ] `GET /v1/models/search` accepts `query`, `source=huggingface`, and optional `modality`
+- [ ] Response includes model id, name, tags, modality hints, and download source
+- [ ] Results are paginated
+
+**Traceability**: SYS-REQ-063
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-040
+**Title**: Provider credential types
+**Priority**: High
+**Story Points**: 5
+
+As a developer
+I want provider credential storage to support multiple auth types
+So that commercial providers can be configured correctly per user
+
+**Acceptance Criteria**:
+- [ ] Credential records store provider + credential type
+- [ ] Supported types include API key, endpoint+key, OAuth token, service account JSON
+- [ ] Credentials are encrypted at rest and never logged
+
+**Traceability**: SYS-REQ-064, SYS-NFR-012
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-041
+**Title**: Health check endpoint for UI
+**Priority**: Medium
+**Story Points**: 1
+
+As a developer
+I want a simple health endpoint for connectivity testing
+So that the UI can show a green check on success
+
+**Acceptance Criteria**:
+- [x] `GET /health` returns `{status: "ok"}`
+- [ ] Endpoint is documented for UI use
+
+**Traceability**: SYS-REQ-068
+
+**Status**: In Progress
 
 ---
 
@@ -761,6 +880,12 @@ System → Software
 | SYS-REQ-052 | Backend | US-033 | Default pinned model |
 | SYS-REQ-053 | Backend | US-034 | Fallback configuration |
 | SYS-REQ-060 | Backend | US-035 | Session update endpoint |
+| SYS-REQ-063 | Backend | US-039 | Hugging Face search |
+| SYS-REQ-064 | Backend | US-040 | Provider credential types |
+| SYS-REQ-065 | Backend | US-036 | Sessions list contract |
+| SYS-REQ-066 | Backend | US-037 | Session naming |
+| SYS-REQ-067 | Backend | US-038 | Message timestamps |
+| SYS-REQ-068 | Backend | US-041 | Health check endpoint |
 
 ## Definition of Ready / Done
 **Ready**

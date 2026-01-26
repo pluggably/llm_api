@@ -107,16 +107,32 @@ class ProvidersResponse(BaseModel):
 class Session(BaseModel):
     id: str
     status: Literal["active", "closed"]
+    title: Optional[str] = None
     created_at: datetime
     last_used_at: Optional[datetime] = None
+    messages: Optional[List["SessionMessageResponse"]] = None
+
+
+class SessionMessageResponse(BaseModel):
+    id: str
+    role: Literal["user", "assistant"]
+    content: str
+    created_at: datetime
 
 
 class UpdateSessionRequest(BaseModel):
     title: Optional[str] = None
 
 
+class SessionSummary(BaseModel):
+    id: str
+    title: Optional[str] = None
+    created_at: datetime
+    last_used_at: Optional[datetime] = None
+
+
 class SessionList(BaseModel):
-    sessions: List[Session]
+    sessions: List[SessionSummary]
 
 
 class ModelDownloadSource(BaseModel):
@@ -200,13 +216,38 @@ class TokenCreatedResponse(BaseModel):
 
 class ProviderKeyRequest(BaseModel):
     provider: str
-    api_key: str
+    credential_type: Literal[
+        "api_key",
+        "endpoint_key",
+        "oauth_token",
+        "service_account",
+    ] = "api_key"
+    api_key: Optional[str] = None
+    endpoint: Optional[str] = None
+    oauth_token: Optional[str] = None
+    service_account_json: Optional[str] = None
 
 
 class ProviderKeyInfo(BaseModel):
     id: str
     provider: str
+    credential_type: str
+    masked_key: Optional[str] = None
     created_at: str
+
+
+class ModelSearchResult(BaseModel):
+    id: str
+    name: str
+    tags: List[str] = Field(default_factory=list)
+    modality_hints: List[Literal["text", "image", "3d"]] = Field(default_factory=list)
+    downloads: Optional[int] = None
+    last_modified: Optional[datetime] = None
+
+
+class ModelSearchResponse(BaseModel):
+    results: List[ModelSearchResult]
+    next_cursor: Optional[str] = None
 
 
 # Model lifecycle schemas

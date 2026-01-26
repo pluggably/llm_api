@@ -140,8 +140,34 @@ async def set_provider_key(request: ProviderKeyRequest) -> JSONResponse:
     # TODO: Get user from auth context
     user_service = get_user_service()
     user_id = "placeholder"
-    
-    result = user_service.set_provider_key(user_id, request.provider, request.api_key)
+
+    payload = {}
+    if request.credential_type == "api_key":
+        if not request.api_key:
+            raise HTTPException(status_code=400, detail="api_key is required")
+        payload = {"api_key": request.api_key}
+    elif request.credential_type == "endpoint_key":
+        if not request.api_key or not request.endpoint:
+            raise HTTPException(status_code=400, detail="api_key and endpoint are required")
+        payload = {"api_key": request.api_key, "endpoint": request.endpoint}
+    elif request.credential_type == "oauth_token":
+        if not request.oauth_token:
+            raise HTTPException(status_code=400, detail="oauth_token is required")
+        payload = {"oauth_token": request.oauth_token}
+    elif request.credential_type == "service_account":
+        if not request.service_account_json:
+            raise HTTPException(
+                status_code=400,
+                detail="service_account_json is required",
+            )
+        payload = {"service_account_json": request.service_account_json}
+
+    result = user_service.set_provider_key(
+        user_id,
+        request.provider,
+        request.credential_type,
+        payload,
+    )
     return JSONResponse(jsonable_encoder(result), status_code=201)
 
 

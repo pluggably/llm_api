@@ -1,8 +1,8 @@
 # Test Specifications
 
 **Project**: Pluggably LLM API Gateway
-**Date**: January 24, 2026
-**Status**: Complete (Baseline + CR-2026-01-24-03)
+**Date**: January 26, 2026
+**Status**: Updated (Pending Approval)
 
 ## Test Strategy
 - Prioritize automated unit and integration tests.
@@ -115,7 +115,53 @@
   - Endpoints and payloads match contract
 - **Traceability**: SYS-REQ-024, INT-REQ-008
 
-## Integration Test Specifications
+## System Test Specifications (MVP Additions)
+
+**TEST-SYS-MVP-001**: Sessions list contract
+- **Purpose**: Verify session list returns a consistent JSON shape
+- **Steps**:
+  1. Call `GET /v1/sessions`
+- **Expected**:
+  - Response is `{ "sessions": [...] }`
+  - Each session includes id, title, created_at, last_used_at
+- **Traceability**: SYS-REQ-065
+
+**TEST-SYS-MVP-002**: Session naming
+- **Purpose**: Verify session title is persisted and returned
+- **Steps**:
+  1. Create a session with a title
+  2. Update the session title
+  3. Fetch session list and details
+- **Expected**:
+  - Title is returned in create/update/get/list
+- **Traceability**: SYS-REQ-066
+
+**TEST-SYS-MVP-003**: Message timestamps
+- **Purpose**: Verify session messages include timestamps
+- **Steps**:
+  1. Create a session
+  2. Send a prompt and receive a response
+  3. Fetch session history
+- **Expected**:
+  - Messages include `created_at` timestamps (ISO 8601)
+- **Traceability**: SYS-REQ-067
+
+**TEST-SYS-MVP-004**: Hugging Face search endpoint
+- **Purpose**: Verify Hugging Face search endpoint behavior
+- **Steps**:
+  1. Call `GET /v1/models/search?source=huggingface&query=llama`
+- **Expected**:
+  - Response includes model id, name, tags, modality hints
+  - Pagination fields present when applicable
+- **Traceability**: SYS-REQ-063
+
+## Test Reporting
+Automated test runs should generate reports for review.
+
+- Backend: JUnit XML report from pytest
+- Frontend: Flutter machine report
+
+Use the script documented in [docs/ops/test_reporting.md](docs/ops/test_reporting.md).
 
 **TEST-INT-CR001-001**: Auth endpoint alignment
 - **Purpose**: Verify frontend SDK uses `/v1/users/*` auth endpoints
@@ -214,6 +260,61 @@
 - **Traceability**: SYS-REQ-023, SYS-REQ-024
 
 ## Manual Test Specifications
+
+**TEST-MAN-MVP-001**: Add model via Hugging Face search
+- **Purpose**: Verify add-model UI flow and download initiation
+- **Preconditions**: Frontend running; backend running; Hugging Face reachable
+- **Steps**:
+  1. Open Add Model flow
+  2. Search for a model
+  3. Select a model and start download
+- **Expected**:
+  - Results display
+  - Download starts and status is shown
+- **Traceability**: SYS-REQ-063
+
+**TEST-MAN-MVP-002**: Provider credential types
+- **Purpose**: Verify provider credential UI supports multiple credential types
+- **Preconditions**: Authenticated user
+- **Steps**:
+  1. Open profile credentials section
+  2. Select provider with API key
+  3. Select provider requiring endpoint+key or OAuth token
+  4. Save credentials
+- **Expected**:
+  - Fields match provider requirements
+  - Save succeeds and persists
+- **Traceability**: SYS-REQ-064
+
+**TEST-MAN-MVP-003**: Left-pane sessions list
+- **Purpose**: Verify session list appears under left pane and switches context
+- **Preconditions**: Frontend running; sessions available
+- **Steps**:
+  1. Open the left-pane Sessions section
+  2. Select a session
+  3. Verify chat history updates
+- **Expected**:
+  - Sessions display and switching works
+- **Traceability**: SYS-REQ-065, SYS-REQ-066
+
+**TEST-MAN-MVP-004**: Message timestamps
+- **Purpose**: Verify timestamps shown for prompts/responses
+- **Preconditions**: Session with messages
+- **Steps**:
+  1. Send a prompt
+  2. Observe timestamps on messages
+- **Expected**:
+  - Timestamps rendered and consistent
+- **Traceability**: SYS-REQ-067
+
+**TEST-MAN-MVP-005**: Settings connection test
+- **Purpose**: Verify health check button shows green check on success
+- **Preconditions**: Backend reachable at configured base URL
+- **Steps**:
+  1. Click Test Connection
+- **Expected**:
+  - Green check on success, error message on failure
+- **Traceability**: SYS-REQ-068
 
 **TEST-MAN-CR001-001**: API endpoint reference review
 - **Purpose**: Verify API endpoint reference is complete and accurate

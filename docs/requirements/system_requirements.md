@@ -1,7 +1,7 @@
 # System Requirements
 
 **Project**: Pluggably LLM API Gateway + Cross-Platform Frontend (PlugAI)
-**Date**: January 24, 2026
+**Date**: January 26, 2026
 **Status**: Updated (Pending Approval)
 
 ## Assumptions
@@ -76,6 +76,12 @@
 - **SYS-REQ-060**: Provide session update endpoint (`PUT /v1/sessions/{session_id}`).
 - **SYS-REQ-061**: Maintain a comprehensive API endpoint reference document for consumers.
 - **SYS-REQ-062**: Frontend must use the shared Dart client package (`clients/dart`) for API calls.
+- **SYS-REQ-063**: Provide a model add/register workflow that searches Hugging Face and supports text filtering in the catalog UI; allow downloading/registering selected models.
+- **SYS-REQ-064**: Support commercial provider credential storage with provider-specific credential types (API key, endpoint+key, service account JSON, OAuth token where required).
+- **SYS-REQ-065**: Sessions list endpoints must return a documented, consistent JSON shape that powers a left-pane sessions list (no dedicated sessions page).
+- **SYS-REQ-066**: Support session naming in session create/update and list responses.
+- **SYS-REQ-067**: Persist and expose timestamps for prompts/commands/messages in session history.
+- **SYS-REQ-068**: Provide an API connectivity test endpoint (health) and surface success in the UI with a green check.
 
 ## Non-Functional Requirements (System)
 - **SYS-NFR-001**: Secure secret storage for provider API keys (no secrets in logs).
@@ -108,6 +114,10 @@
 - **INT-REQ-006**: Provide session management endpoints and document them in the OpenAPI contract.
 - **INT-REQ-007**: Document how clients can supply or omit session state tokens per request.
 - **INT-REQ-008**: Provide client library documentation and versioning aligned with the API contract (Python and Dart/Flutter).
+- **INT-REQ-009**: Provide a model catalog search endpoint (Hugging Face) with pagination and documented response schema.
+- **INT-REQ-010**: Document the health endpoint contract for UI connectivity checks.
+- **INT-REQ-011**: Document session list response shape, including title and timestamps.
+- **INT-REQ-012**: Document provider credential schemas and credential types per provider.
 
 ## Data Requirements
 - **DATA-REQ-001**: Define request/response schemas for text, image, and 3D generation.
@@ -120,6 +130,10 @@
 - **DATA-REQ-008**: Store session metadata and message history (modality, inputs, outputs, timestamps) with configurable retention.
 - **DATA-REQ-009**: Represent provider/model state tokens in a standard field with passthrough support.
 - **DATA-REQ-010**: Share request/response schemas between server and client to ensure compatibility.
+- **DATA-REQ-011**: Represent session titles and timestamps in session list and detail responses.
+- **DATA-REQ-012**: Represent message timestamps for prompts and responses in session history.
+- **DATA-REQ-013**: Store provider credential types with typed payloads and encryption metadata.
+- **DATA-REQ-014**: Represent Hugging Face search results with model identifiers, tags, and modality hints.
 
 ## Error Modes
 - For unsupported model features, return a standardized “feature not supported” error.
@@ -195,6 +209,12 @@ Stakeholder → System
 | SH-REQ-045 | SYS-REQ-055, SYS-REQ-056, SYS-REQ-057, SYS-REQ-058, SYS-REQ-059, SYS-REQ-060 | Endpoint alignment |
 | SH-REQ-046 | SYS-REQ-061 | API endpoint reference |
 | SH-REQ-047 | SYS-REQ-062 | Shared Dart client usage |
+| SH-REQ-048 | SYS-REQ-063 | Add model workflow + search/filter |
+| SH-REQ-049 | SYS-REQ-064 | Provider credentials (non-API-key) |
+| SH-REQ-050 | SYS-REQ-065 | Sessions list contract |
+| SH-REQ-051 | SYS-REQ-066 | Session naming |
+| SH-REQ-052 | SYS-REQ-067 | Session/message timestamps |
+| SH-REQ-053 | SYS-REQ-068 | API connection test |
 
 Requirements → Verification
 
@@ -262,3 +282,9 @@ Requirements → Verification
 | SYS-REQ-060 | Automated | TEST-INT-CR001-006 | src/llm_api/api/router.py | Session update endpoint |
 | SYS-REQ-061 | Manual | TEST-MAN-CR001-001 | docs/api_endpoints.md | API reference review |
 | SYS-REQ-062 | Manual | TEST-MAN-CR002-001 | docs/testing/manual_test_procedures.md | Frontend uses shared Dart client |
+| SYS-REQ-063 | Automated + Manual | TEST-SYS-MVP-004, TEST-MAN-MVP-001 | tests/system/test_mvp_model_search.py, docs/testing/manual_test_procedures.md | Add/register model workflow |
+| SYS-REQ-064 | Manual | TEST-MAN-MVP-002 | docs/testing/manual_test_procedures.md | Provider credential types |
+| SYS-REQ-065 | Automated + Manual | TEST-SYS-MVP-001, TEST-MAN-MVP-003 | tests/system/test_mvp_sessions_contract.py, docs/testing/manual_test_procedures.md | Sessions list contract |
+| SYS-REQ-066 | Automated + Manual | TEST-SYS-MVP-002, TEST-MAN-MVP-003 | tests/system/test_mvp_sessions_contract.py, docs/testing/manual_test_procedures.md | Session naming |
+| SYS-REQ-067 | Automated + Manual | TEST-SYS-MVP-003, TEST-MAN-MVP-004 | tests/system/test_mvp_sessions_contract.py, docs/testing/manual_test_procedures.md | Message timestamps |
+| SYS-REQ-068 | Automated + Manual | TEST-SYS-004, TEST-MAN-MVP-005 | tests/system/test_health_readiness.py, docs/testing/manual_test_procedures.md | API connection test |

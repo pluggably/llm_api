@@ -21,6 +21,8 @@ This document describes UI structure, state management, data flow, and schema-dr
 - **Profile UI**: Preferences (preferred models, defaults)
 - **API Tokens UI**: Create and revoke personal API tokens
 - **Layout Controller**: Auto-switch layouts by modality/device with user override
+- **Add Model UI**: Search Hugging Face and trigger downloads
+- **Connection Test**: Health check button in settings
 
 ## Implementation Notes (Current)
 - Implemented screens: Models, Chat, Sessions, Settings, Profile, Tokens, Keys, Login/Register.
@@ -47,6 +49,9 @@ app_state:
   messages: [Message]
   images: [ImageResult]
   models: [ModelSummary]
+  model_search:
+    query: string
+    results: [ModelSearchResult]
   user:
     id: string
     email: string
@@ -55,6 +60,9 @@ app_state:
   layout:
     mode: auto|locked|manual
     selected: chat|studio|compact
+  connection_test:
+    status: idle|success|error
+    last_checked_at: datetime
 ```
 
 ### Message
@@ -77,6 +85,7 @@ created_at: datetime
 id: string
 title: string
 last_used_at: datetime
+created_at: datetime
 ```
 
 ## Schema-Driven Parameter Rendering
@@ -88,6 +97,11 @@ last_used_at: datetime
   - enum → dropdown
   - range → slider
 - Validation performed on change and submit
+
+## Provider Credential Rendering
+- Fetch provider credential metadata from the backend.
+- Render fields based on credential type (api_key, endpoint+key, oauth_token, service_account).
+- Persist credentials via the credential management endpoints.
 
 ## Flowcharts (Mermaid)
 
@@ -114,6 +128,31 @@ flowchart TD
     A[Select session] --> B[Load session history]
     B --> C[Set active session]
     C --> D[Render messages]
+```
+
+### Add Model Flow (Hugging Face)
+```mermaid
+flowchart TD
+  A[Open Add Model] --> B[Enter search query]
+  B --> C[Fetch search results]
+  C --> D[Select model]
+  D --> E[Trigger download/register]
+  E --> F[Show download status]
+```
+
+### Session Naming Flow
+```mermaid
+flowchart TD
+  A[Create or edit session title] --> B[Save title]
+  B --> C[Update left-pane list]
+```
+
+### Connection Test Flow
+```mermaid
+flowchart TD
+  A[Click Test Connection] --> B[Call /health]
+  B -->|Success| C[Show green check]
+  B -->|Failure| D[Show error]
 ```
 
   ### User API Token Flow
@@ -174,6 +213,12 @@ Requirements → Design
 | SYS-REQ-038 | Profile UI | |
 | SYS-REQ-039 | User API Token Flow | |
 | SYS-REQ-041 | Layout Selection Flow | |
+| SYS-REQ-063 | Add Model Flow | |
+| SYS-REQ-064 | Component Responsibilities (Key Management UI) | Provider credential types |
+| SYS-REQ-065 | Session Switch Flow | Left-pane sessions list |
+| SYS-REQ-066 | Session Naming Flow | |
+| SYS-REQ-067 | State Model (Message.created_at) | |
+| SYS-REQ-068 | Connection Test Flow | |
 
 ## Definition of Ready / Done
 **Ready**

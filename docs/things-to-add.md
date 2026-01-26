@@ -1,21 +1,40 @@
-general:
-- should be able to name sessions
-- should track dates of prompts/commands/messages
+# MVP, urgent:
+## general:
 
-front end:
-- settings pane: add a button to test connection to the API
-- add model functionality needed
-- profile page doesn't have inputs for API keys for commercial products
-  - we should also support credentials for commercial products if there are others ways to connect besides an api key
-- sessions not working:
-  - failed to load sessions: typeerror: instance of 'JsonMap': type '_JsonMap' is not a subtype of type 'List<dynamic>'
-- 
+_Status legend: [In analysis] = requirements being captured; [Moved to roadmap] = queued for later release._
 
-
-api:
+## front end:
+- [In analysis] Add model functionality in the frontend.
+  - Include search/filter by model type or use-case (e.g., image generation).
+- [In analysis] Profile page needs inputs for commercial provider credentials.
+  - Support non-API-key credential types where providers require alternate auth.
+- [In analysis] Fix sessions list parsing mismatch.
+  - Error: `type '_JsonMap' is not a subtype of type 'List<dynamic>'`
 
 
+## api:
 
 
-clients:
+
+
+## clients:
+
+
+
+# future:
+## general:
+- [Moved to roadmap] Should be able to name sessions.
+- [Moved to roadmap] Track dates of prompts/commands/messages.
+
+## front end:
+- [Moved to roadmap] Settings pane: add a button to test connection to the API.
+
+
+
+## api:
+
+
+
+
+## clients:
 

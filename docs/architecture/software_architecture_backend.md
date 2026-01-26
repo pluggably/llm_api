@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Backend Service (single deployable)
-**Date**: January 24, 2026
+**Date**: January 26, 2026
 **Status**: Updated (Pending Approval)
 
 ## Overview
@@ -20,6 +20,7 @@ graph LR
     Lifecycle[Model Lifecycle Manager]
     ReqQueue[Request Queue]
     Enrich[Model Metadata Enricher]
+    CatalogSearch[Hugging Face Search]
     Downloader[Download Jobs]
     Queue[Background Job Queue]
     Storage[Storage Manager]
@@ -27,6 +28,7 @@ graph LR
     Obs[Observability]
     Sessions[Session Manager]
     Keys[User Key Manager]
+    Creds[Credential Vault]
     Users[User Auth/Profile]
     Tokens[User API Tokens]
     DB[(SQLite Registry DB)]
@@ -46,6 +48,7 @@ graph LR
     Lifecycle --> DB
     ReqQueue --> DB
     Registry --> Enrich
+    Registry --> CatalogSearch
     Registry --> Downloader
     Downloader --> Queue
     Registry --> DB
@@ -57,6 +60,7 @@ graph LR
     API --> Config
     API --> Sessions
     API --> Keys
+    API --> Creds
     API --> Users
     API --> Tokens
 ```
@@ -68,6 +72,7 @@ graph LR
 - `adapters/`: provider adapters (commercial/public)
 - `runner/`: local OSS model execution
 - `registry/`: model registry, capabilities, catalog endpoints
+- `integrations/`: external catalog integrations (Hugging Face search)
 - `enrichment/`: Hugging Face metadata + model card fetcher
 - `queue/`: background job scheduling/execution
 - `jobs/`: download tasks, job status tracking
@@ -76,6 +81,7 @@ graph LR
 - `observability/`: logging, metrics, tracing
 - `sessions/`: session store and history management
 - `keys/`: per-user provider/OSS key management
+- `credentials/`: provider credential types and secure storage
 - `users/`: invite-only auth, sessions, profiles
 - `tokens/`: user API token management
 - `lifecycle/`: model loading/unloading, idle timeout, LRU eviction
@@ -99,6 +105,7 @@ graph LR
 - **API → Sessions**: create/list/update/close session APIs
 - **Router → Sessions**: append messages and fetch session context
 - **API → Keys**: manage provider and OSS keys
+- **API → Creds**: manage provider credential types and secrets
 - **Keys → DB**: CRUD key records and encryption metadata
 - **API → Users**: invite-only registration, login/logout, profile management
 - **Users → DB**: CRUD users, invites, and preferences
@@ -112,6 +119,7 @@ graph LR
 - **Router → ReqQueue**: check queue before processing, add to queue if busy
 - **ReqQueue → DB**: persist queue state for recovery
 - **Router → Fallback**: get fallback chain, try alternatives on failure
+- **API → CatalogSearch**: proxy Hugging Face catalog queries
 
 ## Sequence Diagrams (Mermaid)
 
@@ -187,6 +195,23 @@ sequenceDiagram
     Jobs-->>Registry: update status
     API-->>Admin: job id
 
+```
+
+### Hugging Face Catalog Search Flow
+```mermaid
+sequenceDiagram
+    participant UI as Frontend
+    participant API as API Layer
+    participant Registry as Registry
+    participant Catalog as Hugging Face Search
+
+    UI->>API: GET /v1/models/search?source=huggingface&query=...
+    API->>Catalog: search(query, filters)
+    Catalog-->>API: result list
+    API-->>UI: normalized results
+    UI->>API: POST /v1/models/download
+    API->>Registry: register + download
+    Registry-->>UI: job accepted
 ```
 
 ### Startup Model Discovery Flow
@@ -282,6 +307,12 @@ System → Software
 | SYS-REQ-051 | Backend | US-032 | Get loaded models |
 | SYS-REQ-052 | Backend | US-033 | Default pinned model |
 | SYS-REQ-053 | Backend | US-034 | Fallback configuration |
+| SYS-REQ-063 | Backend | US-039 | Hugging Face search |
+| SYS-REQ-064 | Backend | US-040 | Provider credential types |
+| SYS-REQ-065 | Backend | US-036 | Sessions list contract |
+| SYS-REQ-066 | Backend | US-037 | Session naming |
+| SYS-REQ-067 | Backend | US-038 | Message timestamps |
+| SYS-REQ-068 | Backend | US-041 | Health check endpoint |
 
 ## Definition of Ready / Done
 **Ready**

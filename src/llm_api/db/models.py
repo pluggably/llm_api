@@ -126,7 +126,8 @@ class ProviderKeyRecord(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"), nullable=False)
     provider: Mapped[str] = mapped_column(String(100), nullable=False)  # openai, anthropic, etc.
-    encrypted_key: Mapped[str] = mapped_column(Text, nullable=False)  # Encrypted at rest
+    credential_type: Mapped[str] = mapped_column(String(50), nullable=False, default="api_key")
+    encrypted_key: Mapped[str] = mapped_column(Text, nullable=False)  # Encrypted payload at rest
     
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

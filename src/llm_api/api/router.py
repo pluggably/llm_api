@@ -5,6 +5,7 @@ import uuid
 from typing import AsyncGenerator
 
 from fastapi import APIRouter, Depends, HTTPException
+import httpx
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -14,6 +15,8 @@ from llm_api.api.schemas import (
     GenerateOutput,
     ModelCatalog,
     ModelDownloadRequest,
+    ModelSearchResponse,
+    ModelSearchResult,
     Usage,
     ModelInfo,
     ProvidersResponse,
@@ -175,9 +178,9 @@ async def generate(request: GenerateRequest) -> JSONResponse | StreamingResponse
 
 
 @api_router.post("/v1/sessions", dependencies=[Depends(require_api_key)])
-async def create_session() -> JSONResponse:
+async def create_session(request: UpdateSessionRequest | None = None) -> JSONResponse:
     session_store = get_session_store()
-    session = session_store.create_session()
+    session = session_store.create_session(title=request.title if request else None)
     return JSONResponse(jsonable_encoder(session.to_public()), status_code=201)
 
 
@@ -194,19 +197,15 @@ async def get_session(session_id: str) -> JSONResponse:
     session = session_store.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
-    return JSONResponse(jsonable_encoder(session.to_public()))
+    return JSONResponse(jsonable_encoder(session.to_public(include_messages=True)))
 
 
 @api_router.put("/v1/sessions/{session_id}", dependencies=[Depends(require_api_key)])
 async def update_session(session_id: str, request: UpdateSessionRequest) -> JSONResponse:
     session_store = get_session_store()
-    session = session_store.get_session(session_id)
+    session = session_store.update_session(session_id, title=request.title)
     if not session:
         raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
-    
-    # For now, sessions don't have a title field in the backend
-    # Just return the session as-is
-    # TODO: Add title support to session store
     return JSONResponse(jsonable_encoder(session.to_public()))
 
 
@@ -245,6 +244,62 @@ async def list_models(modality: str | None = None, limit: int | None = None, cur
         models = models[start:end]
         return JSONResponse(jsonable_encoder(ModelCatalog(models=models, next_cursor=next_cursor)))
     return JSONResponse(jsonable_encoder(ModelCatalog(models=models)))
+
+
+@api_router.get("/v1/models/search", dependencies=[Depends(require_api_key)])
+async def search_models(
+    query: str,
+    source: str = "huggingface",
+    modality: str | None = None,
+    limit: int = 20,
+    cursor: str | None = None,
+) -> JSONResponse:
+    if source != "huggingface":
+        raise HTTPException(status_code=400, detail="Unsupported source")
+
+    offset = int(cursor or 0)
+    params = {
+        "search": query,
+        "limit": limit,
+        "offset": offset,
+    }
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get("https://huggingface.co/api/models", params=params)
+        response.raise_for_status()
+        data = response.json()
+
+    results = []
+    for item in data:
+        pipeline_tag = item.get("pipeline_tag")
+        modality_hint = None
+        if pipeline_tag in {"text-generation", "text2text-generation"}:
+            modality_hint = "text"
+        elif pipeline_tag in {"text-to-image", "image-to-image"}:
+            modality_hint = "image"
+        elif pipeline_tag in {"text-to-3d", "image-to-3d"}:
+            modality_hint = "3d"
+
+        if modality and modality_hint and modality_hint != modality:
+            continue
+
+        results.append(
+            ModelSearchResult(
+                id=item.get("modelId") or item.get("id"),
+                name=item.get("modelId") or item.get("id"),
+                tags=item.get("tags") or [],
+                modality_hints=[modality_hint] if modality_hint else [],
+                downloads=item.get("downloads"),
+                last_modified=item.get("lastModified"),
+            ),
+        )
+
+    next_cursor = None
+    if len(data) == limit:
+        next_cursor = str(offset + limit)
+
+    return JSONResponse(
+        jsonable_encoder(ModelSearchResponse(results=results, next_cursor=next_cursor)),
+    )
 
 
 @api_router.get("/v1/providers", dependencies=[Depends(require_api_key)])

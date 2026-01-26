@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -326,9 +327,15 @@ class UserService:
                 "scopes": token_record.scopes or [],
             }
     
-    def set_provider_key(self, user_id: str, provider: str, api_key: str) -> Dict[str, Any]:
-        """Set a provider API key for a user."""
-        encrypted = _encrypt_key(api_key)
+    def set_provider_key(
+        self,
+        user_id: str,
+        provider: str,
+        credential_type: str,
+        payload: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Set a provider credential for a user."""
+        encrypted = _encrypt_key(json.dumps(payload))
         
         with get_db_session() as db:
             existing = db.query(ProviderKeyRecord).filter(
@@ -338,6 +345,7 @@ class UserService:
             
             if existing:
                 existing.encrypted_key = encrypted
+                existing.credential_type = credential_type
                 existing.is_active = True
                 key_id = existing.id
             else:
@@ -345,12 +353,13 @@ class UserService:
                     id=str(uuid.uuid4()),
                     user_id=user_id,
                     provider=provider,
+                    credential_type=credential_type,
                     encrypted_key=encrypted,
                 )
                 db.add(key_record)
                 key_id = key_record.id
         
-        return {"id": key_id, "provider": provider}
+        return {"id": key_id, "provider": provider, "credential_type": credential_type}
     
     def get_provider_key(self, user_id: str, provider: str) -> Optional[str]:
         """Get a decrypted provider API key for a user."""
@@ -364,24 +373,47 @@ class UserService:
             if not key_record:
                 return None
             
-            return _decrypt_key(key_record.encrypted_key)
+            try:
+                payload = json.loads(_decrypt_key(key_record.encrypted_key))
+            except Exception:
+                return None
+            return payload.get("api_key")
     
     def list_provider_keys(self, user_id: str) -> List[Dict[str, Any]]:
-        """List provider keys for a user (without revealing key values)."""
+        """List provider credentials for a user (without revealing secret values)."""
         with get_db_session() as db:
             keys = db.query(ProviderKeyRecord).filter(
                 ProviderKeyRecord.user_id == user_id,
                 ProviderKeyRecord.is_active == True,
             ).all()
             
-            return [
-                {
-                    "id": k.id,
-                    "provider": k.provider,
-                    "created_at": k.created_at.isoformat(),
-                }
-                for k in keys
-            ]
+            results: List[Dict[str, Any]] = []
+            for k in keys:
+                masked_key = None
+                try:
+                    payload = json.loads(_decrypt_key(k.encrypted_key))
+                    secret = payload.get("api_key") or payload.get("oauth_token")
+                    if isinstance(secret, str) and len(secret) >= 6:
+                        masked_key = f"{secret[:3]}...{secret[-3:]}"
+                    elif isinstance(secret, str):
+                        masked_key = "***"
+                    elif k.credential_type == "endpoint_key":
+                        endpoint = payload.get("endpoint")
+                        masked_key = f"{endpoint} (key hidden)" if endpoint else "(key hidden)"
+                    elif k.credential_type == "service_account":
+                        masked_key = "service_account_json"
+                except Exception:
+                    masked_key = None
+                results.append(
+                    {
+                        "id": k.id,
+                        "provider": k.provider,
+                        "credential_type": k.credential_type,
+                        "masked_key": masked_key,
+                        "created_at": k.created_at.isoformat(),
+                    },
+                )
+            return results
     
     def delete_provider_key(self, user_id: str, provider: str) -> bool:
         """Delete a provider API key."""

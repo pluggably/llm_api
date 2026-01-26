@@ -433,6 +433,120 @@ So that SDK logic is centralized and consistent with other consumers
 
 ---
 
+**Story ID**: US-FE-023
+**Title**: Add models via Hugging Face search
+**Priority**: High
+**Story Points**: 5
+
+As a user
+I want to search Hugging Face for models and download/register them
+So that I can add new models from the UI
+
+**Acceptance Criteria**:
+- [ ] Add Model flow opens a search dialog/panel
+- [ ] Search queries Hugging Face via the backend search endpoint
+- [ ] Results show model name, modality, and provider/source
+- [ ] Selecting a result triggers download/register via the API
+- [ ] Search input filters large lists locally once results are loaded
+
+**Traceability**: SYS-REQ-063
+**Status**: Not Started
+
+---
+
+**Story ID**: US-FE-024
+**Title**: Commercial provider credentials UI
+**Priority**: High
+**Story Points**: 5
+
+As a user
+I want to manage provider credentials with the right credential type
+So that commercial models work with my accounts
+
+**Acceptance Criteria**:
+- [ ] Profile shows credential type per provider (API key, endpoint+key, OAuth token, service account JSON)
+- [ ] Fields shown depend on provider requirements
+- [ ] Save/validate calls backend credential endpoints
+
+**Traceability**: SYS-REQ-064
+**Status**: Not Started
+
+---
+
+**Story ID**: US-FE-025
+**Title**: Left-pane sessions list
+**Priority**: High
+**Story Points**: 3
+
+As a user
+I want sessions listed in the left pane and to switch between them
+So that I can manage conversation context without a dedicated sessions page
+
+**Acceptance Criteria**:
+- [ ] Sessions render under the left-pane Sessions menu item
+- [ ] Selecting a session switches context
+- [ ] List uses the documented sessions response shape
+
+**Traceability**: SYS-REQ-065
+**Status**: Not Started
+
+---
+
+**Story ID**: US-FE-026
+**Title**: Session naming in UI
+**Priority**: Medium
+**Story Points**: 3
+
+As a user
+I want to name sessions and see names in the list
+So that I can identify conversations quickly
+
+**Acceptance Criteria**:
+- [ ] Session create/update allows editing a title
+- [ ] Left-pane list shows session titles (fallback to ID)
+
+**Traceability**: SYS-REQ-066
+**Status**: Not Started
+
+---
+
+**Story ID**: US-FE-027
+**Title**: Message timestamps in UI
+**Priority**: Medium
+**Story Points**: 2
+
+As a user
+I want message timestamps shown in the chat history
+So that I can see when prompts and responses occurred
+
+**Acceptance Criteria**:
+- [ ] Chat messages show a timestamp (relative or absolute)
+- [ ] Session history uses timestamps from the API
+
+**Traceability**: SYS-REQ-067
+**Status**: Not Started
+
+---
+
+**Story ID**: US-FE-028
+**Title**: Settings connection test
+**Priority**: Medium
+**Story Points**: 2
+
+As a user
+I want a Test Connection button in settings with a green check on success
+So that I can verify the backend is reachable
+
+**Acceptance Criteria**:
+- [ ] Button calls health endpoint
+- [ ] Success shows a green check icon
+- [ ] Failure shows a clear error message
+
+**Traceability**: SYS-REQ-068
+**Status**: Not Started
+
+---
+
 ## Traceability: System → Software
 
 | System Req ID | Software Component | User Story ID(s) | Notes |
@@ -463,6 +577,12 @@ So that SDK logic is centralized and consistent with other consumers
 | SYS-REQ-058 | Frontend | US-FE-021 | Request endpoint alignment |
 | SYS-REQ-059 | Frontend | US-FE-021 | User resource endpoint alignment |
 | SYS-REQ-062 | Frontend | US-FE-022 | Shared Dart client usage |
+| SYS-REQ-063 | Frontend | US-FE-023 | Add model flow |
+| SYS-REQ-064 | Frontend | US-FE-024 | Provider credentials UI |
+| SYS-REQ-065 | Frontend | US-FE-025 | Left-pane sessions list |
+| SYS-REQ-066 | Frontend | US-FE-026 | Session naming |
+| SYS-REQ-067 | Frontend | US-FE-027 | Message timestamps |
+| SYS-REQ-068 | Frontend | US-FE-028 | Connection test |
 
 ## Definition of Done
 - User stories and acceptance criteria defined

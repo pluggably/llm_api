@@ -220,6 +220,7 @@ void main() {
       final json = {
         'id': 'session-1',
         'title': 'My Chat',
+        'created_at': '2026-01-26T09:30:00Z',
         'last_used_at': '2026-01-26T10:00:00Z',
       };
 
@@ -227,6 +228,7 @@ void main() {
 
       expect(summary.id, 'session-1');
       expect(summary.title, 'My Chat');
+      expect(summary.createdAt, isNotNull);
       expect(summary.lastUsedAt, isNotNull);
     });
   });

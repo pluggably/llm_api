@@ -2,7 +2,7 @@
 
 **Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Client Library
-**Date**: January 24, 2026
+**Date**: January 26, 2026
 **Status**: Updated (Pending Approval)
 
 ## Overview
@@ -19,6 +19,8 @@ graph LR
     Users[Auth/Profile Helpers]
     Tokens[Token Helpers]
     Errors[Error Mapping]
+    Catalog[Model Search]
+    Health[Health Check]
 
     SDK --> HTTP
     SDK --> Models
@@ -27,6 +29,8 @@ graph LR
     SDK --> Users
     SDK --> Tokens
     SDK --> Errors
+    SDK --> Catalog
+    SDK --> Health
 ```
 
 ## Module/Package Structure
@@ -38,6 +42,8 @@ graph LR
 - `tokens/`: user API token helpers
 - `errors/`: error mapping and exception types
 - `http/`: HTTP transport and retry settings
+- `catalog/`: model search helpers (Hugging Face)
+- `health/`: health check helper
 
 ## Interface Definitions
 - **SDK → HTTP**: sends requests, handles auth headers
@@ -46,6 +52,8 @@ graph LR
 - **SDK → Keys**: wraps user provider/OSS key endpoints
 - **SDK → Users**: wraps invite-only registration, login/logout, profile endpoints
 - **SDK → Tokens**: wraps user API token endpoints
+- **SDK → Catalog**: wraps model search endpoint
+- **SDK → Health**: wraps health endpoint
 
 ## Sequence Diagram (Mermaid)
 ```mermaid
@@ -72,6 +80,11 @@ System → Software
 | SYS-REQ-037 | Client Library | US-CL-004 | Auth/profile helpers |
 | SYS-REQ-038 | Client Library | US-CL-004 | Auth/profile helpers |
 | SYS-REQ-039 | Client Library | US-CL-005 | User API tokens |
+| SYS-REQ-063 | Client Library | US-CL-012 | Hugging Face search |
+| SYS-REQ-065 | Client Library | US-CL-013 | Sessions list parsing |
+| SYS-REQ-066 | Client Library | US-CL-013 | Session naming metadata |
+| SYS-REQ-067 | Client Library | US-CL-013 | Message timestamps |
+| SYS-REQ-068 | Client Library | US-CL-014 | Health check helper |
 
 ## Definition of Ready / Done
 **Ready**

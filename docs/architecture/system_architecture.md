@@ -1,7 +1,7 @@
 # System Architecture
 
 **Project**: Pluggably LLM API Gateway + Cross-Platform Frontend (PlugAI)
-**Date**: January 24, 2026
+**Date**: January 26, 2026
 **Status**: Updated (Pending Approval)
 
 ## Overview
@@ -15,6 +15,7 @@ graph TD
     Gateway -->|Provider Adapter| Commercial[Commercial LLM APIs]
     Gateway -->|Provider Adapter| Public[Free/Public APIs]
     Gateway -->|Local Runner| LocalModels[Local OSS Models]
+    Gateway -->|Catalog Search| HuggingFace[Hugging Face Hub]
     Gateway -->|Metrics/Logs| Observability[Logs/Metrics]
     Admin[Operator/Admin] -->|Config & Model Mgmt| Gateway
     Storage[Model Storage] <-->|Models & Cache| Gateway
@@ -33,6 +34,8 @@ Primary system elements:
 8. **Observability**: Structured logs, metrics, request tracing.
 9. **Configuration Manager**: Manages API keys, endpoints, model paths.
 10. **Session Manager**: Stores and retrieves session context and history. Session state is persisted independently of model processes, ensuring sessions survive model spindown and can be resumed after model reload.
+11. **Model Catalog Search**: Searches Hugging Face for new models to download/register.
+12. **Credential Vault**: Stores per-user commercial provider credentials with typed auth schemes.
 
 ## System Element Diagram (Mermaid)
 ```mermaid
@@ -45,6 +48,8 @@ graph LR
     Adapters[Provider Adapters]
     LocalRunner[Local Model Runner]
     Registry[Model Registry]
+    CatalogSearch[Catalog Search]
+    Creds[Credential Vault]
     RegistryDB[(SQLite Registry DB)]
     Downloader[Model Downloader/Jobs]
     StorageMgr[Storage Manager]
@@ -60,10 +65,13 @@ graph LR
     LocalRunner --> Registry
     Registry --> RegistryDB
     Registry --> Downloader
+    Registry --> CatalogSearch
     LocalRunner --> StorageMgr
     Gateway --> Config
     Gateway --> Obs
     Downloader --> StorageMgr
+    Gateway --> Creds
+    CatalogSearch --> Registry
 ```
 
 ## Interface Definitions (Summary)
@@ -77,7 +85,10 @@ graph LR
 - **Registry/Downloader → Storage**: Filesystem or object storage abstraction.
 - **Gateway → Registry DB**: Persist models, schemas, sessions, and user keys.
 - **Gateway → Observability**: Logs/metrics interface.
- - **Gateway → Session Manager**: Store and retrieve session state.
+- **Gateway → Session Manager**: Store and retrieve session state.
+- **Frontend → Gateway**: Model catalog search (Hugging Face), download/register, and text filtering.
+- **Gateway → Hugging Face**: Search and metadata lookup for models.
+- **Frontend → Gateway**: Health endpoint for connection testing.
 
 ## Data Flow Diagram (Mermaid)
 ```mermaid
@@ -94,6 +105,8 @@ graph TD
     Storage --> Runner
     Gateway --> Logs[Logs/Metrics]
     Gateway --> RegistryDB[(SQLite Registry DB)]
+    Gateway --> HF[Hugging Face Search]
+    HF --> RegistryDB
 ```
 
 ## Technology Stack (Initial Proposal)
@@ -178,3 +191,20 @@ System → Software (per software component)
 | SYS-REQ-034 | Backend | US-018 | Schema registry sync |
 | SYS-REQ-035 | Backend | US-019 | User provider keys |
 | SYS-REQ-036 | Backend | US-020 | User OSS keys |
+| SYS-REQ-063 | Backend | US-039 | Hugging Face search |
+| SYS-REQ-063 | Frontend | US-FE-023 | Add model flow |
+| SYS-REQ-063 | Client Library | US-CL-012 | Search helper |
+| SYS-REQ-064 | Backend | US-040 | Provider credential types |
+| SYS-REQ-064 | Frontend | US-FE-024 | Credential UI |
+| SYS-REQ-065 | Backend | US-036 | Sessions list contract |
+| SYS-REQ-065 | Frontend | US-FE-025 | Left-pane sessions list |
+| SYS-REQ-065 | Client Library | US-CL-013 | Session list parsing |
+| SYS-REQ-066 | Backend | US-037 | Session naming |
+| SYS-REQ-066 | Frontend | US-FE-026 | Session naming UI |
+| SYS-REQ-066 | Client Library | US-CL-013 | Session metadata |
+| SYS-REQ-067 | Backend | US-038 | Message timestamps |
+| SYS-REQ-067 | Frontend | US-FE-027 | Message timestamps UI |
+| SYS-REQ-067 | Client Library | US-CL-013 | Message timestamps |
+| SYS-REQ-068 | Backend | US-041 | Health endpoint |
+| SYS-REQ-068 | Frontend | US-FE-028 | Connection test UI |
+| SYS-REQ-068 | Client Library | US-CL-014 | Health helper |
