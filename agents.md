@@ -230,6 +230,13 @@ Before any code is written, present all documentation for review:
   3. Run all automated system tests
   4. Document test results
 
+#### 6.1.5 Code Quality Gate
+- **Process**:
+  1. Run static type checker (Pylance/Pyright) and resolve all errors
+  2. Address warnings that indicate real bugs or type safety issues
+  3. Suppressions (# type: ignore) are acceptable only with justification comment
+  4. **All Pylance errors must be resolved before proceeding to Phase 6.5**
+
 #### 6.2 Bug Fixing Cycle
 - **Process**:
   1. Analyze test failures

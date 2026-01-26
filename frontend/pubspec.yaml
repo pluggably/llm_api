@@ -1,0 +1,48 @@
+name: plugai
+description: "PlugAI - Cross-platform frontend for the Pluggably LLM API Gateway"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
+
+  # Routing
+  go_router: ^14.8.1
+
+  # HTTP & API
+  http: ^1.3.0
+  web_socket_channel: ^3.0.2
+
+  # UI Components
+  flutter_markdown: ^0.7.7
+  cupertino_icons: ^1.0.8
+
+  # Local Storage
+  shared_preferences: ^2.5.3
+
+  # Utilities
+  uuid: ^4.5.1
+  intl: ^0.20.2
+  equatable: ^2.0.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+  riverpod_generator: ^2.6.3
+  build_runner: ^2.4.15
+  mockito: ^5.4.5
+  build_verify: ^3.1.0
+
+flutter:
+  uses-material-design: true

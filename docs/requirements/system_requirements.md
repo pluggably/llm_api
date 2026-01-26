@@ -1,17 +1,17 @@
 # System Requirements
 
-**Project**: Pluggably LLM API Gateway
+**Project**: Pluggably LLM API Gateway + Cross-Platform Frontend (PlugAI)
 **Date**: January 24, 2026
-**Status**: Complete (Baseline + CR-2026-01-24-03)
+**Status**: Updated (Pending Approval)
 
 ## Assumptions
 - The standard API will be HTTP-based and JSON by default.
 - The system will run on macOS/Linux class hosts (home server) and common cloud providers.
 - GPU acceleration is optional but supported when available.
+- SQLite is the initial persistence layer; schema must be migratable to a cloud database (e.g., Supabase/Postgres).
 
 ## Out of Scope
 - Training new foundation models from scratch.
-- Building a graphical UI beyond basic docs and examples.
 
 ## Functional Requirements (System)
 - **SYS-REQ-001**: Provide a versioned HTTP API that accepts standardized requests for text, image, and 3D generation.
@@ -36,8 +36,38 @@
 - **SYS-REQ-020**: Provide session management to associate multiple requests with a persistent conversational context.
 - **SYS-REQ-021**: Provide APIs to create, retrieve, list, update, and close sessions, including the ability to reset session context.
 - **SYS-REQ-022**: Support both backend-stored session state and client-supplied state tokens for iterative generation workflows.
+- **SYS-REQ-054**: Persist all session state (including chat history, context, and metadata) independently of model process lifecycle, ensuring sessions survive model spindown/unload and can be resumed after model reload.
 - **SYS-REQ-023**: Provide client libraries (Python and Dart/Flutter) with typed request/response models for all API endpoints.
 - **SYS-REQ-024**: Provide session helper utilities in each client library for create/reset/close flows.
+- **SYS-REQ-025**: Provide a cross-platform frontend UI (web + mobile) that integrates with the standard API.
+- **SYS-REQ-026**: Provide model selection UI with modality filtering (text/image/3D) and model metadata display.
+- **SYS-REQ-027**: Render a dynamic settings pane/drawer based on `/v1/schema` for the selected model.
+- **SYS-REQ-028**: Provide a chat-like interface for text models with streaming response rendering.
+- **SYS-REQ-029**: Provide an image generation UI with gallery, preview, and download support.
+- **SYS-REQ-030**: Provide a 3D generation UI with interactive viewer and download support.
+- **SYS-REQ-031**: Allow the web frontend to be hosted separately from the backend with configurable API base URL.
+- **SYS-REQ-032**: Provide frontend-driven session creation and switching, with per-user context preserved across turns.
+- **SYS-REQ-033**: Persist a model registry for internal and external models, including supported parameters and schemas.
+- **SYS-REQ-034**: Store and serve model parameter schemas from the registry, synchronized with `/v1/schema`.
+- **SYS-REQ-035**: Allow users to supply and manage their own commercial provider API keys, stored securely per user.
+- **SYS-REQ-036**: Allow users to create and manage API keys for OSS model access, scoped and revocable.
+- **SYS-REQ-037**: Provide user authentication with login/logout and invite-only registration.
+- **SYS-REQ-038**: Provide user profiles with preferences (preferred models, UI defaults) stored per user.
+- **SYS-REQ-039**: Allow users to create, list, and revoke private API tokens for LLM API access.
+- **SYS-REQ-040**: Enrich model registry entries with Hugging Face documentation and parameter guidance when available.
+- **SYS-REQ-041**: Support UI layout auto-switching by modality/device with user override (auto/locked/manual).
+- **SYS-REQ-042**: Model downloads must run asynchronously and not block API or UI requests.
+- **SYS-REQ-043**: Provide model status states (e.g., downloading, ready, failed) in model listings.
+- **SYS-REQ-044**: Prevent duplicate downloads by reusing existing model artifacts across users.
+- **SYS-REQ-045**: Provide model lifecycle management with configurable idle timeout, pinning, and concurrent loaded model limits.
+- **SYS-REQ-046**: Provide request queueing when local inference resources are busy, with queue position feedback.
+- **SYS-REQ-047**: Support cancellation of in-flight generation requests.
+- **SYS-REQ-048**: Support regenerating a response with same or modified parameters.
+- **SYS-REQ-049**: Provide a prepare/load model endpoint to pre-load a model into memory before requests.
+- **SYS-REQ-050**: Provide model runtime status (unloaded, loading, loaded, busy) in model queries.
+- **SYS-REQ-051**: Provide an endpoint to list currently loaded models.
+- **SYS-REQ-052**: Support a default "pinned" model that remains loaded and can serve as an optional fallback during cold-start of other models.
+- **SYS-REQ-053**: Allow users to choose (via API parameter or frontend option) whether to fall back to a default/pinned model while the requested model is loading, or to wait for the requested model.
 
 ## Non-Functional Requirements (System)
 - **SYS-NFR-001**: Secure secret storage for provider API keys (no secrets in logs).
@@ -48,6 +78,18 @@
 - **SYS-NFR-006**: Performance budgets (TBD): define p95 latency and throughput targets per deployment type.
 - **SYS-NFR-007**: Disk usage must be bounded by configurable limits to protect host stability.
 - **SYS-NFR-008**: Support TLS for API traffic when deployed in networked environments.
+- **SYS-NFR-009**: Cross-platform UI support (web + mobile) with responsive layouts.
+- **SYS-NFR-010**: UI responsiveness for model selection and parameter updates (<100ms).
+- **SYS-NFR-011**: Accessibility support for the frontend (WCAG AA where applicable).
+- **SYS-NFR-012**: Per-user credential isolation; keys encrypted at rest and never logged.
+- **SYS-NFR-013**: Model registry persistence; survives restarts and supports migrations.
+- **SYS-NFR-014**: Auth must enforce invite-only registration and protect all user-specific data.
+- **SYS-NFR-015**: User API tokens must be securely stored and revocable.
+- **SYS-NFR-016**: Model documentation enrichment must not block model registration if external data is unavailable.
+- **SYS-NFR-017**: Background downloads must not degrade API responsiveness beyond defined latency budgets.
+- **SYS-NFR-018**: Request queue must provide position updates within 1 second of state change.
+- **SYS-NFR-019**: Model loading/unloading must be graceful and not interrupt in-flight requests.
+- **SYS-NFR-020**: Default pinned model must load on startup and remain available.
 
 ## External Interface Requirements
 - **INT-REQ-001**: API contract must be documented (OpenAPI preferred) with versioning and error schemas.
@@ -79,6 +121,8 @@
 ## System Constraints
 - Must run on a single machine (home server) without requiring a cluster.
 - Must also be deployable to cloud environments with minimal changes.
+- Use SQLite for v1 persistence (model registry, user keys, sessions).
+- Provide migration path to Supabase/Postgres without breaking API contracts.
 
 ## Definition of Ready / Done
 **Ready**
@@ -118,6 +162,28 @@ Stakeholder → System
 | SH-REQ-020 | SYS-REQ-022 | Session state handoff |
 | SH-REQ-021 | SYS-REQ-023 | Client library |
 | SH-REQ-022 | SYS-REQ-024 | Session helpers |
+| SH-REQ-023 | SYS-REQ-025 | Cross-platform UI |
+| SH-REQ-024 | SYS-REQ-026 | Model selection UI |
+| SH-REQ-025 | SYS-REQ-027 | Dynamic parameters |
+| SH-REQ-026 | SYS-REQ-028 | Chat UI |
+| SH-REQ-027 | SYS-REQ-029, SYS-REQ-030 | Image/3D UI |
+| SH-REQ-028 | SYS-REQ-031 | Separate hosting |
+| SH-REQ-029 | SYS-REQ-032 | Frontend sessions |
+| SH-REQ-030 | SYS-REQ-033, SYS-REQ-034 | Model registry |
+| SH-REQ-031 | SYS-REQ-035 | User provider keys |
+| SH-REQ-032 | SYS-REQ-036 | User OSS keys |
+| SH-REQ-033 | SYS-REQ-037 | Auth & invite-only registration |
+| SH-REQ-034 | SYS-REQ-038 | User profiles/preferences |
+| SH-REQ-035 | SYS-REQ-039 | User API tokens |
+| SH-REQ-036 | SYS-REQ-040 | Model documentation enrichment |
+| SH-REQ-037 | SYS-REQ-041 | UI auto-switch/lock |
+| SH-REQ-038 | SYS-REQ-042, SYS-REQ-043, SYS-REQ-044 | Background downloads, status, dedupe |
+| SH-REQ-039 | SYS-REQ-045, SYS-REQ-050, SYS-REQ-051, SYS-REQ-052 | Model lifecycle |
+| SH-REQ-040 | SYS-REQ-049 | Pre-load models |
+| SH-REQ-041 | SYS-REQ-046 | Request queueing |
+| SH-REQ-042 | SYS-REQ-047 | Request cancellation |
+| SH-REQ-043 | SYS-REQ-048 | Regenerate/retry |
+| SH-REQ-044 | SYS-REQ-052, SYS-REQ-053 | Fallback configuration |
 
 Requirements → Verification
 
@@ -147,3 +213,33 @@ Requirements → Verification
 | SYS-REQ-022 | Automated | TEST-SYS-014 | tests/system/ | Session state tokens |
 | SYS-REQ-023 | Automated | TEST-UNIT-006 | client/tests/unit/ | SDK models |
 | SYS-REQ-024 | Automated | TEST-UNIT-007 | client/tests/unit/ | Session helpers |
+| SYS-REQ-025 | Manual | TEST-MAN-004 | docs/testing/manual_test_procedures.md | UI availability |
+| SYS-REQ-026 | Manual | TEST-MAN-004 | docs/testing/manual_test_procedures.md | Model selection |
+| SYS-REQ-027 | Manual | TEST-MAN-004 | docs/testing/manual_test_procedures.md | Dynamic parameters |
+| SYS-REQ-028 | Manual | TEST-MAN-005 | docs/testing/manual_test_procedures.md | Chat UI |
+| SYS-REQ-029 | Manual | TEST-MAN-006 | docs/testing/manual_test_procedures.md | Image UI |
+| SYS-REQ-030 | Manual | TEST-MAN-007 | docs/testing/manual_test_procedures.md | 3D UI |
+| SYS-REQ-031 | Manual | TEST-MAN-008 | docs/testing/manual_test_procedures.md | Separate hosting |
+| SYS-REQ-032 | Manual | TEST-MAN-009 | docs/testing/manual_test_procedures.md | Frontend sessions |
+| SYS-REQ-033 | Automated | TEST-INT-005 | tests/integration/ | Model registry persistence |
+| SYS-REQ-034 | Automated | TEST-INT-006 | tests/integration/ | Schema registry sync |
+| SYS-REQ-035 | Manual | TEST-MAN-010 | docs/testing/manual_test_procedures.md | User provider keys |
+| SYS-REQ-036 | Manual | TEST-MAN-011 | docs/testing/manual_test_procedures.md | User OSS keys |
+| SYS-REQ-037 | Manual | TEST-MAN-012 | docs/testing/manual_test_procedures.md | Invite-only auth |
+| SYS-REQ-038 | Manual | TEST-MAN-013 | docs/testing/manual_test_procedures.md | User profiles/preferences |
+| SYS-REQ-039 | Manual | TEST-MAN-014 | docs/testing/manual_test_procedures.md | User API tokens |
+| SYS-REQ-040 | Automated | TEST-INT-007 | tests/integration/ | Model doc enrichment |
+| SYS-REQ-041 | Manual | TEST-MAN-015 | docs/testing/manual_test_procedures.md | UI auto-switch/lock |
+| SYS-REQ-042 | Automated | TEST-INT-008 | tests/integration/ | Async downloads |
+| SYS-REQ-043 | Automated + Manual | TEST-INT-009, TEST-MAN-016 | tests/integration/, docs/testing/manual_test_procedures.md | Model status |
+| SYS-REQ-044 | Automated | TEST-INT-010 | tests/integration/ | Download dedupe |
+| SYS-REQ-045 | Automated | TEST-INT-011 | tests/integration/ | Model lifecycle |
+| SYS-REQ-046 | Automated | TEST-INT-012, TEST-SYS-015 | tests/integration/, tests/system/ | Request queueing |
+| SYS-REQ-047 | Automated | TEST-SYS-016 | tests/system/ | Request cancellation |
+| SYS-REQ-048 | Manual | TEST-MAN-017 | docs/testing/manual_test_procedures.md | Regenerate/retry |
+| SYS-REQ-049 | Automated | TEST-INT-013 | tests/integration/ | Prepare/load model |
+| SYS-REQ-050 | Automated | TEST-INT-014 | tests/integration/ | Model runtime status |
+| SYS-REQ-051 | Automated | TEST-INT-015 | tests/integration/ | Get loaded models |
+| SYS-REQ-052 | Automated | TEST-INT-016 | tests/integration/ | Default pinned model |
+| SYS-REQ-053 | Automated | TEST-INT-017 | tests/integration/ | Fallback configuration |
+| SYS-REQ-054 | Automated | TEST-SYS-017 | tests/system/ | Session survives model spindown |

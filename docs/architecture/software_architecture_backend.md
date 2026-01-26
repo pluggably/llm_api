@@ -1,9 +1,9 @@
 # Software Architecture — Backend Service
 
-**Project**: Pluggably LLM API Gateway
+**Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Backend Service (single deployable)
 **Date**: January 24, 2026
-**Status**: Approved (Baseline + CR-2026-01-24-02)
+**Status**: Updated (Pending Approval)
 
 ## Overview
 This document defines the software architecture for the backend service, including module structure, interfaces between modules, and key interaction flows.
@@ -17,26 +17,48 @@ graph LR
     Adapters[Provider Adapters]
     Runner[Local Model Runner]
     Registry[Model Registry]
+    Lifecycle[Model Lifecycle Manager]
+    ReqQueue[Request Queue]
+    Enrich[Model Metadata Enricher]
     Downloader[Download Jobs]
+    Queue[Background Job Queue]
     Storage[Storage Manager]
     Config[Config Manager]
     Obs[Observability]
     Sessions[Session Manager]
-    DB[(Metadata DB)]
+    Keys[User Key Manager]
+    Users[User Auth/Profile]
+    Tokens[User API Tokens]
+    DB[(SQLite Registry DB)]
 
     API --> Auth
     API --> Router
     API --> Obs
+    API --> Lifecycle
+    API --> ReqQueue
     Router --> Adapters
     Router --> Runner
     Router --> Sessions
+    Router --> ReqQueue
     Runner --> Registry
+    Runner --> Lifecycle
+    Lifecycle --> Registry
+    Lifecycle --> DB
+    ReqQueue --> DB
+    Registry --> Enrich
     Registry --> Downloader
+    Downloader --> Queue
     Registry --> DB
+    Keys --> DB
+    Users --> DB
+    Tokens --> DB
     Downloader --> Storage
     Runner --> Storage
     API --> Config
     API --> Sessions
+    API --> Keys
+    API --> Users
+    API --> Tokens
 ```
 
 ## Module/Package Structure
@@ -46,12 +68,20 @@ graph LR
 - `adapters/`: provider adapters (commercial/public)
 - `runner/`: local OSS model execution
 - `registry/`: model registry, capabilities, catalog endpoints
+- `enrichment/`: Hugging Face metadata + model card fetcher
+- `queue/`: background job scheduling/execution
 - `jobs/`: download tasks, job status tracking
 - `storage/`: storage limits, cache/retention policies
 - `config/`: env/config file loading
 - `observability/`: logging, metrics, tracing
 - `sessions/`: session store and history management
-- `db/`: metadata persistence (models, jobs, tokens)
+- `keys/`: per-user provider/OSS key management
+- `users/`: invite-only auth, sessions, profiles
+- `tokens/`: user API token management
+- `lifecycle/`: model loading/unloading, idle timeout, LRU eviction
+- `request_queue/`: request queueing, position tracking, cancellation
+- `fallback/`: fallback chain configuration and execution
+- `db/`: SQLite persistence (models, schemas, sessions, keys, queue)
 
 ## Interface Definitions (Module-Level)
 - **API → Auth**: dependency injection for auth; returns user/token context
@@ -59,15 +89,62 @@ graph LR
 - **Router → Adapters**: provider call interface
 - **Router → Runner**: local execution interface
 - **Registry → DB**: CRUD model metadata, capabilities
+- **Registry → Enrichment**: fetch external model docs and parameter guidance
+- **Registry → Downloader**: ensure unique download per model
+- **Downloader → Queue**: enqueue background download jobs
+- **Enrichment → DB**: store docs/metadata in registry tables
 - **Jobs → Storage**: download/cleanup operations
 - **API → Registry**: list models, register/download endpoints
 - **API → Registry**: model detail lookup for catalog and discovery results
 - **API → Sessions**: create/list/update/close session APIs
 - **Router → Sessions**: append messages and fetch session context
+- **API → Keys**: manage provider and OSS keys
+- **Keys → DB**: CRUD key records and encryption metadata
+- **API → Users**: invite-only registration, login/logout, profile management
+- **Users → DB**: CRUD users, invites, and preferences
+- **API → Tokens**: create/list/revoke user API tokens
+- **Tokens → DB**: CRUD token records (hashed)
+- **API → Lifecycle**: load/unload models, query runtime status, list loaded models
+- **Lifecycle → Registry**: get model metadata for loading
+- **Lifecycle → Runner**: load/unload model in memory
+- **Lifecycle → DB**: persist model runtime state
+- **API → ReqQueue**: enqueue requests, query position, cancel requests
+- **Router → ReqQueue**: check queue before processing, add to queue if busy
+- **ReqQueue → DB**: persist queue state for recovery
+- **Router → Fallback**: get fallback chain, try alternatives on failure
 
 ## Sequence Diagrams (Mermaid)
 
-### Text/Image/3D Request Flow
+### Text/Image/3D Request Flow with Lifecycle
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant API as API Layer
+    participant Auth as Auth
+    participant Router as Router
+    participant Lifecycle as Lifecycle
+    participant Queue as Request Queue
+    participant Runner as Local Runner
+
+    C->>API: POST /v1/generate
+    API->>Auth: authenticate
+    Auth-->>API: auth context
+    API->>Router: route(request)
+    Router->>Lifecycle: ensure model loaded
+    Lifecycle-->>Router: model ready / loading
+    alt Model busy
+        Router->>Queue: enqueue request
+        Queue-->>Router: position
+        Router-->>API: 202 + queue position
+    else Model ready
+        Router->>Runner: run model
+        Runner-->>Router: response
+        Router-->>API: normalized response
+        API-->>C: 200 + response
+    end
+```
+
+### Text/Image/3D Request Flow (Legacy)
 ```mermaid
 sequenceDiagram
     participant C as Client
@@ -185,6 +262,26 @@ System → Software
 | SYS-REQ-019 | Backend | US-014 | Parameter documentation |
 | SYS-REQ-020 | Backend | US-015 | Session management |
 | SYS-REQ-021 | Backend | US-016 | Session lifecycle |
+| SYS-REQ-033 | Backend | US-017 | Registry persistence |
+| SYS-REQ-034 | Backend | US-018 | Schema registry sync |
+| SYS-REQ-035 | Backend | US-019 | User provider keys |
+| SYS-REQ-036 | Backend | US-020 | User OSS keys |
+| SYS-REQ-037 | Backend | US-021 | Invite-only auth |
+| SYS-REQ-038 | Backend | US-022 | User profiles/preferences |
+| SYS-REQ-039 | Backend | US-023 | User API tokens |
+| SYS-REQ-040 | Backend | US-024 | HF documentation enrichment |
+| SYS-REQ-042 | Backend | US-025 | Async downloads |
+| SYS-REQ-043 | Backend | US-025 | Model status |
+| SYS-REQ-044 | Backend | US-025 | Download dedupe |
+| SYS-REQ-045 | Backend | US-026 | Model lifecycle |
+| SYS-REQ-046 | Backend | US-027 | Request queueing |
+| SYS-REQ-047 | Backend | US-028 | Request cancellation |
+| SYS-REQ-048 | Backend | US-029 | Regenerate/retry |
+| SYS-REQ-049 | Backend | US-030 | Prepare/load model |
+| SYS-REQ-050 | Backend | US-031 | Model runtime status |
+| SYS-REQ-051 | Backend | US-032 | Get loaded models |
+| SYS-REQ-052 | Backend | US-033 | Default pinned model |
+| SYS-REQ-053 | Backend | US-034 | Fallback configuration |
 
 ## Definition of Ready / Done
 **Ready**

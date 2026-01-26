@@ -1,18 +1,48 @@
 from __future__ import annotations
 
 import time
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from llm_api.api.router import api_router
+from llm_api.api.users_router import users_router
+from llm_api.api.lifecycle_router import lifecycle_router
 from llm_api.config import get_settings
+from llm_api.db import init_db
+from llm_api.lifecycle import get_lifecycle_manager
 from llm_api.observability import get_metrics_store
 from llm_api.registry import get_registry
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
-    app = FastAPI(title="Pluggably LLM API Gateway", version="0.1.0")
+    
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # Startup
+        init_db()
+        registry = get_registry()
+        lifecycle = get_lifecycle_manager()
+        
+        # Load default/pinned models
+        if settings.default_model:
+            lifecycle.default_model_id = settings.default_model
+        
+        # Start idle monitor
+        await lifecycle.start_idle_monitor()
+        
+        yield
+        
+        # Shutdown
+        lifecycle.stop_idle_monitor()
+    
+    app = FastAPI(
+        title="Pluggably LLM API Gateway",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
 
     registry = get_registry()
 
@@ -50,7 +80,11 @@ def create_app() -> FastAPI:
         store = get_metrics_store()
         return PlainTextResponse(store.render_prometheus())
 
+    # Lifecycle router must be included BEFORE api_router so that
+    # /v1/models/loaded is registered before /v1/models/{model_id}
+    app.include_router(lifecycle_router)
     app.include_router(api_router)
+    app.include_router(users_router)
 
     return app
 

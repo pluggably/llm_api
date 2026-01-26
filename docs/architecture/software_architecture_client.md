@@ -1,9 +1,9 @@
 # Software Architecture — Client Library
 
-**Project**: Pluggably LLM API Gateway
+**Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Client Library
 **Date**: January 24, 2026
-**Status**: Approved (Baseline + CR-2026-01-24-03)
+**Status**: Updated (Pending Approval)
 
 ## Overview
 Defines the client library structure, interfaces, and interaction with the API gateway for Python and Dart/Flutter.
@@ -15,11 +15,17 @@ graph LR
     HTTP[HTTP Client]
     Models[Typed Models]
     Sessions[Session Helpers]
+    Keys[Key Management]
+    Users[Auth/Profile Helpers]
+    Tokens[Token Helpers]
     Errors[Error Mapping]
 
     SDK --> HTTP
     SDK --> Models
     SDK --> Sessions
+    SDK --> Keys
+    SDK --> Users
+    SDK --> Tokens
     SDK --> Errors
 ```
 
@@ -27,6 +33,9 @@ graph LR
 - `client/`: public client entrypoint
 - `models/`: typed request/response models
 - `sessions/`: session helper utilities
+- `keys/`: user provider/OSS key management
+- `users/`: auth, invites, profiles
+- `tokens/`: user API token helpers
 - `errors/`: error mapping and exception types
 - `http/`: HTTP transport and retry settings
 
@@ -34,6 +43,9 @@ graph LR
 - **SDK → HTTP**: sends requests, handles auth headers
 - **SDK → Models**: serializes/deserializes payloads
 - **SDK → Sessions**: wraps session lifecycle endpoints
+- **SDK → Keys**: wraps user provider/OSS key endpoints
+- **SDK → Users**: wraps invite-only registration, login/logout, profile endpoints
+- **SDK → Tokens**: wraps user API token endpoints
 
 ## Sequence Diagram (Mermaid)
 ```mermaid
@@ -55,6 +67,11 @@ System → Software
 |---|---|---|---|
 | SYS-REQ-023 | Client Library | US-CL-001 | Typed SDK |
 | SYS-REQ-024 | Client Library | US-CL-002 | Session helpers |
+| SYS-REQ-035 | Client Library | US-CL-003 | User provider keys |
+| SYS-REQ-036 | Client Library | US-CL-003 | User OSS keys |
+| SYS-REQ-037 | Client Library | US-CL-004 | Auth/profile helpers |
+| SYS-REQ-038 | Client Library | US-CL-004 | Auth/profile helpers |
+| SYS-REQ-039 | Client Library | US-CL-005 | User API tokens |
 
 ## Definition of Ready / Done
 **Ready**

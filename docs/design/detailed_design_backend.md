@@ -1,9 +1,9 @@
 # Detailed Design — Backend Service
 
-**Project**: Pluggably LLM API Gateway
+**Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Backend Service
 **Date**: January 24, 2026
-**Status**: Approved (Baseline + CR-2026-01-24-02)
+**Status**: Updated (Pending Approval)
 
 ## Overview
 This document details module responsibilities, data structures, and key flows for the backend service.
@@ -15,6 +15,7 @@ This document details module responsibilities, data structures, and key flows fo
 - **Provider Adapters**: External API normalization
 - **Local Runner**: Local inference execution
 - **Registry**: Model metadata, capabilities, availability
+- **Key Manager**: Per-user provider and OSS key storage
 - **Download Jobs**: Async model downloads, progress tracking
 - **Storage Manager**: Cache/retention, disk usage enforcement
 - **Observability**: Logs, metrics
@@ -40,6 +41,28 @@ created_at: datetime
 updated_at: datetime
 ```
 
+### Model Schema Entry
+```yaml
+id: string
+model_id: string
+schema_version: string
+schema_json: object
+created_at: datetime
+updated_at: datetime
+```
+
+### Model Documentation Entry
+```yaml
+id: string
+model_id: string
+source: huggingface
+summary: string
+usage: string
+parameters: object
+tags: [string]
+updated_at: datetime
+```
+
 ### Model Download Job
 ```yaml
 job_id: string
@@ -49,6 +72,43 @@ progress_pct: number
 error: string
 created_at: datetime
 updated_at: datetime
+```
+
+### Model Status
+```yaml
+model_id: string
+download_status: [downloading|ready|failed]
+runtime_status: [unloaded|loading|loaded|busy]
+queue_depth: integer
+memory_usage_bytes: integer
+loaded_at: datetime
+last_used_at: datetime
+updated_at: datetime
+```
+
+### Model Lifecycle Config
+```yaml
+idle_timeout_seconds: integer     # Unload after idle (0 = never)
+max_loaded_models: integer        # LRU eviction threshold
+pinned_models: [string]           # Never unload these model IDs
+default_model_text: string        # Always loaded text model
+default_model_image: string       # Always loaded image model
+default_model_3d: string          # Always loaded 3D model
+fallback_chains:
+  model_id:
+    - fallback_model_1
+    - fallback_model_2
+```
+
+### Request Queue Entry
+```yaml
+request_id: string
+user_id: string
+model_id: string
+position: integer
+estimated_wait_seconds: integer
+created_at: datetime
+status: [queued|processing|completed|cancelled]
 ```
 
 ### Model Download Request
@@ -101,6 +161,60 @@ session_id: string
 state_tokens: object
 ```
 
+### User Provider Key
+```yaml
+id: string
+user_id: string
+provider: string
+label: string
+encrypted_key: string
+created_at: datetime
+updated_at: datetime
+```
+
+### OSS Access Key
+```yaml
+id: string
+user_id: string
+label: string
+hashed_key: string
+status: [active|revoked]
+created_at: datetime
+updated_at: datetime
+```
+
+### User Profile
+```yaml
+id: string
+email: string
+password_hash: string
+status: [active|disabled]
+created_at: datetime
+updated_at: datetime
+preferences: object
+```
+
+### Invite Token
+```yaml
+id: string
+token: string
+created_by: string
+expires_at: datetime
+used_by: string
+used_at: datetime
+```
+
+### User API Token
+```yaml
+id: string
+user_id: string
+label: string
+hashed_token: string
+status: [active|revoked]
+created_at: datetime
+revoked_at: datetime
+```
+
 ### Response Delivery Options
 - **Inline (default for small payloads)**: return base64-encoded `images[]` or `mesh` directly in the JSON response.
 - **Artifact URL (recommended for large payloads)**: store outputs in a temporary artifact store and return signed URLs in the response (with expiry).
@@ -148,6 +262,94 @@ flowchart TD
 
 ```
 
+### Download Deduplication Flow
+```mermaid
+flowchart TD
+  A[Download request] --> B{Model already present?}
+  B -->|Yes| C[Return existing model]
+  B -->|No| D{Download in progress?}
+  D -->|Yes| E[Return existing job]
+  D -->|No| F[Enqueue new job]
+```
+
+### Model Lifecycle Flow
+```mermaid
+flowchart TD
+  A[Request for model] --> B{Model loaded?}
+  B -->|Yes| C{Model busy?}
+  C -->|Yes| D[Queue request]
+  C -->|No| E[Process request]
+  B -->|No| F{Model pinned/default?}
+  F -->|Yes| G[Load model - priority]
+  F -->|No| H{Room for more models?}
+  H -->|Yes| I[Load model]
+  H -->|No| J[Evict LRU model]
+  J --> I
+  G --> E
+  I --> E
+  D --> K[Return queue position]
+  K --> L[Wait for turn]
+  L --> E
+  E --> M[Update last_used_at]
+  M --> N[Start idle timer]
+```
+
+### Model Load/Unload Flow
+```mermaid
+flowchart TD
+  A[Load request] --> B[Set status: loading]
+  B --> C[Load model into memory]
+  C --> D{Success?}
+  D -->|Yes| E[Set status: loaded]
+  D -->|No| F[Set status: failed]
+  E --> G[Reset idle timer]
+  
+  H[Idle timeout] --> I{Model pinned?}
+  I -->|Yes| J[Skip unload]
+  I -->|No| K[Set status: unloaded]
+  K --> L[Free memory]
+```
+
+### Request Cancellation Flow
+```mermaid
+flowchart TD
+  A[Cancel request] --> B{Request found?}
+  B -->|No| C[Return 404]
+  B -->|Yes| D{Request status?}
+  D -->|Queued| E[Remove from queue]
+  D -->|Processing| F[Signal abort]
+  D -->|Completed| G[Return already complete]
+  E --> H[Return cancelled]
+  F --> I{Abort success?}
+  I -->|Yes| J[Return cancelled + partial]
+  I -->|No| K[Return cancel failed]
+```
+
+### Fallback Chain Flow
+```mermaid
+flowchart TD
+  A[Request with model] --> B{Model available?}
+  B -->|Yes| C[Process with model]
+  B -->|No| D{Fallback configured?}
+  D -->|No| E[Return error]
+  D -->|Yes| F[Try next in chain]
+  F --> G{Fallback available?}
+  G -->|Yes| H[Process with fallback]
+  G -->|No| F
+  H --> I[Return response + actual_model]
+```
+
+### Metadata Enrichment Flow
+  ```mermaid
+  flowchart TD
+    A[Register HF model] --> B[Fetch HF model card/metadata]
+    B --> C{Fetch success?}
+    C -->|Yes| D[Parse docs + parameters]
+    C -->|No| E[Proceed without docs]
+    D --> F[Store in registry DB]
+    E --> F
+  ```
+
 ### Startup Model Discovery Flow
 ```mermaid
 flowchart TD
@@ -183,6 +385,33 @@ flowchart TD
     E --> C
 ```
 
+  ### User Key Management Flow
+  ```mermaid
+  flowchart TD
+    A[User submits key] --> B[Authenticate user]
+    B --> C[Encrypt or hash key]
+    C --> D[Store in SQLite]
+    D --> E[Return key metadata]
+  ```
+
+  ### Invite-Only Registration Flow
+  ```mermaid
+  flowchart TD
+    A[Register request] --> B[Validate invite token]
+    B --> C{Valid?}
+    C -->|No| D[Reject]
+    C -->|Yes| E[Create user + consume invite]
+  ```
+
+  ### User API Token Flow
+  ```mermaid
+  flowchart TD
+    A[Create token] --> B[Generate token]
+    B --> C[Hash token]
+    C --> D[Store in SQLite]
+    D --> E[Return token once]
+  ```
+
 ## Error Handling Strategy
 - Standard error envelope with code, message, and details
 - Map provider errors to internal error codes
@@ -193,6 +422,7 @@ flowchart TD
 - Allow session-scoped generation for text, image, and 3D requests.
 - Provide reset and close operations that affect subsequent context retrieval.
 - Support optional `state_tokens` passthrough for iterative updates (e.g., image refinement tokens).
+- **Session state is persisted independently of model process lifecycle**: sessions survive model spindown/unload and can be resumed seamlessly after model reload.
 
 ## Model Discovery Strategy
 - Scan the configured `model_path` on startup for supported local model formats (e.g., `.gguf`).
@@ -204,11 +434,15 @@ flowchart TD
 - Provide a read-only schema endpoint that returns parameter descriptions, defaults, and examples.
 - Keep schema aligned with OpenAPI definitions and request validators.
 - Include model-selection guidance (provider:model, pattern detection) in the schema response.
+- Populate parameter docs from stored model documentation when available.
 
 ## Auth Strategy (Draft)
 - API key authentication (required)
 - JWT/OAuth optional (configurable)
 - Local-only mode for home server (optional)
+- User-scoped provider keys are stored encrypted; OSS keys stored as hashed tokens.
+- User credentials stored as salted password hashes; invite tokens are single-use.
+- User API tokens are stored hashed and are revocable.
 
 ## Configuration Schema
 Configuration is loaded via Pydantic Settings from environment variables and an optional YAML file. Environment variables override file values.
@@ -228,6 +462,8 @@ Configuration is loaded via Pydantic Settings from environment variables and an 
 | `LLM_API_ARTIFACT_BUCKET` | str | (optional) | S3 bucket for artifacts (if s3) |
 | `LLM_API_ARTIFACT_EXPIRY_SECS` | int | 3600 | Artifact URL expiry in seconds |
 | `LLM_API_PERSIST_STATE` | bool | false | Persist registry/jobs to disk |
+| `LLM_API_DB_PATH` | str | ./data/plugai.sqlite | SQLite database path |
+| `LLM_API_REQUIRE_INVITE` | bool | true | Require invite token for registration |
 | `LLM_API_OPENAI_API_KEY` | str | (optional) | OpenAI API key |
 | `LLM_API_OPENAI_BASE_URL` | str | https://api.openai.com/v1 | OpenAI base URL |
 | `LLM_API_ANTHROPIC_API_KEY` | str | (optional) | Anthropic API key |
@@ -240,6 +476,14 @@ Configuration is loaded via Pydantic Settings from environment variables and an 
 | `LLM_API_LOCAL_TEXT_MODEL_PATH` | str | (optional) | Path to local GGUF model for llama.cpp |
 | `LLM_API_LOCAL_IMAGE_MODEL_ID` | str | stabilityai/sd-turbo | Diffusers model ID for images |
 | `LLM_API_LOCAL_3D_MODEL_ID` | str | shap-e | Shap-E model ID |
+| `LLM_API_MODEL_IDLE_TIMEOUT` | int | 300 | Seconds before unloading idle model (0=never) |
+| `LLM_API_MAX_LOADED_MODELS` | int | 3 | Maximum concurrent loaded models |
+| `LLM_API_PINNED_MODELS` | str | (optional) | Comma-separated model IDs to never unload |
+| `LLM_API_DEFAULT_TEXT_MODEL` | str | (optional) | Always-loaded default text model |
+| `LLM_API_DEFAULT_IMAGE_MODEL` | str | (optional) | Always-loaded default image model |
+| `LLM_API_DEFAULT_3D_MODEL` | str | (optional) | Always-loaded default 3D model |
+| `LLM_API_MAX_QUEUE_DEPTH` | int | 100 | Maximum pending requests per model |
+| `LLM_API_REQUEST_TIMEOUT` | int | 300 | Max seconds for a single request |
 
 ### YAML Configuration File
 ```yaml
@@ -264,6 +508,9 @@ artifacts:
 
 persistence:
   enabled: false
+  db_path: "./data/plugai.sqlite"
+auth:
+  require_invite: true
 
 local:
   text_model_path: "./models/llama.gguf"
@@ -292,6 +539,30 @@ providers:
 defaults:
   model: "gpt-4"
   max_tokens: 4096
+  temperature: 0.7
+
+lifecycle:
+  idle_timeout_seconds: 300     # Unload after 5 min idle (0 = never)
+  max_loaded_models: 3          # Max concurrent models in memory
+  pinned_models:                # Never unload these
+    - "llama-7b-q4"
+  default_models:               # Always loaded, fallback during cold-start
+    text: "llama-7b-q4"
+    image: "sd-turbo"
+    3d: null
+
+queue:
+  max_depth: 100                # Max pending requests per model
+  position_update_interval: 1   # Seconds between position updates
+
+fallback:
+  global_chain:                 # Default fallback for all models
+    - "gpt-4"
+    - "gpt-3.5-turbo"
+  model_chains:                 # Per-model fallback overrides
+    "llama-70b":
+      - "llama-13b"
+      - "llama-7b"
   temperature: 0.7
 ```
 
@@ -342,6 +613,26 @@ Requirements → Design
 | SYS-REQ-019 | Parameter Documentation Strategy | |
 | SYS-REQ-020 | Session Strategy, Session Lifecycle Flow | |
 | SYS-REQ-021 | Session Strategy, Session Lifecycle Flow | |
+| SYS-REQ-033 | Model Registry Entry, Model Schema Entry | |
+| SYS-REQ-034 | Parameter Documentation Strategy | |
+| SYS-REQ-035 | User Provider Key, User Key Management Flow | |
+| SYS-REQ-036 | OSS Access Key, User Key Management Flow | |
+| SYS-REQ-037 | Invite Token, Invite-Only Registration Flow | |
+| SYS-REQ-038 | User Profile | |
+| SYS-REQ-039 | User API Token, User API Token Flow | |
+| SYS-REQ-040 | Model Documentation Entry, Metadata Enrichment Flow | |
+| SYS-REQ-042 | Model Download Flow | |
+| SYS-REQ-043 | Model Status | |
+| SYS-REQ-044 | Download Deduplication Flow | |
+| SYS-REQ-045 | Model Lifecycle Config, Model Lifecycle Flow | |
+| SYS-REQ-046 | Request Queue Entry, Model Lifecycle Flow | |
+| SYS-REQ-047 | Request Cancellation Flow | |
+| SYS-REQ-048 | Standard Request (regenerate field) | |
+| SYS-REQ-049 | Model Load/Unload Flow | |
+| SYS-REQ-050 | Model Status (runtime_status) | |
+| SYS-REQ-051 | Model Status (loaded models list) | |
+| SYS-REQ-052 | Model Lifecycle Config (default_models), Model Lifecycle Flow | |
+| SYS-REQ-053 | Fallback Chain Flow, Configuration Schema | |
 
 ## Definition of Ready / Done
 **Ready**

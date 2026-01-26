@@ -1,9 +1,9 @@
 # Detailed Design — Client Library
 
-**Project**: Pluggably LLM API Gateway
+**Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Client Library
 **Date**: January 24, 2026
-**Status**: Approved (Baseline + CR-2026-01-24-03)
+**Status**: Updated (Pending Approval)
 
 ## Overview
 Defines client-side data models, transport, and session helper behavior for Python and Dart/Flutter clients.
@@ -23,6 +23,38 @@ retries: number
 base_url: string
 api_key: string
 timeout_seconds: number
+```
+
+### User Provider Key Model
+```yaml
+id: string
+provider: string
+label: string
+created_at: datetime
+```
+
+### OSS Access Key Model
+```yaml
+id: string
+label: string
+status: [active|revoked]
+created_at: datetime
+```
+
+### User Profile Model
+```yaml
+id: string
+email: string
+preferences: object
+created_at: datetime
+```
+
+### User API Token Model
+```yaml
+id: string
+label: string
+status: [active|revoked]
+created_at: datetime
 ```
 
 ### Generate Request/Response
@@ -45,6 +77,26 @@ Matches server schema from OpenAPI; include `session_id` and `state_tokens` fiel
 - reset_session(session_id)
 - close_session(session_id)
 
+## Key Management Helpers
+- list_provider_keys()
+- create_provider_key(provider, label, key)
+- delete_provider_key(key_id)
+- list_oss_keys()
+- create_oss_key(label)
+- revoke_oss_key(key_id)
+
+## Auth/Profile Helpers
+- register_with_invite(email, password, invite_token)
+- login(email, password)
+- logout()
+- get_profile()
+- update_profile(preferences)
+
+## User API Token Helpers
+- list_user_tokens()
+- create_user_token(label)
+- revoke_user_token(token_id)
+
 ## Traceability
 Requirements → Design
 
@@ -52,6 +104,11 @@ Requirements → Design
 |---|---|---|
 | SYS-REQ-023 | Data Structures, Flow | |
 | SYS-REQ-024 | Session Helpers | |
+| SYS-REQ-035 | Key Management Helpers | |
+| SYS-REQ-036 | Key Management Helpers | |
+| SYS-REQ-037 | Auth/Profile Helpers | |
+| SYS-REQ-038 | Auth/Profile Helpers | |
+| SYS-REQ-039 | User API Token Helpers | |
 
 ## Definition of Ready / Done
 **Ready**

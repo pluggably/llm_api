@@ -39,6 +39,24 @@ curl http://localhost:8080/health
 
 ---
 
+## Frontend (PlugAI)
+
+The Flutter frontend lives in the frontend/ directory. It connects to the API gateway and provides model browsing, chat, sessions, settings, and key/token management.
+
+Quick start:
+
+```bash
+cd frontend
+flutter pub get
+flutter run -d chrome
+```
+
+Then open **Settings** in the app to set the API URL (default: `http://localhost:8000`).
+
+See [frontend/README.md](frontend/README.md) for full usage, tests, and known gaps.
+
+---
+
 ## API Usage Guide
 
 All endpoints require authentication via `X-API-Key` header.

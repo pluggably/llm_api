@@ -1,9 +1,9 @@
 # Software Requirements — Client Library
 
-**Project**: Pluggably LLM API Gateway
+**Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Client Library
 **Date**: January 24, 2026
-**Status**: Complete (Baseline + CR-2026-01-24-03)
+**Status**: Updated (Pending Approval)
 
 ## User Stories
 
@@ -48,6 +48,185 @@ So that I can create, reset, and close sessions easily
 
 ---
 
+**Story ID**: US-CL-003
+**Title**: User key management endpoints
+**Priority**: Medium
+**Story Points**: 3
+
+As a developer
+I want SDK methods to manage user provider and OSS keys
+So that the PlugAI frontend can use the client SDK for key workflows
+
+**Acceptance Criteria**:
+- [ ] SDK exposes methods for provider key CRUD endpoints
+- [ ] SDK exposes methods for OSS key creation/revocation endpoints
+- [ ] Responses are typed and errors mapped
+
+**Traceability**: SYS-REQ-035, SYS-REQ-036
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-CL-004
+**Title**: Auth and profile endpoints
+**Priority**: Medium
+**Story Points**: 3
+
+As a developer
+I want SDK methods for invite-only registration, login/logout, and profiles
+So that the PlugAI frontend can use the client SDK for auth workflows
+
+**Acceptance Criteria**:
+- [ ] SDK exposes methods for invite-based registration
+- [ ] SDK exposes login/logout and token handling helpers
+- [ ] SDK exposes profile get/update methods
+
+**Traceability**: SYS-REQ-037, SYS-REQ-038
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-CL-005
+**Title**: User API tokens endpoints
+**Priority**: Medium
+**Story Points**: 2
+
+As a developer
+I want SDK methods to create and revoke user API tokens
+So that the frontend can manage tokens via the SDK
+
+**Acceptance Criteria**:
+- [ ] SDK exposes token create/list/revoke methods
+- [ ] Token values returned only on creation
+- [ ] Errors mapped consistently
+
+**Traceability**: SYS-REQ-039
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-CL-006
+**Title**: Model download status and progress
+**Priority**: Medium
+**Story Points**: 3
+
+As a developer
+I want SDK methods to query model download status and progress
+So that the frontend can display download state
+
+**Acceptance Criteria**:
+- [ ] SDK exposes method to get model status (downloading/ready/failed)
+- [ ] SDK exposes method to get download progress for active downloads
+- [ ] SDK optionally supports SSE/WebSocket subscription for real-time updates
+
+**Traceability**: SYS-REQ-042, SYS-REQ-043
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-CL-007
+**Title**: Prepare/load model
+**Priority**: High
+**Story Points**: 2
+
+As a developer
+I want SDK methods to pre-load a model into memory
+So that I can avoid cold-start latency
+
+**Acceptance Criteria**:
+- [ ] SDK exposes loadModel(modelId) method
+- [ ] Returns loading status or completion
+- [ ] Supports async/await pattern
+
+**Traceability**: SYS-REQ-049
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-CL-008
+**Title**: Model runtime status query
+**Priority**: High
+**Story Points**: 2
+
+As a developer
+I want SDK methods to query model runtime status
+So that I know if a model is ready for requests
+
+**Acceptance Criteria**:
+- [ ] SDK exposes getModelRuntimeStatus(modelId) method
+- [ ] Returns status: unloaded, loading, loaded, busy
+- [ ] Includes queue depth if busy
+
+**Traceability**: SYS-REQ-050
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-CL-009
+**Title**: Get loaded models
+**Priority**: Medium
+**Story Points**: 2
+
+As a developer
+I want SDK methods to list currently loaded models
+So that I can monitor system state
+
+**Acceptance Criteria**:
+- [ ] SDK exposes getLoadedModels() method
+- [ ] Returns list with memory usage and load time
+
+**Traceability**: SYS-REQ-051
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-CL-010
+**Title**: Request cancellation
+**Priority**: High
+**Story Points**: 3
+
+As a developer
+I want SDK methods to cancel in-flight requests
+So that I can implement cancel buttons
+
+**Acceptance Criteria**:
+- [ ] SDK exposes cancelRequest(requestId) method
+- [ ] Request is aborted and resources freed
+- [ ] Confirmation returned
+
+**Traceability**: SYS-REQ-047
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-CL-011
+**Title**: Request queueing status
+**Priority**: Medium
+**Story Points**: 2
+
+As a developer
+I want SDK methods to query queue position
+So that I can show wait indicators
+
+**Acceptance Criteria**:
+- [ ] SDK exposes getQueuePosition(requestId) method
+- [ ] Returns position and estimated wait
+- [ ] Optionally supports SSE subscription
+
+**Traceability**: SYS-REQ-046
+
+**Status**: Not Started
+
+---
+
 ## Traceability
 System → Software
 
@@ -55,6 +234,18 @@ System → Software
 |---|---|---|---|
 | SYS-REQ-023 | Client Library | US-CL-001 | Typed SDK |
 | SYS-REQ-024 | Client Library | US-CL-002 | Session helpers |
+| SYS-REQ-035 | Client Library | US-CL-003 | User provider keys |
+| SYS-REQ-036 | Client Library | US-CL-003 | User OSS keys |
+| SYS-REQ-037 | Client Library | US-CL-004 | Auth/profile helpers |
+| SYS-REQ-038 | Client Library | US-CL-004 | Auth/profile helpers |
+| SYS-REQ-039 | Client Library | US-CL-005 | User API tokens |
+| SYS-REQ-042 | Client Library | US-CL-006 | Download status |
+| SYS-REQ-043 | Client Library | US-CL-006 | Model status |
+| SYS-REQ-046 | Client Library | US-CL-011 | Queue status |
+| SYS-REQ-047 | Client Library | US-CL-010 | Request cancellation |
+| SYS-REQ-049 | Client Library | US-CL-007 | Prepare/load model |
+| SYS-REQ-050 | Client Library | US-CL-008 | Model runtime status |
+| SYS-REQ-051 | Client Library | US-CL-009 | Get loaded models |
 
 ## Definition of Ready / Done
 **Ready**

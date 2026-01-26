@@ -18,9 +18,14 @@ class Settings(BaseSettings):
     model_path: Path = Path("./models")
     max_disk_gb: float = 100.0
 
-    api_key: str = Field(..., description="Required API key for requests")
-    jwt_secret: Optional[str] = None
-    local_only: bool = False
+    # Authentication - supports multiple methods:
+    # 1. Static API key (X-Api-Key header)
+    # 2. JWT bearer tokens (Authorization: Bearer <token>)
+    # 3. User API tokens (from user service)
+    # 4. Local-only mode (no auth required for localhost)
+    api_key: Optional[str] = Field(default=None, description="Static API key for X-Api-Key header auth")
+    jwt_secret: Optional[str] = Field(default=None, description="Secret for JWT bearer token validation")
+    local_only: bool = Field(default=False, description="If True, skip auth for localhost requests")
 
     artifact_store: Literal["local", "s3"] = "local"
     artifact_bucket: Optional[str] = None
@@ -52,6 +57,22 @@ class Settings(BaseSettings):
     local_text_model_path: Optional[Path] = None
     local_image_model_id: str = "stabilityai/sd-turbo"
     local_3d_model_id: str = "shap-e"
+
+    # Model lifecycle settings
+    max_loaded_models: int = 3
+    model_idle_timeout_seconds: int = 300  # 5 minutes
+    pinned_model_ids: str = ""  # Comma-separated list of pinned model IDs
+    
+    # Request queue settings
+    max_queue_depth: int = 100
+    max_concurrent_requests_per_model: int = 1
+    
+    # User authentication settings
+    invite_required: bool = True
+    encryption_key: Optional[str] = None  # For encrypting provider keys
+    
+    # HuggingFace integration
+    hf_token: Optional[str] = None
 
     config_file: str = "config.yaml"
 

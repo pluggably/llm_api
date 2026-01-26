@@ -58,7 +58,17 @@ auth:
         settings = get_settings()
         assert settings.port == 9000
 
-    def test_required_fields_raise_on_missing(self, monkeypatch, tmp_path):
+    def test_settings_load_without_api_key(self, monkeypatch, tmp_path):
+        """Test that settings can load without api_key since multiple auth methods are supported.
+        
+        The system supports several authentication methods:
+        - Static API key (via X-Api-Key header)
+        - JWT Bearer tokens
+        - User-scoped API tokens (database)
+        - No auth (development mode)
+        
+        Therefore, api_key is optional and missing it should not raise an error.
+        """
         # Clear all possible sources of the API key
         monkeypatch.delenv("LLM_API_API_KEY", raising=False)
         monkeypatch.delenv("LLM_API_CONFIG_FILE", raising=False)
@@ -73,8 +83,9 @@ auth:
         # Clear any cached settings
         get_settings.cache_clear()
         
-        with pytest.raises(ValidationError):
-            get_settings()
+        # Should load successfully without api_key (no auth mode)
+        settings = get_settings()
+        assert settings.api_key is None
 
     def test_default_values_applied(self, monkeypatch):
         monkeypatch.setenv("LLM_API_API_KEY", "env-key")

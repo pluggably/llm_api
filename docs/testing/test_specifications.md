@@ -159,6 +159,300 @@
   - Session lifecycle endpoints behave correctly
 - **Traceability**: SYS-REQ-023, SYS-REQ-024
 
+## Manual Test Specifications
+
+**TEST-MAN-004**: Frontend model selection and dynamic parameters
+- **Purpose**: Verify model selection and schema-driven parameter panel in the frontend
+- **Preconditions**: Frontend running; backend running; API key configured
+- **Steps**:
+  1. Open the frontend and select a text model
+  2. Open the settings pane and confirm parameter inputs render from schema
+  3. Switch to an image model and confirm parameters update dynamically
+- **Expected**:
+  - Model list and modality filtering work
+  - Parameter panel updates with the selected model schema
+- **Traceability**: SYS-REQ-025, SYS-REQ-026, SYS-REQ-027
+
+**TEST-MAN-005**: Text chat UI streaming
+- **Purpose**: Verify chat-like UI renders streaming responses
+- **Preconditions**: Frontend running; backend running with streaming enabled
+- **Steps**:
+  1. Select a text model
+  2. Send a prompt in the chat UI
+  3. Observe streaming response in the chat bubble
+- **Expected**:
+  - Response appears incrementally in the UI
+- **Traceability**: SYS-REQ-028
+
+**TEST-MAN-006**: Image generation UI
+- **Purpose**: Verify image generation UI supports gallery and downloads
+- **Preconditions**: Frontend running; backend running with image model available
+- **Steps**:
+  1. Select an image model and enter a prompt
+  2. Generate images and observe the gallery
+  3. Download an image
+- **Expected**:
+  - Images display in a gallery
+  - Download succeeds
+- **Traceability**: SYS-REQ-029
+
+**TEST-MAN-007**: 3D generation UI
+- **Purpose**: Verify 3D UI supports preview and download
+- **Preconditions**: Frontend running; backend running with 3D model available
+- **Steps**:
+  1. Select a 3D model and enter a prompt
+  2. Generate and view the 3D preview
+  3. Download the 3D asset
+- **Expected**:
+  - 3D viewer renders and supports interaction
+  - Download succeeds
+- **Traceability**: SYS-REQ-030
+
+**TEST-MAN-008**: Separate hosting configuration
+- **Purpose**: Verify web frontend can point to a separately hosted backend
+- **Preconditions**: Frontend hosted separately; backend reachable
+- **Steps**:
+  1. Configure API base URL in frontend settings
+  2. Verify requests go to the configured backend
+- **Expected**:
+  - Frontend successfully communicates with the configured backend
+- **Traceability**: SYS-REQ-031
+
+**TEST-INT-005**: Model registry persistence
+- **Purpose**: Verify model registry persists internal/external models across restarts
+- **Preconditions**: Registry storage configured
+- **Steps**:
+  1. Register or discover a model
+  2. Restart the service
+  3. Query model list
+- **Expected**:
+  - Model remains present with same metadata and parameters
+- **Traceability**: SYS-REQ-033
+
+**TEST-INT-006**: Schema registry synchronization
+- **Purpose**: Verify `/v1/schema` reflects stored model parameter schemas
+- **Preconditions**: Model registry contains schema definitions
+- **Steps**:
+  1. Query `/v1/schema` for a model
+  2. Compare to stored schema in registry
+- **Expected**:
+  - Schema matches registry definition
+- **Traceability**: SYS-REQ-034
+
+**TEST-INT-007**: Model documentation enrichment
+- **Purpose**: Verify model registry pulls docs and parameter guidance from Hugging Face
+- **Preconditions**: HF metadata endpoint reachable; model has a model card
+- **Steps**:
+  1. Register a Hugging Face model
+  2. Fetch model entry from registry
+- **Expected**:
+  - Model entry includes description/usage docs and parameter guidance if available
+  - Registration still succeeds if HF data is missing
+- **Traceability**: SYS-REQ-040
+
+**TEST-INT-008**: Async model downloads
+- **Purpose**: Verify model downloads run in background without blocking API
+- **Preconditions**: Download worker enabled
+- **Steps**:
+  1. Trigger a model download
+  2. Immediately call a standard API endpoint
+- **Expected**:
+  - API responds without waiting for download completion
+  - Download job continues in background
+- **Traceability**: SYS-REQ-042
+
+**TEST-INT-009**: Model status reporting
+- **Purpose**: Verify model list exposes download status
+- **Preconditions**: Active download in progress
+- **Steps**:
+  1. Trigger a model download
+  2. Call model list endpoint
+- **Expected**:
+  - Model status shows downloading then ready/failed
+- **Traceability**: SYS-REQ-043
+
+**TEST-INT-010**: Download deduplication
+- **Purpose**: Prevent duplicate downloads for the same model
+- **Preconditions**: Model download in progress or completed
+- **Steps**:
+  1. Trigger download for a model
+  2. Trigger the same download again
+- **Expected**:
+  - System reuses existing download or returns existing model entry
+- **Traceability**: SYS-REQ-044
+
+**TEST-INT-011**: Model lifecycle management
+- **Purpose**: Verify model loading, idle timeout, and eviction
+- **Preconditions**: Multiple models available; lifecycle config set
+- **Steps**:
+  1. Load a model
+  2. Wait for idle timeout
+  3. Verify model unloads
+  4. Load multiple models to trigger LRU eviction
+- **Expected**:
+  - Model unloads after idle timeout
+  - LRU eviction works when limit reached
+  - Pinned models never unload
+- **Traceability**: SYS-REQ-045
+
+**TEST-INT-012**: Request queueing
+- **Purpose**: Verify requests queue when resources are busy
+- **Preconditions**: Local model loaded; concurrent request limit = 1
+- **Steps**:
+  1. Send a long-running request
+  2. Immediately send a second request
+- **Expected**:
+  - Second request queues
+  - Queue position returned
+  - Second request completes after first
+- **Traceability**: SYS-REQ-046
+
+**TEST-INT-013**: Prepare/load model endpoint
+- **Purpose**: Verify model pre-loading
+- **Preconditions**: Model available but unloaded
+- **Steps**:
+  1. Call POST /v1/models/{id}/load
+  2. Poll model runtime status
+- **Expected**:
+  - Status transitions: unloaded → loading → loaded
+  - Subsequent requests are fast
+- **Traceability**: SYS-REQ-049
+
+**TEST-INT-014**: Model runtime status
+- **Purpose**: Verify runtime status in model queries
+- **Preconditions**: Model available
+- **Steps**:
+  1. Query model when unloaded
+  2. Load model and query during loading
+  3. Query when loaded
+  4. Query while busy processing
+- **Expected**:
+  - Status reflects: unloaded, loading, loaded, busy
+- **Traceability**: SYS-REQ-050
+
+**TEST-INT-015**: Get loaded models endpoint
+- **Purpose**: Verify listing of loaded models
+- **Preconditions**: At least one model loaded
+- **Steps**:
+  1. Load a model
+  2. Call GET /v1/models/loaded
+- **Expected**:
+  - Returns list of loaded models with memory usage
+- **Traceability**: SYS-REQ-051
+
+**TEST-INT-016**: Default pinned model
+- **Purpose**: Verify default model is always loaded
+- **Preconditions**: Default model configured
+- **Steps**:
+  1. Start service
+  2. Check default model status immediately
+  3. Wait for idle timeout
+  4. Check status again
+- **Expected**:
+  - Default model is loaded on startup
+  - Default model remains loaded after idle timeout
+- **Traceability**: SYS-REQ-052
+
+**TEST-INT-017**: Fallback model configuration
+- **Purpose**: Verify fallback chain works
+- **Preconditions**: Fallback chain configured
+- **Steps**:
+  1. Request with primary model unavailable
+  2. Verify fallback model serves request
+- **Expected**:
+  - Fallback model used
+  - Response indicates which model served
+- **Traceability**: SYS-REQ-053
+
+**TEST-SYS-015**: Request queueing end-to-end
+- **Purpose**: Verify queue position feedback to clients
+- **Preconditions**: Server running with queue enabled
+- **Steps**:
+  1. Send multiple concurrent requests
+  2. Observe queue position updates
+- **Expected**:
+  - Queue positions decrease as requests complete
+- **Traceability**: SYS-REQ-046
+
+**TEST-SYS-016**: Request cancellation end-to-end
+- **Purpose**: Verify request cancellation
+- **Preconditions**: Server running with cancellation enabled
+- **Steps**:
+  1. Send a long-running request
+  2. Call cancel endpoint
+  3. Verify cancellation
+- **Expected**:
+  - Request is cancelled
+  - Resources freed
+  - Appropriate response returned
+- **Traceability**: SYS-REQ-047
+
+**TEST-SYS-017**: Session survives model spindown
+- **Purpose**: Verify session state persists and is resumable after model is unloaded/spun down and reloaded
+- **Preconditions**: Server running with model lifecycle management enabled
+- **Steps**:
+  1. Create a session and send several chat messages
+  2. Wait for model idle timeout or trigger model unload
+  3. Send a new message using the same session
+  4. Observe model reload and session resumption
+- **Expected**:
+  - Session context/history is preserved after model spindown
+  - Model reloads transparently on next request
+  - Session continues with full context
+- **Traceability**: SYS-REQ-054
+
+**TEST-MAN-012**: Invite-only registration and authentication
+- **Purpose**: Verify invite-only user registration and login/logout
+- **Preconditions**: Backend running with invite requirement enabled
+- **Steps**:
+  1. Attempt registration without invite token
+  2. Register with a valid invite token
+  3. Log in and log out
+- **Expected**:
+  - Registration without invite is rejected
+  - Registration with invite succeeds
+  - Login/logout work and session/auth token is issued/cleared
+- **Traceability**: SYS-REQ-037
+
+**TEST-MAN-013**: User profile preferences
+- **Purpose**: Verify user profile preferences persist and apply
+- **Preconditions**: Authenticated user
+- **Steps**:
+  1. Set preferred model and UI defaults
+  2. Restart app or refresh session
+  3. Confirm preferences persist and apply
+- **Expected**:
+  - Preferences are saved and restored
+  - Preferred model is selected by default
+- **Traceability**: SYS-REQ-038
+
+**TEST-MAN-014**: User API tokens
+- **Purpose**: Verify user-created API tokens for LLM API access
+- **Preconditions**: Authenticated user
+- **Steps**:
+  1. Create a new API token
+  2. Use the token to call the API
+  3. Revoke the token and retry
+- **Expected**:
+  - Token grants access while active
+  - Revoked token is rejected
+- **Traceability**: SYS-REQ-039
+
+**TEST-MAN-015**: UI layout auto-switch and lock
+- **Purpose**: Verify layout switching by modality/device and user override
+- **Preconditions**: Frontend running; user profile available
+- **Steps**:
+  1. Enable auto mode and select a text model
+  2. Switch to an image/3D model
+  3. Test on mobile viewport
+  4. Lock a layout and verify no auto-switching
+- **Expected**:
+  - Text models use Chat layout
+  - Image/3D use Studio layout
+  - Mobile uses Compact layout
+  - Locked/manual modes override auto switching
+- **Traceability**: SYS-REQ-041
+
 ## Unit Test Specifications
 
 **TEST-UNIT-001**: Request validation
@@ -249,6 +543,36 @@ Requirements → Verification
 | SYS-REQ-022 | Automated | TEST-SYS-014 | tests/system/ | |
 | SYS-REQ-023 | Automated | TEST-UNIT-006, TEST-INT-003, TEST-INT-004 | tests/client/unit/, tests/client/integration/ | |
 | SYS-REQ-024 | Automated | TEST-UNIT-007, TEST-INT-003, TEST-INT-004 | tests/client/unit/, tests/client/integration/ | |
+| SYS-REQ-025 | Manual | TEST-MAN-004 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-026 | Manual | TEST-MAN-004 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-027 | Manual | TEST-MAN-004 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-028 | Manual | TEST-MAN-005 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-029 | Manual | TEST-MAN-006 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-030 | Manual | TEST-MAN-007 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-031 | Manual | TEST-MAN-008 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-032 | Manual | TEST-MAN-009 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-033 | Automated | TEST-INT-005 | tests/integration/ | |
+| SYS-REQ-034 | Automated | TEST-INT-006 | tests/integration/ | |
+| SYS-REQ-035 | Manual | TEST-MAN-010 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-036 | Manual | TEST-MAN-011 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-037 | Manual | TEST-MAN-012 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-038 | Manual | TEST-MAN-013 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-039 | Manual | TEST-MAN-014 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-040 | Automated | TEST-INT-007 | tests/integration/ | |
+| SYS-REQ-041 | Manual | TEST-MAN-015 | docs/testing/manual_test_procedures.md | |
+| SYS-REQ-042 | Automated | TEST-INT-008 | tests/integration/ | |
+| SYS-REQ-043 | Automated | TEST-INT-009 | tests/integration/ | |
+| SYS-REQ-044 | Automated | TEST-INT-010 | tests/integration/ | |
+| SYS-REQ-045 | Automated | TEST-INT-011 | tests/integration/ | Model lifecycle |
+| SYS-REQ-046 | Automated | TEST-INT-012, TEST-SYS-015 | tests/integration/, tests/system/ | Request queueing |
+| SYS-REQ-047 | Automated | TEST-SYS-016 | tests/system/ | Request cancellation |
+| SYS-REQ-048 | Manual | TEST-MAN-017 | docs/testing/manual_test_procedures.md | Regenerate |
+| SYS-REQ-049 | Automated | TEST-INT-013 | tests/integration/ | Prepare/load model |
+| SYS-REQ-050 | Automated | TEST-INT-014 | tests/integration/ | Model runtime status |
+| SYS-REQ-051 | Automated | TEST-INT-015 | tests/integration/ | Get loaded models |
+| SYS-REQ-052 | Automated | TEST-INT-016 | tests/integration/ | Default pinned model |
+| SYS-REQ-053 | Automated | TEST-INT-017 | tests/integration/ | Fallback configuration |
+| SYS-REQ-054 | Automated | TEST-SYS-017 | tests/system/ | Session survives model spindown |
 
 ## Definition of Ready / Done
 **Ready**

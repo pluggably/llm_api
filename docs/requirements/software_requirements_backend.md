@@ -1,9 +1,9 @@
 # Software Requirements — Backend Service
 
-**Project**: Pluggably LLM API Gateway
+**Project**: Pluggably LLM API Gateway + PlugAI Frontend
 **Component**: Backend Service (single deployable)
 **Date**: January 24, 2026
-**Status**: Complete (Baseline + CR-2026-01-24-02)
+**Status**: Updated (Pending Approval)
 
 ## User Stories
 
@@ -327,6 +327,372 @@ So that I can control and restart conversational context
 
 ---
 
+**Story ID**: US-017
+**Title**: Persistent model registry
+**Priority**: High
+**Story Points**: 5
+
+As an operator
+I want model metadata and schemas persisted in SQLite
+So that the registry survives restarts and can migrate to a cloud database
+
+**Acceptance Criteria**:
+- [ ] Models, schemas, and capabilities persist across restarts
+- [ ] Database migrations are versioned and repeatable
+- [ ] Registry export/import supports migration to Postgres/Supabase
+
+**Traceability**: SYS-REQ-033, SYS-NFR-013
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-018
+**Title**: Schema registry synchronization
+**Priority**: High
+**Story Points**: 3
+
+As a developer
+I want `/v1/schema` to reflect registry-stored parameter schemas
+So that clients can render accurate dynamic settings
+
+**Acceptance Criteria**:
+- [ ] `/v1/schema` is backed by stored schema definitions
+- [ ] Schema versions are tracked per model
+- [ ] Updates to registry schemas are reflected in the API response
+
+**Traceability**: SYS-REQ-034
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-019
+**Title**: Per-user provider API keys
+**Priority**: Medium
+**Story Points**: 5
+
+As a user
+I want to store my own provider API keys
+So that I can use my accounts for commercial models
+
+**Acceptance Criteria**:
+- [ ] API allows create/list/update/delete of user provider keys
+- [ ] Keys are encrypted at rest and never logged
+- [ ] Requests can use user-scoped keys when configured
+
+**Traceability**: SYS-REQ-035, SYS-NFR-012
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-020
+**Title**: User OSS access keys
+**Priority**: Medium
+**Story Points**: 5
+
+As a user
+I want to create and revoke OSS access keys
+So that I can share limited access to local models
+
+**Acceptance Criteria**:
+- [ ] API allows creation and revocation of OSS access keys
+- [ ] Keys are scoped and revocable
+- [ ] Requests with revoked keys are denied
+
+**Traceability**: SYS-REQ-036, SYS-NFR-012
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-021
+**Title**: Invite-only authentication
+**Priority**: High
+**Story Points**: 5
+
+As an operator
+I want invite-only registration and authentication
+So that access is limited to approved users
+
+**Acceptance Criteria**:
+- [ ] Registration requires a valid invite token
+- [ ] Login issues an auth token (JWT/session)
+- [ ] Logout revokes/invalidates the token
+
+**Traceability**: SYS-REQ-037
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-022
+**Title**: User profiles and preferences
+**Priority**: Medium
+**Story Points**: 3
+
+As a user
+I want preferences stored in my profile
+So that the frontend can load my default models and settings
+
+**Acceptance Criteria**:
+- [ ] Profile CRUD endpoints available
+- [ ] Preferences stored per user and returned with profile
+- [ ] Defaults applied for preferred model selection
+
+**Traceability**: SYS-REQ-038
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-023
+**Title**: User API tokens
+**Priority**: Medium
+**Story Points**: 3
+
+As a user
+I want to create and revoke private API tokens
+So that I can call the API directly
+
+**Acceptance Criteria**:
+- [ ] API supports create/list/revoke of user tokens
+- [ ] Tokens are stored hashed and only shown once on creation
+- [ ] Token auth is accepted in place of the default API key
+
+**Traceability**: SYS-REQ-039
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-024
+**Title**: Hugging Face model documentation enrichment
+**Priority**: Medium
+**Story Points**: 3
+
+As an operator
+I want model entries enriched with Hugging Face documentation and parameter guidance
+So that users understand how to use each model
+
+**Acceptance Criteria**:
+- [ ] When registering a HF model, metadata and model card content are fetched
+- [ ] Parameter guidance is stored when available
+- [ ] Failures to fetch docs do not block model registration
+
+**Traceability**: SYS-REQ-040, SYS-NFR-016
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-025
+**Title**: Background model downloads with status and dedupe
+**Priority**: High
+**Story Points**: 5
+
+As an operator
+I want model downloads to run asynchronously with status and reuse
+So that the API/UI remain responsive and duplicate downloads are avoided
+
+**Acceptance Criteria**:
+- [ ] Downloads run in background workers and do not block API responses
+- [ ] Model list exposes status: downloading/ready/failed
+- [ ] Repeated download requests reuse existing artifacts or in-progress jobs
+
+**Traceability**: SYS-REQ-042, SYS-REQ-043, SYS-REQ-044
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-026
+**Title**: Model lifecycle management
+**Priority**: High
+**Story Points**: 8
+
+As an operator
+I want to configure model lifecycle (idle timeout, pinning, concurrent limits)
+So that memory usage is optimized and predictable
+
+**Acceptance Criteria**:
+- [ ] Models unload after configurable idle timeout
+- [ ] Pinned models remain loaded and never auto-unload
+- [ ] Concurrent loaded models are limited by configuration
+- [ ] LRU eviction when limit is reached
+
+**Traceability**: SYS-REQ-045
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-027
+**Title**: Request queueing
+**Priority**: High
+**Story Points**: 5
+
+As a user
+I want requests to queue when inference resources are busy
+So that requests don't fail due to resource contention
+
+**Acceptance Criteria**:
+- [ ] Requests queue when model/GPU is busy
+- [ ] Queue position is returned in response headers or body
+- [ ] Queue updates are available via polling or SSE
+- [ ] Configurable max queue depth
+
+**Traceability**: SYS-REQ-046
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-028
+**Title**: Request cancellation
+**Priority**: High
+**Story Points**: 5
+
+As a user
+I want to cancel in-flight generation requests
+So that I can stop long-running or unwanted requests
+
+**Acceptance Criteria**:
+- [ ] API exposes cancel endpoint with request_id
+- [ ] Cancellation stops inference and frees resources
+- [ ] Response indicates cancellation status
+- [ ] Partial results optionally returned
+
+**Traceability**: SYS-REQ-047
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-029
+**Title**: Regenerate/retry responses
+**Priority**: Medium
+**Story Points**: 3
+
+As a user
+I want to regenerate a response with same or modified parameters
+So that I can get alternative outputs
+
+**Acceptance Criteria**:
+- [ ] API accepts regenerate request referencing original request_id or session turn
+- [ ] Parameters can be overridden for regeneration
+- [ ] New response replaces or appends to session history (configurable)
+
+**Traceability**: SYS-REQ-048
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-030
+**Title**: Prepare/load model endpoint
+**Priority**: High
+**Story Points**: 5
+
+As a developer
+I want to pre-load a model into memory before making requests
+So that I avoid cold-start latency
+
+**Acceptance Criteria**:
+- [ ] API exposes POST /v1/models/{id}/load endpoint
+- [ ] Returns immediately with loading status
+- [ ] Status can be polled via model runtime status
+- [ ] Load respects concurrent model limits (queues or errors)
+
+**Traceability**: SYS-REQ-049
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-031
+**Title**: Model runtime status
+**Priority**: High
+**Story Points**: 3
+
+As a developer
+I want to query model runtime status (unloaded/loading/loaded/busy)
+So that I know if a model is ready for requests
+
+**Acceptance Criteria**:
+- [ ] GET /v1/models/{id} includes runtime_status field
+- [ ] Status values: unloaded, loading, loaded, busy
+- [ ] Busy includes queue depth if applicable
+
+**Traceability**: SYS-REQ-050
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-032
+**Title**: Get loaded models endpoint
+**Priority**: Medium
+**Story Points**: 2
+
+As an operator
+I want to list currently loaded models
+So that I can monitor memory usage
+
+**Acceptance Criteria**:
+- [ ] GET /v1/models/loaded returns list of loaded models
+- [ ] Includes memory usage estimate per model
+- [ ] Includes load time and last used time
+
+**Traceability**: SYS-REQ-051
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-033
+**Title**: Default pinned model
+**Priority**: High
+**Story Points**: 3
+
+As an operator
+I want a default model always loaded and available
+So that users have immediate response while other models load
+
+**Acceptance Criteria**:
+- [ ] Default model loads on startup
+- [ ] Default model never auto-unloads
+- [ ] Requests can specify "use default while loading" behavior
+- [ ] Default model configurable per modality
+
+**Traceability**: SYS-REQ-052
+
+**Status**: Not Started
+
+---
+
+**Story ID**: US-034
+**Title**: Fallback model configuration
+**Priority**: Medium
+**Story Points**: 5
+
+As an operator
+I want to configure fallback chains for models
+So that requests succeed even if primary model fails
+
+**Acceptance Criteria**:
+- [ ] Fallback chain configurable per model or globally
+- [ ] Chain tries models in order until success
+- [ ] Response indicates which model actually served the request
+- [ ] Fallback used during cold-start of primary model
+
+**Traceability**: SYS-REQ-053
+
+**Status**: Not Started
+
+---
+
 ## Traceability
 System → Software
 
@@ -354,6 +720,26 @@ System → Software
 | SYS-REQ-020 | Backend | US-015 | Session management |
 | SYS-REQ-021 | Backend | US-016 | Session lifecycle |
 | SYS-REQ-022 | Backend | US-015, US-016 | Session state handoff |
+| SYS-REQ-033 | Backend | US-017 | Registry persistence |
+| SYS-REQ-034 | Backend | US-018 | Schema registry sync |
+| SYS-REQ-035 | Backend | US-019 | User provider keys |
+| SYS-REQ-036 | Backend | US-020 | User OSS keys |
+| SYS-REQ-037 | Backend | US-021 | Invite-only auth |
+| SYS-REQ-038 | Backend | US-022 | User profiles/preferences |
+| SYS-REQ-039 | Backend | US-023 | User API tokens |
+| SYS-REQ-040 | Backend | US-024 | HF documentation enrichment |
+| SYS-REQ-042 | Backend | US-025 | Async downloads |
+| SYS-REQ-043 | Backend | US-025 | Model status |
+| SYS-REQ-044 | Backend | US-025 | Download dedupe |
+| SYS-REQ-045 | Backend | US-026 | Model lifecycle |
+| SYS-REQ-046 | Backend | US-027 | Request queueing |
+| SYS-REQ-047 | Backend | US-028 | Request cancellation |
+| SYS-REQ-048 | Backend | US-029 | Regenerate/retry |
+| SYS-REQ-049 | Backend | US-030 | Prepare/load model |
+| SYS-REQ-050 | Backend | US-031 | Model runtime status |
+| SYS-REQ-051 | Backend | US-032 | Get loaded models |
+| SYS-REQ-052 | Backend | US-033 | Default pinned model |
+| SYS-REQ-053 | Backend | US-034 | Fallback configuration |
 
 ## Definition of Ready / Done
 **Ready**
