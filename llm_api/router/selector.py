@@ -161,13 +161,16 @@ def _adapter_for_provider(
             base_url=settings.xai_base_url,
         )
     
-    # Local provider - select modality-specific adapter
+    # Local provider - extract HuggingFace token from user credentials
+    hf_token = (provider_credentials or {}).get("huggingface", {}).get("api_key")
+
     if modality == "image":
         return LocalImageAdapter(
             model_path=model_path,
             model_id=model_id,
             modality=modality,
             parameters=parameters,
+            hf_token=hf_token,
         )
     elif modality == "3d":
         return Local3DAdapter(
@@ -175,6 +178,7 @@ def _adapter_for_provider(
             model_id=model_id,
             modality=modality,
             parameters=parameters,
+            hf_token=hf_token,
         )
     else:
         return LocalTextAdapter(
@@ -182,6 +186,7 @@ def _adapter_for_provider(
             model_id=model_id,
             modality=modality,
             parameters=parameters,
+            hf_token=hf_token,
         )
 
 

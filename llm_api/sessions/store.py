@@ -33,6 +33,7 @@ class SessionRecord:
     last_used_at: Optional[datetime] = None
     messages: List[SessionMessage] = field(default_factory=list)
     state_tokens: Optional[Dict[str, Any]] = None
+    message_count: int = 0
 
     def touch(self) -> None:
         self.last_used_at = datetime.now(timezone.utc)
@@ -43,6 +44,7 @@ class SessionRecord:
             title=self.title,
             created_at=self.created_at,
             last_used_at=self.last_used_at,
+            message_count=self.message_count,
         )
 
     def to_public(self, include_messages: bool = False) -> Session:
@@ -55,6 +57,7 @@ class SessionRecord:
             title=self.title,
             created_at=self.created_at,
             last_used_at=self.last_used_at,
+            message_count=self.message_count,
             messages=messages,
         )
 
@@ -136,15 +139,22 @@ class SessionStore:
                 DbSessionRecord.created_at.desc(),
             )
             records = db.execute(query).scalars().all()
-            return [
-                SessionSummary(
-                    id=record.id,
-                    title=record.title,
-                    created_at=record.created_at,
-                    last_used_at=record.last_used_at,
+            result = []
+            for record in records:
+                msg_count_query = select(func.count(DbSessionMessageRecord.id)).where(
+                    DbSessionMessageRecord.session_id == record.id,
                 )
-                for record in records
-            ]
+                msg_count = db.execute(msg_count_query).scalar() or 0
+                result.append(
+                    SessionSummary(
+                        id=record.id,
+                        title=record.title,
+                        created_at=record.created_at,
+                        last_used_at=record.last_used_at,
+                        message_count=msg_count,
+                    )
+                )
+            return result
 
     def get_session(self, session_id: str) -> Optional[SessionRecord]:
         self._cleanup_expired()
@@ -169,6 +179,7 @@ class SessionStore:
                 last_used_at=record.last_used_at,
                 title=record.title,
                 state_tokens=record.state_tokens,
+                message_count=len(messages),
                 messages=[
                     SessionMessage(
                         id=message.id,
@@ -258,6 +269,16 @@ class SessionStore:
                 DbSessionMessageRecord.session_id == session_id,
             )
             next_seq = (db.execute(next_seq_query).scalar() or 0) + 1
+
+            # Auto-name: set title from first user prompt when untitled
+            if record.title is None and next_seq == 1:
+                prompt = input_payload.get("prompt", "") or ""
+                if prompt:
+                    truncated = prompt[:50].strip()
+                    if len(prompt) > 50:
+                        truncated = f"{prompt[:47].strip()}..."
+                    record.title = truncated
+
             message = DbSessionMessageRecord(
                 id=str(uuid.uuid4()),
                 session_id=session_id,
@@ -279,6 +300,7 @@ class SessionStore:
                 last_used_at=record.last_used_at,
                 title=record.title,
                 state_tokens=record.state_tokens,
+                message_count=next_seq,
                 messages=[],
             )
 

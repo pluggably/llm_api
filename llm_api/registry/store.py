@@ -31,11 +31,16 @@ def _model_record_to_info(record: ModelRecord) -> ModelInfo:
         source = ModelSource(type=source_type, uri=record.source_uri)
     
     capabilities = None
-    if record.max_context_tokens or record.output_formats or record.hardware_requirements:
+    if (record.max_context_tokens or record.output_formats or record.hardware_requirements
+            or record.image_input_max_edge or record.image_input_max_pixels
+            or record.image_input_formats):
         capabilities = ModelCapabilities(
             max_context_tokens=record.max_context_tokens,
             output_formats=record.output_formats or [],
             hardware_requirements=record.hardware_requirements or [],
+            image_input_max_edge=record.image_input_max_edge,
+            image_input_max_pixels=record.image_input_max_pixels,
+            image_input_formats=record.image_input_formats,
         )
     
     is_default = record.id in {
@@ -92,6 +97,9 @@ def _model_info_to_record(model: ModelInfo, existing: Optional[ModelRecord] = No
         record.max_context_tokens = model.capabilities.max_context_tokens
         record.output_formats = model.capabilities.output_formats
         record.hardware_requirements = model.capabilities.hardware_requirements
+        record.image_input_max_edge = model.capabilities.image_input_max_edge
+        record.image_input_max_pixels = model.capabilities.image_input_max_pixels
+        record.image_input_formats = model.capabilities.image_input_formats
     
     return record
 

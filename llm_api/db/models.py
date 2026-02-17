@@ -44,6 +44,9 @@ class ModelRecord(Base):
     max_context_tokens: Mapped[Optional[int]] = mapped_column(Integer)
     output_formats: Mapped[Optional[List[str]]] = mapped_column(JSON)
     hardware_requirements: Mapped[Optional[List[str]]] = mapped_column(JSON)
+    image_input_max_edge: Mapped[Optional[int]] = mapped_column(Integer)
+    image_input_max_pixels: Mapped[Optional[int]] = mapped_column(Integer)
+    image_input_formats: Mapped[Optional[List[str]]] = mapped_column(JSON)
     
     # Metadata
     description: Mapped[Optional[str]] = mapped_column(Text)

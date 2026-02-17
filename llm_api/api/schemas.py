@@ -62,12 +62,16 @@ class GenerateResponse(BaseModel):
     state_tokens: Optional[Dict[str, Any]] = None
     output: GenerateOutput
     usage: Usage
+    warnings: Optional[List[str]] = None
 
 
 class ModelCapabilities(BaseModel):
     max_context_tokens: Optional[int] = None
     output_formats: Optional[List[str]] = None
     hardware_requirements: Optional[List[str]] = None
+    image_input_max_edge: Optional[int] = None
+    image_input_max_pixels: Optional[int] = None
+    image_input_formats: Optional[List[str]] = None
 
 
 class ModelSource(BaseModel):
@@ -111,6 +115,7 @@ class Session(BaseModel):
     title: Optional[str] = None
     created_at: datetime
     last_used_at: Optional[datetime] = None
+    message_count: int = 0
     messages: Optional[List["SessionMessageResponse"]] = None
 
 
@@ -130,6 +135,7 @@ class SessionSummary(BaseModel):
     title: Optional[str] = None
     created_at: datetime
     last_used_at: Optional[datetime] = None
+    message_count: int = 0
 
 
 class SessionList(BaseModel):
@@ -293,8 +299,6 @@ class CancelRequestResponse(BaseModel):
 
 # Regenerate schemas
 class RegenerateRequest(BaseModel):
-    request_id: Optional[str] = None
-    session_id: Optional[str] = None
-    turn_index: Optional[int] = None
+    model: Optional[str] = None
     parameters: Optional[GenerateParameters] = None
-    replace_history: bool = True
+    stream: bool = False

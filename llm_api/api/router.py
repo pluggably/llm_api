@@ -18,6 +18,7 @@ from llm_api.api.schemas import (
     ModelDownloadRequest,
     ModelSearchResponse,
     ModelSearchResult,
+    RegenerateRequest,
     Usage,
     ModelInfo,
     ProvidersResponse,
@@ -42,6 +43,7 @@ from llm_api.router.selector import (
 from llm_api.adapters import ProviderError, map_provider_error
 from llm_api.sessions import get_session_store
 from llm_api.users import get_user_service
+from llm_api.processing.images import preprocess_images
 
 
 api_router = APIRouter()
@@ -60,6 +62,32 @@ def _build_usage(prompt: str | None, output_text: str | None) -> Usage:
 def _artifact_inline_threshold_bytes() -> int:
     settings = get_settings()
     return settings.artifact_inline_threshold_kb * 1024
+
+
+def _absolute_artifact_url(base_url: str, relative_url: str) -> str:
+    """Convert a relative artifact URL to an absolute URL."""
+    base = base_url.rstrip("/")
+    if relative_url.startswith("http://") or relative_url.startswith("https://"):
+        return relative_url
+    return f"{base}{relative_url}"
+
+
+def _make_output_urls_absolute(output: GenerateOutput, base_url: str) -> GenerateOutput:
+    """Rewrite artifact URLs in a GenerateOutput to be absolute."""
+    if output.artifacts:
+        from llm_api.api.schemas import Artifact
+        updated = []
+        for a in output.artifacts:
+            updated.append(
+                Artifact(
+                    id=a.id,
+                    type=a.type,
+                    url=_absolute_artifact_url(base_url, a.url),
+                    expires_at=a.expires_at,
+                )
+            )
+        output = output.model_copy(update={"artifacts": updated})
+    return output
 
 
 def _provider_model_catalog() -> dict[str, list[ModelInfo]]:
@@ -158,7 +186,7 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
     user_id = user.get("user_id") if isinstance(user, dict) else None
     provider_credentials: dict[str, dict[str, str]] = {}
     if user_id:
-        for provider in ["openai", "anthropic", "google", "azure", "xai"]:
+        for provider in ["openai", "anthropic", "google", "azure", "xai", "huggingface"]:
             creds = user_service.get_provider_credentials(user_id, provider)
             if creds:
                 provider_credentials[provider] = creds
@@ -201,6 +229,24 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
     model_id = selection.model.id
     # Use the model's modality - clients don't need to specify it
     effective_modality = selection.model.modality
+
+    # Image preprocessing — resize/re-encode per model constraints
+    preprocessing_warnings: list[str] = []
+    if request.input.images:
+        caps = selection.model.capabilities
+        pp_result = preprocess_images(
+            request.input.images,
+            model_max_edge=caps.image_input_max_edge if caps else None,
+            model_max_pixels=caps.image_input_max_pixels if caps else None,
+            model_formats=caps.image_input_formats if caps else None,
+            provider=selection.model.provider,
+        )
+        request = request.model_copy(
+            update={"input": request.input.model_copy(update={"images": pp_result.images})}
+        )
+        preprocessing_warnings = pp_result.warnings
+
+    base_url = str(http_request.base_url)
 
     # Handle streaming requests
     if request.stream:
@@ -300,6 +346,9 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                                 artifacts=artifacts or None,
                             )
                     
+                    # Rewrite artifact URLs to absolute
+                    output = _make_output_urls_absolute(output, base_url)
+
                     response = GenerateResponse(
                         request_id=request_id,
                         model=model_id,
@@ -308,6 +357,7 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                         state_tokens=effective_state_tokens,
                         output=output,
                         usage=Usage(),
+                        warnings=preprocessing_warnings or None,
                     )
                     payload = json.dumps(jsonable_encoder(response))
                     import logging
@@ -384,6 +434,9 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
             detail={"code": error.code, "message": error.message},
         ) from exc
 
+    # Rewrite artifact URLs to absolute
+    output = _make_output_urls_absolute(output, base_url)
+
     response = GenerateResponse(
         request_id=request_id,
         model=model_id,
@@ -392,6 +445,7 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
         state_tokens=effective_state_tokens,
         output=output,
         usage=usage,
+        warnings=preprocessing_warnings or None,
     )
     if session:
         session_store.append_message(
@@ -455,9 +509,73 @@ async def reset_session(session_id: str) -> JSONResponse:
 
 
 @api_router.post("/v1/sessions/{session_id}/generate", dependencies=[Depends(require_api_key)], response_model=None)
-async def generate_with_session(session_id: str, request: GenerateRequest) -> JSONResponse | StreamingResponse:
+async def generate_with_session(session_id: str, request: GenerateRequest, http_request: Request) -> JSONResponse | StreamingResponse:
     session_request = request.model_copy(update={"session_id": session_id})
-    return await generate(session_request)
+    return await generate(session_request, http_request)
+
+
+@api_router.post("/v1/sessions/{session_id}/regenerate", dependencies=[Depends(require_api_key)], response_model=None)
+async def regenerate(session_id: str, request: RegenerateRequest, http_request: Request) -> JSONResponse | StreamingResponse:
+    """Re-generate the last assistant response in a session.
+
+    Finds the last user turn, removes the last assistant message, and
+    replays through the generate pipeline with the same (or overridden) model/parameters.
+    """
+    session_store = get_session_store()
+    session = session_store.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    if session.status != "active":
+        raise HTTPException(status_code=400, detail="Session is closed")
+    if not session.messages:
+        raise HTTPException(status_code=400, detail="Session has no messages to regenerate")
+
+    # Find last user turn
+    last_user_msg = None
+    for msg in reversed(session.messages):
+        user_prompt = msg.input.get("prompt") if msg.input else None
+        if user_prompt:
+            last_user_msg = msg
+            break
+
+    if not last_user_msg:
+        raise HTTPException(status_code=400, detail="No user message found in session")
+
+    # Remove last message (the assistant response being regenerated)
+    from sqlalchemy import delete as sa_delete
+    from llm_api.db.database import get_db_session as get_db
+    from llm_api.db.models import SessionMessageRecord as DbMsgRecord
+
+    with get_db() as db:
+        # Delete the last message by highest sequence number
+        from sqlalchemy import select as sa_select, func as sa_func
+        max_seq = db.execute(
+            sa_select(sa_func.max(DbMsgRecord.sequence)).where(
+                DbMsgRecord.session_id == session_id,
+            )
+        ).scalar()
+        if max_seq is not None:
+            db.execute(
+                sa_delete(DbMsgRecord).where(
+                    DbMsgRecord.session_id == session_id,
+                    DbMsgRecord.sequence == max_seq,
+                )
+            )
+
+    # Build a generate request from the original user input
+    prompt = last_user_msg.input.get("prompt", "")
+    images = last_user_msg.input.get("images")
+    modality = last_user_msg.modality
+
+    gen_request = GenerateRequest(
+        model=request.model,
+        session_id=session_id,
+        modality=modality,
+        input={"prompt": prompt, "images": images},
+        parameters=request.parameters,
+        stream=request.stream,
+    )
+    return await generate(gen_request, http_request)
 
 
 @api_router.get("/v1/models", dependencies=[Depends(require_api_key)])

@@ -20,12 +20,14 @@ class LocalAdapter(Adapter):
         modality: str = "text",
         parameters: Optional[Dict[str, Any]] = None,
         simulate_error: ProviderError | None = None,
+        hf_token: Optional[str] = None,
     ):
         self.model_path = Path(model_path) if model_path else None
         self.model_id = model_id
         self.modality = modality
         self.parameters = parameters or {}
         self.simulate_error = simulate_error
+        self.hf_token = hf_token
         # Lazy import to avoid circular dependency
         from llm_api.runner.local_runner import LocalRunner
         self.runner: LocalRunnerType = LocalRunner()
@@ -37,6 +39,7 @@ class LocalAdapter(Adapter):
             prompt,
             model_path=self.model_path,
             model_id=self.model_id,
+            hf_token=self.hf_token,
         )
 
     def generate_image(self, prompt: str) -> bytes:

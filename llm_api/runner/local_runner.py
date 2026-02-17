@@ -64,7 +64,40 @@ def _load_hf_text_model(
     return tokenizer, model
 
 
-def _generate_hf_text(prompt: str, model_id_or_path: str, settings: Any) -> str:
+def _handle_hf_access_error(exc: OSError, model_id: str) -> None:
+    """Convert HuggingFace access errors into user-friendly ProviderErrors.
+
+    Handles gated-repo and private-repo errors by raising a ``ProviderError``
+    with an actionable message.  If the error is not an access issue the
+    original ``OSError`` is re-raised.
+    """
+    msg = str(exc).lower()
+    if "gated repo" in msg:
+        raise ProviderError(
+            403,
+            f"The model '{model_id}' is a gated HuggingFace model. "
+            f"To use it:\n"
+            f"1. Visit https://huggingface.co/{model_id} and accept the model license.\n"
+            f"2. Add your HuggingFace access token in your profile (Settings → Provider Keys → HuggingFace).\n"
+            f"If you have already done both, make sure the token has 'read' scope.",
+        ) from exc
+    if "repository" in msg and "not found" in msg or "private" in msg:
+        raise ProviderError(
+            404,
+            f"The model '{model_id}' could not be found on HuggingFace. "
+            f"It may be private or require authentication. "
+            f"Add your HuggingFace access token in your profile (Settings → Provider Keys → HuggingFace).",
+        ) from exc
+    # Not an access error — re-raise as-is
+    raise
+
+
+def _generate_hf_text(
+    prompt: str,
+    model_id_or_path: str,
+    settings: Any,
+    hf_token: Optional[str] = None,
+) -> str:
     try:
         torch = importlib.import_module("torch")
     except ImportError as exc:
@@ -84,13 +117,19 @@ def _generate_hf_text(prompt: str, model_id_or_path: str, settings: Any) -> str:
     else:
         device = "cpu"
 
-    tokenizer, model = _load_hf_text_model(
-        target,
-        local_files_only,
-        settings.hf_token,
-        device,
-        settings.hf_trust_remote_code,
-    )
+    # User-provided token takes precedence over global config
+    effective_token = hf_token or settings.hf_token
+
+    try:
+        tokenizer, model = _load_hf_text_model(
+            target,
+            local_files_only,
+            effective_token,
+            device,
+            settings.hf_trust_remote_code,
+        )
+    except OSError as exc:
+        _handle_hf_access_error(exc, model_id_or_path)
 
     if hasattr(tokenizer, "apply_chat_template"):
         prompt_text = tokenizer.apply_chat_template(
@@ -144,9 +183,15 @@ def _load_diffusion(model_id: str, local_path: Optional[str] = None):
                 pipe = diffusion_pipeline.from_single_file(str(full_path))
         else:
             # Fall back to HuggingFace download
-            pipe = diffusion_pipeline.from_pretrained(model_id)
+            try:
+                pipe = diffusion_pipeline.from_pretrained(model_id)
+            except OSError as exc:
+                _handle_hf_access_error(exc, model_id)
     else:
-        pipe = diffusion_pipeline.from_pretrained(model_id)
+        try:
+            pipe = diffusion_pipeline.from_pretrained(model_id)
+        except OSError as exc:
+            _handle_hf_access_error(exc, model_id)
     
     # Move to appropriate device
     if torch.backends.mps.is_available():
@@ -315,6 +360,7 @@ class LocalRunner:
         prompt: str,
         model_path: Optional[Path] = None,
         model_id: Optional[str] = None,
+        hf_token: Optional[str] = None,
     ) -> str:
         settings = get_settings()
 
@@ -324,7 +370,7 @@ class LocalRunner:
             output = llama(prompt, max_tokens=128)
             return output["choices"][0]["text"]
 
-        return _generate_hf_text(prompt, target, settings)
+        return _generate_hf_text(prompt, target, settings, hf_token=hf_token)
 
     def generate_image(
         self,

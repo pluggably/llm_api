@@ -69,7 +69,7 @@ def client_factory(tmp_path):
 def patch_local_runner(monkeypatch):
     from llm_api.runner.local_runner import LocalRunner
 
-    def _generate_text(self, prompt, model_path=None, model_id=None):
+    def _generate_text(self, prompt, model_path=None, model_id=None, hf_token=None):
         if prompt == "RAISE_ERROR":
             raise ProviderError(500, "Simulated error")
         return f"local:{prompt}"

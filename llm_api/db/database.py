@@ -39,6 +39,8 @@ def init_db() -> None:
     Base.metadata.create_all(bind=_engine)
 
     _ensure_session_title_column(_engine)
+    _ensure_model_image_columns(_engine)
+    _ensure_provider_keys_columns(_engine)
 
 
 def _ensure_session_title_column(engine: Engine) -> None:
@@ -52,6 +54,40 @@ def _ensure_session_title_column(engine: Engine) -> None:
                 conn.commit()
     except Exception:
         # Best-effort migration for SQLite; ignore if not applicable
+        pass
+
+
+def _ensure_model_image_columns(engine: Engine) -> None:
+    """Ensure models table has image constraint columns (CR-002)."""
+    new_cols = {
+        "image_input_max_edge": "INTEGER",
+        "image_input_max_pixels": "INTEGER",
+        "image_input_formats": "JSON",
+    }
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(models)"))
+            existing = {row[1] for row in result}
+            for col, typ in new_cols.items():
+                if col not in existing:
+                    conn.execute(text(f"ALTER TABLE models ADD COLUMN {col} {typ}"))
+            conn.commit()
+    except Exception:
+        pass
+
+
+def _ensure_provider_keys_columns(engine: Engine) -> None:
+    """Ensure provider_keys table has credential_type column."""
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(provider_keys)"))
+            existing = {row[1] for row in result}
+            if "credential_type" not in existing:
+                conn.execute(
+                    text("ALTER TABLE provider_keys ADD COLUMN credential_type VARCHAR(50) NOT NULL DEFAULT 'api_key'")
+                )
+                conn.commit()
+    except Exception:
         pass
 
 
