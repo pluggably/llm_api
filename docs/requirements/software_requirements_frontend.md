@@ -97,12 +97,13 @@ I want a gallery view for image generations
 So that I can view and download results
 
 **Acceptance Criteria**:
-- [ ] Gallery shows generated images for the current session
-- [ ] Loading placeholder shown while awaiting response
-- [ ] Download action is available per image
+- [x] Gallery shows generated images for the current session using artifact URLs
+- [x] Loading placeholder shown while awaiting response
+- [x] Download action is available per image (saves original file)
+- [x] Clicking an image opens a larger preview
 
 **Traceability**: SYS-REQ-029
-**Status**: Not Started
+**Status**: Testing
 
 ---
 
@@ -116,11 +117,12 @@ I want a 3D preview for 3D outputs
 So that I can inspect results before download
 
 **Acceptance Criteria**:
-- [ ] 3D viewer renders model and supports rotate/zoom
-- [ ] Download action is available
+- [x] 3D viewer renders the mesh artifact and supports rotate/zoom
+- [x] Download action is available for the mesh artifact (OBJ)
+- [x] Viewer shows a loading state and error message on failure
 
 **Traceability**: SYS-REQ-030
-**Status**: Not Started
+**Status**: Testing
 
 ---
 
@@ -137,6 +139,7 @@ So that context is preserved per session
 - [x] New session creation calls `/v1/sessions`
 - [x] Session list shows recent sessions
 - [x] Switching sessions changes conversation history
+- [x] Sending a chat message with no active session creates one automatically
 
 **Traceability**: SYS-REQ-032
 **Status**: Complete
@@ -155,9 +158,11 @@ So that I can connect to a self-hosted backend
 **Acceptance Criteria**:
 - [x] Settings screen allows editing base URL
 - [x] Requests use configured base URL
+- [ ] Default base URL is `http://localhost:8080`
+- [ ] Settings hint text reflects the default base URL
 
 **Traceability**: SYS-REQ-031
-**Status**: Complete
+**Status**: In Progress
 
 ---
 
@@ -211,9 +216,11 @@ So that access is controlled
 - [x] Registration requires a valid invite token
 - [x] Login returns a session/auth token
 - [x] Logout clears local session and tokens
+- [ ] Unauthenticated users are routed to Login before accessing any app pages
+- [ ] Authenticated users land on Chat after app launch/login
 
 **Traceability**: SYS-REQ-037
-**Status**: Complete
+**Status**: In Progress
 
 ---
 
@@ -547,6 +554,29 @@ So that I can verify the backend is reachable
 
 ---
 
+**Story ID**: US-FE-029
+**Title**: Image inputs for multimodal prompts
+**Priority**: High
+**Story Points**: 5
+
+As a user
+I want to attach images to my prompts (upload, paste, URL)
+So that models that support image input can use them as context
+
+**Acceptance Criteria**:
+- [ ] User can attach images via file upload, clipboard paste, and URL
+- [ ] Attached images are previewed and removable before sending
+- [ ] Images are sent in `input.images` with the prompt
+- [ ] Images are attached to the next prompt only (not global)
+- [ ] Client-side resizing limits images to 1024px longest edge and a configurable total size limit
+- [ ] Settings allow adjusting the total attachment size limit (default 10MB)
+- [ ] Errors are shown for unsupported formats or blocked URL fetches
+
+**Traceability**: SYS-REQ-070
+**Status**: Not Started
+
+---
+
 ## Traceability: System → Software
 
 | System Req ID | Software Component | User Story ID(s) | Notes |
@@ -583,6 +613,7 @@ So that I can verify the backend is reachable
 | SYS-REQ-066 | Frontend | US-FE-026 | Session naming |
 | SYS-REQ-067 | Frontend | US-FE-027 | Message timestamps |
 | SYS-REQ-068 | Frontend | US-FE-028 | Connection test |
+| SYS-REQ-070 | Frontend | US-FE-029 | Image input attachments |
 
 ## Definition of Done
 - User stories and acceptance criteria defined

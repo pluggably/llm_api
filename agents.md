@@ -8,11 +8,12 @@ This document defines the standard workflow for system and software development 
 ### Change Control (Post-Approval)
 - Once Phase 4 approval is granted, requirements and designs are treated as *baselined*.
 - Any change request must be handled as a mini V-cycle:
-  1. Update impacted stakeholder/system/software requirements (and IDs)
-  2. Update impacted architecture/design diagrams and interface contracts
+  1. Identify which artifacts are actually impacted (not all changes affect all levels)
+  2. Update only the impacted requirements, architecture, designs, and interface contracts
   3. Update impacted test specifications and test stubs
-  4. Re-run the Phase 4 review for the impacted scope
+  4. Re-run the Phase 4 review for the impacted scope only
 - No implementation work for changed scope begins until re-approval is granted.
+- **Scope-appropriate updates**: If a change only affects implementation details, do not force updates to stakeholder or system requirements that remain valid.
 
 ### Definition of Ready (DoR) / Definition of Done (DoD)
 - Each phase deliverable must include a short checklist stating it is Ready/Done.
@@ -35,6 +36,46 @@ This document defines the standard workflow for system and software development 
 ### Risks & Threats (Lightweight)
 - For each project or major feature, list top risks (delivery/tech/ops) and mitigations.
 - For systems handling external input or secrets, include a lightweight threat assessment (e.g., STRIDE bullets) and mitigations.
+
+### Bug Fix Process
+When a user reports a bug or issue, follow this process:
+
+1. **Triage & Root Cause Analysis**
+   - Investigate the issue to understand the root cause
+   - Document findings: what is broken, why, and what components are affected
+   - Classify the fix scope:
+     - **Trivial**: Typo, config error, single-line fix with no design impact → May proceed directly with user acknowledgment
+     - **Localized**: Bug in implementation that doesn't change interfaces or design → Propose fix, get approval, implement
+     - **Architectural**: Requires changes to interfaces, data models, or design → Full change management (see below)
+
+2. **Change Proposal (for Localized and Architectural fixes)**
+   - Document the proposed change:
+     - **Problem**: What is broken and the root cause
+     - **Proposed Solution**: High-level description of the fix
+     - **Impact Assessment**: Which components, interfaces, or designs are affected
+     - **Alternatives Considered**: Other approaches and why they were rejected (if applicable)
+   - Present to user for review before any implementation
+
+3. **Approval Gate**
+   - **STOP and WAIT** for explicit user approval before implementing
+   - User may request changes or ask clarifying questions
+   - Only proceed after `APPROVED` is received
+
+4. **Implementation & Verification**
+   - Update affected documentation (interfaces, designs, tests) as needed
+   - Implement the fix
+   - Run relevant tests
+   - Present summary for Phase 6.5 Pre-Push Review
+
+### Incremental Change Guidance
+- **Not all changes require updating all documentation levels.**
+- If stakeholder requirements are stable, do not force updates to them.
+- If system requirements are stable, do not force updates to them.
+- Update only the artifacts that are actually impacted:
+  - Interface change → Update interface contracts and affected designs
+  - Implementation bug → May only need code fix and test updates
+  - New capability → May require new software requirements and design, but not necessarily new stakeholder/system requirements
+- Always maintain traceability for changed items.
 
 ## Workflow Phases
 

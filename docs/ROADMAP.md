@@ -100,6 +100,11 @@
 - [ ] **Fine-tuned Model Support**: Host and serve fine-tuned models
 
 ### Performance & Scalability
+- [ ] **Queue-Based Generation with Progress**: Replace blocking generation with async queue
+  - POST /v1/generate queues request and returns immediately with request_id
+  - Client polls GET /v1/requests/{id}/status for progress (0-100%)
+  - SSE mode pushes progress events: queued → processing (with %) → complete
+  - Enables progress bars for slow models like image diffusion
 - [ ] **WebSocket Support**: Real-time updates for downloads, status, queues
 - [ ] **Response Caching**: Cache identical requests (temperature=0)
 - [ ] **Batch Processing API**: Process multiple requests in one call

@@ -206,7 +206,7 @@ The Flutter frontend SDK (`frontend/lib/sdk/api_client.dart`) was calling API en
 
 ### Backend Changes
 
-**Component**: `src/llm_api/api/router.py`, `src/llm_api/api/schemas.py`
+**Component**: `llm_api/api/router.py`, `llm_api/api/schemas.py`
 
 #### SW-REQ-CR001-008: Add Session Update Endpoint
 **Story**: As a backend developer, I want to provide a PUT endpoint for session updates.
@@ -372,8 +372,8 @@ The Flutter frontend SDK (`frontend/lib/sdk/api_client.dart`) was calling API en
 - `frontend/test/sdk/models_test.dart` - Updated model test expectations
 
 **Backend**:
-- `src/llm_api/api/router.py` - Added PUT `/v1/sessions/{session_id}` endpoint
-- `src/llm_api/api/schemas.py` - Added `UpdateSessionRequest` schema
+- `llm_api/api/router.py` - Added PUT `/v1/sessions/{session_id}` endpoint
+- `llm_api/api/schemas.py` - Added `UpdateSessionRequest` schema
 
 **Documentation**:
 - `docs/api_endpoints.md` - Created comprehensive API reference

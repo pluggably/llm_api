@@ -44,6 +44,26 @@ class TestStoragePolicy:
         assert "old" in evicted
         assert registry.get_model("old").status == "evicted"
 
+    def test_evicts_directory_model_paths(self, tmp_model_dir, mock_registry):
+        registry = ModelRegistry()
+        model_dir = tmp_model_dir / "hf" / "microsoft__phi3"
+        model_dir.mkdir(parents=True)
+        (model_dir / "config.json").write_text("{}")
+        (model_dir / "weights.bin").write_bytes(b"x" * 1024)
+        model = ModelInfo(
+            id="phi3",
+            name="phi3",
+            version="latest",
+            modality="text",
+            local_path=str(model_dir.relative_to(tmp_model_dir)),
+        )
+        registry.add_model(model)
+        manager = StorageManager(model_path=tmp_model_dir, max_disk_gb=0.0000001)
+        evicted = manager.enforce_storage_limit(registry)
+        assert "phi3" in evicted
+        assert registry.get_model("phi3").status == "evicted"
+        assert not model_dir.exists()
+
     def test_eviction_prefers_failed_downloads(self, tmp_model_dir, mock_registry):
         registry = ModelRegistry()
         failed_path = tmp_model_dir / "failed.bin"

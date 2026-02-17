@@ -22,7 +22,7 @@ void main() {
       addTearDown(container.dispose);
 
       final url = container.read(baseUrlProvider);
-      expect(url, contains('localhost'));
+      expect(url, 'http://localhost:8080');
     });
 
     test('reads from shared preferences', () async {
@@ -91,6 +91,30 @@ void main() {
 
       container.read(authTokenProvider.notifier).state = null;
       expect(container.read(authTokenProvider), isNull);
+    });
+  });
+
+  group('attachmentMaxMbProvider', () {
+    test('defaults to 10MB when no preference set', () {
+      final container = ProviderContainer(overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ]);
+      addTearDown(container.dispose);
+
+      final maxMb = container.read(attachmentMaxMbProvider);
+      expect(maxMb, 10.0);
+    });
+
+    test('reads from shared preferences', () async {
+      await prefs.setDouble('attachment_max_mb', 25.0);
+
+      final container = ProviderContainer(overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+      ]);
+      addTearDown(container.dispose);
+
+      final maxMb = container.read(attachmentMaxMbProvider);
+      expect(maxMb, 25.0);
     });
   });
 

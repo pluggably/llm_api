@@ -19,15 +19,28 @@ void main() {
           return http.Response(
             jsonEncode({
               'data': [
-                {'id': 'gpt-4', 'name': 'GPT-4', 'provider': 'openai', 'modality': 'text'},
-                {'id': 'llama-3', 'name': 'Llama 3', 'provider': 'meta', 'modality': 'text'},
+                {
+                  'id': 'gpt-4',
+                  'name': 'GPT-4',
+                  'provider': 'openai',
+                  'modality': 'text',
+                },
+                {
+                  'id': 'llama-3',
+                  'name': 'Llama 3',
+                  'provider': 'meta',
+                  'modality': 'text',
+                },
               ],
             }),
             200,
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final models = await client.listModels();
 
         expect(models.length, 2);
@@ -37,17 +50,19 @@ void main() {
 
       test('throws ApiException on error', () async {
         final mockClient = MockClient((request) async {
-          return http.Response(
-            jsonEncode({'detail': 'Unauthorized'}),
-            401,
-          );
+          return http.Response(jsonEncode({'detail': 'Unauthorized'}), 401);
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
 
         expect(
           () => client.listModels(),
-          throwsA(isA<ApiException>().having((e) => e.statusCode, 'statusCode', 401)),
+          throwsA(
+            isA<ApiException>().having((e) => e.statusCode, 'statusCode', 401),
+          ),
         );
       });
     });
@@ -57,12 +72,20 @@ void main() {
         final mockClient = MockClient((request) async {
           expect(request.url.path, '/v1/models/gpt-4');
           return http.Response(
-            jsonEncode({'id': 'gpt-4', 'name': 'GPT-4', 'provider': 'openai', 'modality': 'text'}),
+            jsonEncode({
+              'id': 'gpt-4',
+              'name': 'GPT-4',
+              'provider': 'openai',
+              'modality': 'text',
+            }),
             200,
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final model = await client.getModel('gpt-4');
 
         expect(model.id, 'gpt-4');
@@ -85,7 +108,10 @@ void main() {
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final schema = await client.getSchema('gpt-4');
 
         expect(schema.modelId, 'gpt-4');
@@ -98,7 +124,6 @@ void main() {
         final mockClient = MockClient((request) async {
           expect(request.method, 'POST');
           expect(request.url.path, '/v1/models/llama-3/load');
-          final body = jsonDecode(request.body);
           // model_id is now in path, not body
           return http.Response(
             jsonEncode({'model_id': 'llama-3', 'status': 'loading'}),
@@ -106,7 +131,10 @@ void main() {
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final response = await client.loadModel('llama-3');
 
         expect(response.modelId, 'llama-3');
@@ -124,7 +152,10 @@ void main() {
           return http.Response('{}', 200);
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         await client.unloadModel('llama-3');
         // No exception means success
       });
@@ -153,7 +184,10 @@ void main() {
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final sessions = await client.listSessions();
 
         expect(sessions.length, 2);
@@ -174,7 +208,10 @@ void main() {
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final session = await client.createSession();
 
         expect(session.id, 'new-session');
@@ -187,7 +224,10 @@ void main() {
           return http.Response('', 204);
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         await client.deleteSession('session-1');
         // No exception means success
       });
@@ -206,15 +246,24 @@ void main() {
             jsonEncode({
               'id': 'gen-1',
               'choices': [
-                {'message': {'content': 'Hi there!'}, 'finish_reason': 'stop'}
+                {
+                  'message': {'content': 'Hi there!'},
+                  'finish_reason': 'stop',
+                },
               ],
             }),
             200,
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
-        final response = await client.generate(modelId: 'gpt-4', prompt: 'Hello');
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
+        final response = await client.generate(
+          modelId: 'gpt-4',
+          prompt: 'Hello',
+        );
 
         expect(response.content, 'Hi there!');
       });
@@ -226,16 +275,19 @@ void main() {
           expect(request.method, 'POST');
           expect(request.url.path, '/v1/users/login');
           return http.Response(
-            jsonEncode({
-              'access_token': 'jwt-token',
-              'token_type': 'bearer',
-            }),
+            jsonEncode({'access_token': 'jwt-token', 'token_type': 'bearer'}),
             200,
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
-        final auth = await client.login(email: 'test@example.com', password: 'password');
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
+        final auth = await client.login(
+          email: 'test@example.com',
+          password: 'password',
+        );
 
         expect(auth.accessToken, 'jwt-token');
       });
@@ -247,15 +299,15 @@ void main() {
           final body = jsonDecode(request.body);
           expect(body['invite_token'], 'invite-123');
           return http.Response(
-            jsonEncode({
-              'access_token': 'new-token',
-              'token_type': 'bearer',
-            }),
+            jsonEncode({'access_token': 'new-token', 'token_type': 'bearer'}),
             200,
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final auth = await client.register(
           email: 'new@example.com',
           password: 'password',
@@ -274,7 +326,10 @@ void main() {
           return http.Response(jsonEncode({'data': []}), 200);
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         client.setAuthToken('my-token');
         await client.listModels();
 
@@ -288,13 +343,20 @@ void main() {
           expect(request.url.path, '/v1/users/tokens');
           return http.Response(
             jsonEncode([
-              {'id': 'token-1', 'name': 'Token 1', 'created_at': '2026-01-26T10:00:00Z'},
+              {
+                'id': 'token-1',
+                'name': 'Token 1',
+                'created_at': '2026-01-26T10:00:00Z',
+              },
             ]),
             200,
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final tokens = await client.listUserTokens();
 
         expect(tokens.length, 1);
@@ -315,7 +377,10 @@ void main() {
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final token = await client.createUserToken(name: 'API Token');
 
         expect(token.token, 'secret-value');
@@ -333,14 +398,17 @@ void main() {
                 'provider': 'openai',
                 'credential_type': 'api_key',
                 'masked_key': 'sk-****',
-                'created_at': '2026-01-26T10:00:00Z'
+                'created_at': '2026-01-26T10:00:00Z',
               },
             ]),
             200,
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final keys = await client.listProviderKeys();
 
         expect(keys.length, 1);
@@ -366,8 +434,14 @@ void main() {
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
-        final key = await client.addProviderKey(provider: 'anthropic', apiKey: 'sk-ant-123');
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
+        final key = await client.addProviderKey(
+          provider: 'anthropic',
+          apiKey: 'sk-ant-123',
+        );
 
         expect(key.provider, 'anthropic');
       });
@@ -387,7 +461,10 @@ void main() {
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final status = await client.getModelStatus('gpt-4');
 
         expect(status.modelId, 'gpt-4');
@@ -407,7 +484,10 @@ void main() {
           );
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         final models = await client.getLoadedModels();
 
         expect(models.length, 1);
@@ -421,16 +501,53 @@ void main() {
           return http.Response('{}', 200);
         });
 
-        client = LlmApiClient(baseUrl: 'http://localhost:8000', httpClient: mockClient);
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
         await client.cancelRequest('req-123');
         // No exception means success
       });
     });
   });
 
+  group('generate with images', () {
+    test('includes images in input payload', () async {
+      final mockClient = MockClient((request) async {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        final input = body['input'] as Map<String, dynamic>;
+        expect(input['images'], isNotNull);
+        expect((input['images'] as List).length, 1);
+        return http.Response(
+          jsonEncode({
+            'id': 'gen-1',
+            'modality': 'text',
+            'output': {'text': 'ok'},
+          }),
+          200,
+        );
+      });
+
+      final client = LlmApiClient(
+        baseUrl: 'http://localhost:8000',
+        httpClient: mockClient,
+      );
+
+      await client.generate(
+        modelId: 'gpt-4',
+        prompt: 'hello',
+        images: ['data:image/png;base64,AAA'],
+      );
+    });
+  });
+
   group('ApiException', () {
     test('toString includes status code and message', () {
-      final exception = ApiException(404, 'Not found', detail: 'Model not found');
+      final exception = ApiException(
+        404,
+        'Not found',
+        detail: 'Model not found',
+      );
 
       expect(exception.toString(), contains('404'));
       expect(exception.toString(), contains('Model not found'));

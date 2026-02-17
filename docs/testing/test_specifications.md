@@ -316,6 +316,18 @@ Use the script documented in [docs/ops/test_reporting.md](docs/ops/test_reportin
   - Green check on success, error message on failure
 - **Traceability**: SYS-REQ-068
 
+**TEST-MAN-018**: Image inputs in chat
+- **Purpose**: Validate image upload, paste, and URL attachments
+- **Preconditions**: Frontend running; model that supports image input
+- **Steps**:
+  1. Attach an image via upload/paste/URL
+  2. Send a prompt
+  3. Verify image is sent and rendered in the user message
+- **Expected**:
+  - Images are attached and sent with the prompt
+  - Errors shown for invalid formats or blocked URLs
+- **Traceability**: SYS-REQ-070
+
 **TEST-MAN-CR001-001**: API endpoint reference review
 - **Purpose**: Verify API endpoint reference is complete and accurate
 - **Steps**:

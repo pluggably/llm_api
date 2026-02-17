@@ -1,0 +1,213 @@
+{"protocolVersion":"0.1.1","runnerVersion":"1.26.3","pid":42038,"type":"start","time":0}
+{"suite":{"id":0,"platform":"vm","path":"/Users/hg/dev/code/pluggably/llm_api/frontend/test/features/pages_test.dart"},"type":"suite","time":0}
+{"test":{"id":1,"name":"loading /Users/hg/dev/code/pluggably/llm_api/frontend/test/features/pages_test.dart","suiteID":0,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":0}
+{"suite":{"id":2,"platform":"vm","path":"/Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"suite","time":2}
+{"test":{"id":3,"name":"loading /Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart","suiteID":2,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":2}
+{"suite":{"id":4,"platform":"vm","path":"/Users/hg/dev/code/pluggably/llm_api/frontend/test/widget_test.dart"},"type":"suite","time":2}
+{"test":{"id":5,"name":"loading /Users/hg/dev/code/pluggably/llm_api/frontend/test/widget_test.dart","suiteID":4,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":2}
+{"suite":{"id":6,"platform":"vm","path":"/Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"suite","time":2}
+{"test":{"id":7,"name":"loading /Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart","suiteID":6,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":2}
+{"suite":{"id":8,"platform":"vm","path":"/Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"suite","time":2}
+{"test":{"id":9,"name":"loading /Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart","suiteID":8,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":2}
+{"suite":{"id":10,"platform":"vm","path":"/Users/hg/dev/code/pluggably/llm_api/frontend/test/widgets/widgets_test.dart"},"type":"suite","time":3}
+{"test":{"id":11,"name":"loading /Users/hg/dev/code/pluggably/llm_api/frontend/test/widgets/widgets_test.dart","suiteID":10,"groupIDs":[],"metadata":{"skip":false,"skipReason":null},"line":null,"column":null,"url":null},"type":"testStart","time":3}
+{"count":6,"time":3,"type":"allSuites"}
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+
+[{"event":"test.startedProcess","params":{"vmServiceUri":null}}]
+{"testID":3,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1444}
+{"group":{"id":12,"suiteID":2,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":12,"line":null,"column":null,"url":null},"type":"group","time":1446}
+{"group":{"id":13,"suiteID":2,"parentID":12,"name":"baseUrlProvider","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":17,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"group","time":1446}
+{"test":{"id":14,"name":"baseUrlProvider defaults to localhost when no preference set","suiteID":2,"groupIDs":[12,13],"metadata":{"skip":false,"skipReason":null},"line":18,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1446}
+{"testID":1,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1449}
+{"group":{"id":15,"suiteID":0,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":null,"column":null,"url":null},"type":"group","time":1450}
+{"group":{"id":16,"suiteID":0,"parentID":15,"name":"ModelsPage","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":22,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/features/pages_test.dart"},"type":"group","time":1450}
+{"test":{"id":17,"name":"ModelsPage displays loading indicator initially","suiteID":0,"groupIDs":[15,16],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":23,"root_column":5,"root_url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/features/pages_test.dart"},"type":"testStart","time":1450}
+{"testID":14,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1471}
+{"test":{"id":18,"name":"baseUrlProvider reads from shared preferences","suiteID":2,"groupIDs":[12,13],"metadata":{"skip":false,"skipReason":null},"line":28,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1471}
+{"testID":18,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1473}
+{"test":{"id":19,"name":"baseUrlProvider can be updated","suiteID":2,"groupIDs":[12,13],"metadata":{"skip":false,"skipReason":null},"line":40,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1473}
+{"testID":19,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1476}
+{"group":{"id":20,"suiteID":2,"parentID":12,"name":"authTokenProvider","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":51,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"group","time":1477}
+{"test":{"id":21,"name":"authTokenProvider initially null when no preference set","suiteID":2,"groupIDs":[12,20],"metadata":{"skip":false,"skipReason":null},"line":52,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1477}
+{"testID":21,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1478}
+{"test":{"id":22,"name":"authTokenProvider reads from shared preferences","suiteID":2,"groupIDs":[12,20],"metadata":{"skip":false,"skipReason":null},"line":62,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1478}
+{"testID":22,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1480}
+{"test":{"id":23,"name":"authTokenProvider can be updated","suiteID":2,"groupIDs":[12,20],"metadata":{"skip":false,"skipReason":null},"line":74,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1480}
+{"testID":5,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1482}
+{"group":{"id":24,"suiteID":4,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":null,"column":null,"url":null},"type":"group","time":1482}
+{"test":{"id":25,"name":"App renders correctly","suiteID":4,"groupIDs":[24],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":11,"root_column":3,"root_url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/widget_test.dart"},"type":"testStart","time":1482}
+{"testID":23,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1482}
+{"test":{"id":26,"name":"authTokenProvider can be cleared","suiteID":2,"groupIDs":[12,20],"metadata":{"skip":false,"skipReason":null},"line":84,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1482}
+{"testID":26,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1484}
+{"group":{"id":27,"suiteID":2,"parentID":12,"name":"selectedModelIdProvider","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":97,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"group","time":1485}
+{"test":{"id":28,"name":"selectedModelIdProvider initially null","suiteID":2,"groupIDs":[12,27],"metadata":{"skip":false,"skipReason":null},"line":98,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1485}
+{"testID":28,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1486}
+{"test":{"id":29,"name":"selectedModelIdProvider can be set","suiteID":2,"groupIDs":[12,27],"metadata":{"skip":false,"skipReason":null},"line":107,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1487}
+{"testID":29,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1489}
+{"group":{"id":30,"suiteID":2,"parentID":12,"name":"selectedModalityProvider","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":118,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"group","time":1489}
+{"test":{"id":31,"name":"selectedModalityProvider initially null (all modalities)","suiteID":2,"groupIDs":[12,30],"metadata":{"skip":false,"skipReason":null},"line":119,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1489}
+{"testID":31,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1490}
+{"test":{"id":32,"name":"selectedModalityProvider can filter by modality","suiteID":2,"groupIDs":[12,30],"metadata":{"skip":false,"skipReason":null},"line":128,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1491}
+{"testID":32,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1493}
+{"group":{"id":33,"suiteID":2,"parentID":12,"name":"selectedSessionIdProvider","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":139,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"group","time":1493}
+{"test":{"id":34,"name":"selectedSessionIdProvider initially null","suiteID":2,"groupIDs":[12,33],"metadata":{"skip":false,"skipReason":null},"line":140,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/state/providers_test.dart"},"type":"testStart","time":1493}
+{"testID":34,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1495}
+{"testID":7,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1509}
+{"group":{"id":35,"suiteID":6,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":23,"line":null,"column":null,"url":null},"type":"group","time":1509}
+{"group":{"id":36,"suiteID":6,"parentID":35,"name":"Model","metadata":{"skip":false,"skipReason":null},"testCount":4,"line":7,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1509}
+{"test":{"id":37,"name":"Model fromJson parses correctly","suiteID":6,"groupIDs":[35,36],"metadata":{"skip":false,"skipReason":null},"line":8,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1509}
+{"testID":37,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1520}
+{"test":{"id":38,"name":"Model fromJson handles missing optional fields","suiteID":6,"groupIDs":[35,36],"metadata":{"skip":false,"skipReason":null},"line":29,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1520}
+{"testID":38,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1522}
+{"test":{"id":39,"name":"Model fromJson parses status correctly","suiteID":6,"groupIDs":[35,36],"metadata":{"skip":false,"skipReason":null},"line":43,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1522}
+{"testID":39,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1523}
+{"test":{"id":40,"name":"Model equality works correctly","suiteID":6,"groupIDs":[35,36],"metadata":{"skip":false,"skipReason":null},"line":53,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1523}
+{"testID":40,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1525}
+{"group":{"id":41,"suiteID":6,"parentID":35,"name":"ModelSchema","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":71,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1525}
+{"test":{"id":42,"name":"ModelSchema fromJson parses parameters correctly","suiteID":6,"groupIDs":[35,41],"metadata":{"skip":false,"skipReason":null},"line":72,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1525}
+{"testID":42,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1527}
+{"test":{"id":43,"name":"ModelSchema fromJson handles empty properties","suiteID":6,"groupIDs":[35,41],"metadata":{"skip":false,"skipReason":null},"line":104,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1527}
+{"testID":43,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1529}
+{"group":{"id":44,"suiteID":6,"parentID":35,"name":"SchemaParameter","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":115,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1529}
+{"test":{"id":45,"name":"SchemaParameter fromJson parses all fields","suiteID":6,"groupIDs":[35,44],"metadata":{"skip":false,"skipReason":null},"line":116,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1529}
+{"testID":45,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1530}
+{"group":{"id":46,"suiteID":6,"parentID":35,"name":"Message","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":138,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1530}
+{"test":{"id":47,"name":"Message fromJson parses correctly","suiteID":6,"groupIDs":[35,46],"metadata":{"skip":false,"skipReason":null},"line":139,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1530}
+{"testID":47,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1535}
+{"test":{"id":48,"name":"Message toJson serializes correctly","suiteID":6,"groupIDs":[35,46],"metadata":{"skip":false,"skipReason":null},"line":155,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1535}
+{"testID":48,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1537}
+{"group":{"id":49,"suiteID":6,"parentID":35,"name":"Session","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":172,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1537}
+{"test":{"id":50,"name":"Session fromJson parses with messages","suiteID":6,"groupIDs":[35,49],"metadata":{"skip":false,"skipReason":null},"line":173,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1537}
+{"testID":50,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1539}
+{"test":{"id":51,"name":"Session fromJson handles empty messages","suiteID":6,"groupIDs":[35,49],"metadata":{"skip":false,"skipReason":null},"line":206,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1539}
+{"testID":51,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1540}
+{"group":{"id":52,"suiteID":6,"parentID":35,"name":"SessionSummary","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":218,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1540}
+{"test":{"id":53,"name":"SessionSummary fromJson parses correctly","suiteID":6,"groupIDs":[35,52],"metadata":{"skip":false,"skipReason":null},"line":219,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1541}
+{"testID":53,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1542}
+{"group":{"id":54,"suiteID":6,"parentID":35,"name":"GenerationResponse","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":236,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1542}
+{"test":{"id":55,"name":"GenerationResponse fromJson parses chat completion format","suiteID":6,"groupIDs":[35,54],"metadata":{"skip":false,"skipReason":null},"line":237,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1542}
+{"testID":9,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1547}
+{"group":{"id":56,"suiteID":8,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":22,"line":null,"column":null,"url":null},"type":"group","time":1548}
+{"group":{"id":57,"suiteID":8,"parentID":56,"name":"LlmApiClient","metadata":{"skip":false,"skipReason":null},"testCount":20,"line":12,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1548}
+{"group":{"id":58,"suiteID":8,"parentID":57,"name":"LlmApiClient listModels","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":15,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1548}
+{"test":{"id":59,"name":"LlmApiClient listModels returns list of models on success","suiteID":8,"groupIDs":[56,57,58],"metadata":{"skip":false,"skipReason":null},"line":16,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1548}
+{"testID":55,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1548}
+{"test":{"id":60,"name":"GenerationResponse fromJson parses legacy text format","suiteID":6,"groupIDs":[35,54],"metadata":{"skip":false,"skipReason":null},"line":261,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1548}
+{"testID":60,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1549}
+{"group":{"id":61,"suiteID":6,"parentID":35,"name":"LifecycleStatus","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":278,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1549}
+{"test":{"id":62,"name":"LifecycleStatus fromJson parses correctly","suiteID":6,"groupIDs":[35,61],"metadata":{"skip":false,"skipReason":null},"line":279,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1550}
+{"testID":62,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1551}
+{"group":{"id":63,"suiteID":6,"parentID":35,"name":"LoadedModel","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":294,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1551}
+{"test":{"id":64,"name":"LoadedModel fromJson parses correctly","suiteID":6,"groupIDs":[35,63],"metadata":{"skip":false,"skipReason":null},"line":295,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1551}
+{"testID":64,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1553}
+{"group":{"id":65,"suiteID":6,"parentID":35,"name":"RequestStatus","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":310,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1553}
+{"test":{"id":66,"name":"RequestStatus fromJson parses with queue info","suiteID":6,"groupIDs":[35,65],"metadata":{"skip":false,"skipReason":null},"line":311,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1553}
+{"testID":66,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1554}
+{"group":{"id":67,"suiteID":6,"parentID":35,"name":"AuthResponse","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":328,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1554}
+{"test":{"id":68,"name":"AuthResponse fromJson parses correctly","suiteID":6,"groupIDs":[35,67],"metadata":{"skip":false,"skipReason":null},"line":329,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1554}
+{"testID":68,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1556}
+{"test":{"id":69,"name":"AuthResponse fromJson parses with user","suiteID":6,"groupIDs":[35,67],"metadata":{"skip":false,"skipReason":null},"line":343,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1556}
+{"testID":69,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1557}
+{"group":{"id":70,"suiteID":6,"parentID":35,"name":"UserProfile","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":361,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1557}
+{"test":{"id":71,"name":"UserProfile fromJson parses correctly","suiteID":6,"groupIDs":[35,70],"metadata":{"skip":false,"skipReason":null},"line":362,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1557}
+{"testID":71,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1558}
+{"group":{"id":72,"suiteID":6,"parentID":35,"name":"UserToken","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":378,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1559}
+{"test":{"id":73,"name":"UserToken fromJson parses correctly","suiteID":6,"groupIDs":[35,72],"metadata":{"skip":false,"skipReason":null},"line":379,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1559}
+{"testID":73,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1560}
+{"group":{"id":74,"suiteID":6,"parentID":35,"name":"UserTokenWithSecret","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":395,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1560}
+{"test":{"id":75,"name":"UserTokenWithSecret fromJson includes token secret","suiteID":6,"groupIDs":[35,74],"metadata":{"skip":false,"skipReason":null},"line":396,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1560}
+{"testID":75,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1562}
+{"group":{"id":76,"suiteID":6,"parentID":35,"name":"ProviderKey","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":411,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"group","time":1562}
+{"test":{"id":77,"name":"ProviderKey fromJson parses correctly","suiteID":6,"groupIDs":[35,76],"metadata":{"skip":false,"skipReason":null},"line":412,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/models_test.dart"},"type":"testStart","time":1562}
+{"testID":77,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1563}
+{"testID":59,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1564}
+{"test":{"id":78,"name":"LlmApiClient listModels throws ApiException on error","suiteID":8,"groupIDs":[56,57,58],"metadata":{"skip":false,"skipReason":null},"line":38,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1564}
+{"testID":78,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1569}
+{"group":{"id":79,"suiteID":8,"parentID":57,"name":"LlmApiClient getModel","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":55,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1569}
+{"test":{"id":80,"name":"LlmApiClient getModel returns single model on success","suiteID":8,"groupIDs":[56,57,79],"metadata":{"skip":false,"skipReason":null},"line":56,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1569}
+{"testID":80,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1571}
+{"group":{"id":81,"suiteID":8,"parentID":57,"name":"LlmApiClient getSchema","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":73,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1571}
+{"test":{"id":82,"name":"LlmApiClient getSchema returns schema for model","suiteID":8,"groupIDs":[56,57,81],"metadata":{"skip":false,"skipReason":null},"line":74,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1571}
+{"testID":82,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1574}
+{"group":{"id":83,"suiteID":8,"parentID":57,"name":"LlmApiClient loadModel","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":96,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1575}
+{"test":{"id":84,"name":"LlmApiClient loadModel sends load request correctly","suiteID":8,"groupIDs":[56,57,83],"metadata":{"skip":false,"skipReason":null},"line":97,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1575}
+{"testID":84,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1578}
+{"group":{"id":85,"suiteID":8,"parentID":57,"name":"LlmApiClient unloadModel","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":117,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1578}
+{"test":{"id":86,"name":"LlmApiClient unloadModel sends unload request correctly","suiteID":8,"groupIDs":[56,57,85],"metadata":{"skip":false,"skipReason":null},"line":118,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1578}
+{"testID":86,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1580}
+{"group":{"id":87,"suiteID":8,"parentID":57,"name":"LlmApiClient sessions","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":133,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1580}
+{"test":{"id":88,"name":"LlmApiClient sessions listSessions returns sessions","suiteID":8,"groupIDs":[56,57,87],"metadata":{"skip":false,"skipReason":null},"line":134,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1580}
+{"testID":11,"result":"success","skipped":false,"hidden":true,"type":"testDone","time":1586}
+{"group":{"id":89,"suiteID":10,"parentID":null,"name":"","metadata":{"skip":false,"skipReason":null},"testCount":6,"line":null,"column":null,"url":null},"type":"group","time":1586}
+{"group":{"id":90,"suiteID":10,"parentID":89,"name":"ChatBubble","metadata":{"skip":false,"skipReason":null},"testCount":6,"line":10,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/widgets/widgets_test.dart"},"type":"group","time":1586}
+{"test":{"id":91,"name":"ChatBubble displays user message on the right","suiteID":10,"groupIDs":[89,90],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":11,"root_column":5,"root_url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/widgets/widgets_test.dart"},"type":"testStart","time":1586}
+{"testID":88,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1587}
+{"test":{"id":92,"name":"LlmApiClient sessions createSession creates new session","suiteID":8,"groupIDs":[56,57,87],"metadata":{"skip":false,"skipReason":null},"line":163,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1587}
+{"testID":92,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1590}
+{"test":{"id":93,"name":"LlmApiClient sessions deleteSession calls correct endpoint","suiteID":8,"groupIDs":[56,57,87],"metadata":{"skip":false,"skipReason":null},"line":183,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1590}
+{"testID":93,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1592}
+{"group":{"id":94,"suiteID":8,"parentID":57,"name":"LlmApiClient generate","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":196,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1592}
+{"test":{"id":95,"name":"LlmApiClient generate sends generation request correctly","suiteID":8,"groupIDs":[56,57,94],"metadata":{"skip":false,"skipReason":null},"line":197,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1592}
+{"testID":95,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1595}
+{"group":{"id":96,"suiteID":8,"parentID":57,"name":"LlmApiClient auth","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":223,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1595}
+{"test":{"id":97,"name":"LlmApiClient auth login returns auth response","suiteID":8,"groupIDs":[56,57,96],"metadata":{"skip":false,"skipReason":null},"line":224,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1595}
+{"testID":97,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1597}
+{"test":{"id":98,"name":"LlmApiClient auth register with invite token","suiteID":8,"groupIDs":[56,57,96],"metadata":{"skip":false,"skipReason":null},"line":243,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1597}
+{"testID":98,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1599}
+{"group":{"id":99,"suiteID":8,"parentID":57,"name":"LlmApiClient auth token","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":269,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1599}
+{"test":{"id":100,"name":"LlmApiClient auth token setAuthToken adds Authorization header","suiteID":8,"groupIDs":[56,57,99],"metadata":{"skip":false,"skipReason":null},"line":270,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1599}
+{"testID":100,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1601}
+{"group":{"id":101,"suiteID":8,"parentID":57,"name":"LlmApiClient user tokens","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":285,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1601}
+{"test":{"id":102,"name":"LlmApiClient user tokens listUserTokens returns tokens","suiteID":8,"groupIDs":[56,57,101],"metadata":{"skip":false,"skipReason":null},"line":286,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1601}
+{"testID":102,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1603}
+{"test":{"id":103,"name":"LlmApiClient user tokens createUserToken returns token with secret","suiteID":8,"groupIDs":[56,57,101],"metadata":{"skip":false,"skipReason":null},"line":304,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1603}
+{"testID":103,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1605}
+{"group":{"id":104,"suiteID":8,"parentID":57,"name":"LlmApiClient provider keys","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":325,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1606}
+{"test":{"id":105,"name":"LlmApiClient provider keys listProviderKeys returns keys","suiteID":8,"groupIDs":[56,57,104],"metadata":{"skip":false,"skipReason":null},"line":326,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1606}
+{"testID":105,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1607}
+{"test":{"id":106,"name":"LlmApiClient provider keys addProviderKey sends correct data","suiteID":8,"groupIDs":[56,57,104],"metadata":{"skip":false,"skipReason":null},"line":350,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1608}
+{"testID":106,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1609}
+{"group":{"id":107,"suiteID":8,"parentID":57,"name":"LlmApiClient lifecycle","metadata":{"skip":false,"skipReason":null},"testCount":3,"line":376,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1609}
+{"test":{"id":108,"name":"LlmApiClient lifecycle getModelStatus returns status","suiteID":8,"groupIDs":[56,57,107],"metadata":{"skip":false,"skipReason":null},"line":377,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1609}
+{"testID":108,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1611}
+{"test":{"id":109,"name":"LlmApiClient lifecycle getLoadedModels returns list","suiteID":8,"groupIDs":[56,57,107],"metadata":{"skip":false,"skipReason":null},"line":397,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1611}
+{"testID":109,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1612}
+{"test":{"id":110,"name":"LlmApiClient lifecycle cancelRequest calls correct endpoint","suiteID":8,"groupIDs":[56,57,107],"metadata":{"skip":false,"skipReason":null},"line":417,"column":7,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1612}
+{"testID":110,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1614}
+{"group":{"id":111,"suiteID":8,"parentID":56,"name":"ApiException","metadata":{"skip":false,"skipReason":null},"testCount":2,"line":431,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"group","time":1614}
+{"test":{"id":112,"name":"ApiException toString includes status code and message","suiteID":8,"groupIDs":[56,111],"metadata":{"skip":false,"skipReason":null},"line":432,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1614}
+{"testID":112,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1615}
+{"test":{"id":113,"name":"ApiException toString works without detail","suiteID":8,"groupIDs":[56,111],"metadata":{"skip":false,"skipReason":null},"line":439,"column":5,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/sdk/api_client_test.dart"},"type":"testStart","time":1615}
+{"testID":113,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1616}
+{"testID":91,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1894}
+{"test":{"id":114,"name":"ChatBubble displays assistant message on the left","suiteID":10,"groupIDs":[89,90],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":35,"root_column":5,"root_url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/widgets/widgets_test.dart"},"type":"testStart","time":1894}
+{"testID":17,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1921}
+{"test":{"id":115,"name":"ModelsPage displays modality filter chips","suiteID":0,"groupIDs":[15,16],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":38,"root_column":5,"root_url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/features/pages_test.dart"},"type":"testStart","time":1922}
+{"testID":114,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1955}
+{"test":{"id":116,"name":"ChatBubble renders markdown content","suiteID":10,"groupIDs":[89,90],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":59,"root_column":5,"root_url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/widgets/widgets_test.dart"},"type":"testStart","time":1955}
+{"testID":116,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1983}
+{"test":{"id":117,"name":"ChatBubble displays role labels","suiteID":10,"groupIDs":[89,90],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":79,"root_column":5,"root_url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/widgets/widgets_test.dart"},"type":"testStart","time":1983}
+{"testID":115,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1993}
+{"group":{"id":118,"suiteID":0,"parentID":15,"name":"SessionsRail","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":58,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/features/pages_test.dart"},"type":"group","time":1994}
+{"test":{"id":119,"name":"SessionsRail renders new session button","suiteID":0,"groupIDs":[15,118],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":59,"root_column":5,"root_url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/features/pages_test.dart"},"type":"testStart","time":1994}
+{"testID":117,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":1999}
+{"test":{"id":120,"name":"ChatBubble assistant message shows Assistant label","suiteID":10,"groupIDs":[89,90],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":96,"root_column":5,"root_url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/widgets/widgets_test.dart"},"type":"testStart","time":1999}
+{"testID":120,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2016}
+{"test":{"id":121,"name":"ChatBubble shows loading indicator for empty assistant message","suiteID":10,"groupIDs":[89,90],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":113,"root_column":5,"root_url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/widgets/widgets_test.dart"},"type":"testStart","time":2016}
+{"testID":119,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2018}
+{"group":{"id":122,"suiteID":0,"parentID":15,"name":"SettingsPage","metadata":{"skip":false,"skipReason":null},"testCount":1,"line":77,"column":3,"url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/features/pages_test.dart"},"type":"group","time":2018}
+{"test":{"id":123,"name":"SettingsPage renders without errors","suiteID":0,"groupIDs":[15,122],"metadata":{"skip":false,"skipReason":null},"line":174,"column":5,"url":"package:flutter_test/src/widget_tester.dart","root_line":78,"root_column":5,"root_url":"file:///Users/hg/dev/code/pluggably/llm_api/frontend/test/features/pages_test.dart"},"type":"testStart","time":2018}
+{"testID":121,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2035}
+{"testID":25,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2062}
+{"testID":123,"result":"success","skipped":false,"hidden":false,"type":"testDone","time":2093}
+{"success":true,"type":"done","time":2100}

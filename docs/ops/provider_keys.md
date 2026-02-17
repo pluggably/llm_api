@@ -1,39 +1,31 @@
 # Provider API Keys
 
-This project supports multiple commercial providers. Store keys in a .env file (see .env.example). Never commit real keys. Requests to a provider will fail if its API key is missing.
+Commercial provider credentials are **user-scoped** and must be entered in the app’s **Profile → Provider Keys** section. These keys are stored per user and unlock provider models for that user. Do **not** put commercial provider keys in server env vars.
+
+For detailed, step-by-step instructions (with links), see [docs/ops/user_provider_credentials.md](docs/ops/user_provider_credentials.md).
 
 
 ## OpenAI
-1. Create an account at https://platform.openai.com
-2. Go to **API Keys**.
-3. Create a new secret key.
-4. Set `LLM_API_OPENAI_API_KEY`.
+1. Create an API key at https://platform.openai.com/account/api-keys
+2. Paste it into Profile → OpenAI.
 
 ## Anthropic
-1. Create an account at https://console.anthropic.com
-2. Go to **API Keys**.
-3. Create a new key.
-4. Set `LLM_API_ANTHROPIC_API_KEY`.
+1. Create an API key at https://console.anthropic.com/account/keys
+2. Paste it into Profile → Anthropic.
 
 ## Google (Gemini)
-1. Create a project in Google Cloud Console: https://console.cloud.google.com
-2. Enable **Generative Language API**.
-3. Create an API key.
-4. Set `LLM_API_GOOGLE_API_KEY`.
+1. Create a Gemini API key at https://aistudio.google.com/app/apikey
+2. Paste it into Profile → Google AI.
 
 ## Microsoft (Azure OpenAI)
 1. Create an Azure OpenAI resource: https://portal.azure.com
 2. Deploy a model and note the **deployment name**.
 3. Copy the API key and endpoint URL from the resource.
-4. Set:
-   - `LLM_API_AZURE_OPENAI_API_KEY`
-   - `LLM_API_AZURE_OPENAI_ENDPOINT`
-   - `LLM_API_AZURE_OPENAI_API_VERSION`
+4. Paste key + endpoint into Profile → Azure OpenAI.
 
 ## xAI
-1. Create an account at https://x.ai
-2. Create an API key in the console.
-3. Set `LLM_API_XAI_API_KEY`.
+1. Create an API key at https://console.x.ai/
+2. Paste it into Profile → xAI.
 
 ## Local Testing Models (recommended)
 For local runtimes, pick one model per modality:

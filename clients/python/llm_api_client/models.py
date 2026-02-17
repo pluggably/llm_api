@@ -73,6 +73,7 @@ class ModelInfo(BaseModel):
     size_bytes: Optional[int] = None
     local_path: Optional[str] = None
     last_used_at: Optional[datetime] = None
+    is_default: Optional[bool] = None
     status: Literal["available", "downloading", "failed", "disabled", "evicted"] = "available"
 
 

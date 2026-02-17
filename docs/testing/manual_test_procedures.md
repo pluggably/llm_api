@@ -85,6 +85,7 @@ Manual run only if validating real artifact storage backends.
 3. Wait for images to appear in the gallery grid.
 4. Click an image to preview.
 5. Use the download action and confirm the file saves locally.
+6. Verify the downloaded file opens and matches the preview.
 **Expected Results**:
 - Images display in a gallery
 - Download succeeds
@@ -98,6 +99,7 @@ Manual run only if validating real artifact storage backends.
 3. Wait for the 3D preview to load.
 4. Rotate/zoom the model to confirm interactivity.
 5. Download the asset and confirm file integrity.
+6. Open the OBJ in a local viewer to confirm geometry loads.
 **Expected Results**:
 - 3D viewer renders and supports interaction
 - Download succeeds
@@ -155,15 +157,21 @@ Manual run only if validating real artifact storage backends.
 **Purpose**: Validate invite-only registration and login/logout flows
 **Preconditions**: Backend running with invite requirement enabled
 **Steps**:
+1. Launch the app with no saved auth token.
+2. Confirm the app shows the Login screen before any other page.
 1. Attempt to register without an invite token.
 2. Confirm registration is rejected.
 3. Register with a valid invite token.
 4. Log in and confirm an auth token is issued.
 5. Log out and confirm the token is cleared locally.
+6. Relaunch the app with a valid auth token saved.
+7. Confirm the app lands on Chat instead of Login.
 **Expected Results**:
+- Unauthenticated users are routed to Login before any app pages
 - Registration without invite is rejected
 - Registration with invite succeeds
 - Login/logout work and auth token is issued/cleared
+- Authenticated users land on Chat after launch/login
 
 ## TEST-MAN-013: User profile preferences
 **Purpose**: Validate profile preferences persistence
@@ -227,9 +235,22 @@ Manual run only if validating real artifact storage backends.
 3. Adjust parameters in settings (optional).
 4. Submit regeneration and verify a new response appears.
 **Expected Results**:
-- New response generated
-- Option to keep or replace original
-- Modified parameters applied
+
+## TEST-MAN-018: Image inputs in chat
+**Purpose**: Validate image upload, paste, and URL attachments for multimodal prompts
+**Preconditions**: Frontend running; backend reachable; model that supports image input selected
+**Steps**:
+1. Attach an image via file upload and send a prompt.
+2. Paste an image from clipboard and send a prompt.
+3. Provide a valid image URL and send a prompt.
+4. Attempt to attach an unsupported file type and verify an error.
+5. Attempt to attach a URL blocked by CORS and verify an error.
+6. Set the max attachment size to a small value (e.g., 1MB) and try to attach a larger image.
+**Expected Results**:
+- Attached images are previewed and removable before sending
+- Images are sent with the prompt and visible in the user message
+- Invalid formats or blocked URLs show a clear error
+- Attachment size limit is enforced and configurable
 
 ## TEST-MAN-018: Model loading state in UI
 **Purpose**: Validate model runtime status display

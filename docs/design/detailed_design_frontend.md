@@ -31,6 +31,22 @@ This document describes UI structure, state management, data flow, and schema-dr
 - Image and 3D UIs are pending (placeholders in requirements).
 - Layout auto-switch/lock is not yet implemented beyond responsive breakpoints.
 - Frontend uses the shared Dart client package (`clients/dart`) for API calls.
+- Routing uses an auth gate: unauthenticated users are redirected to Login; authenticated users land on Chat.
+
+## Image UI — Gallery + Download
+- Render images from artifact URLs returned in generation responses.
+- Show loading placeholders while awaiting artifact availability.
+- Provide a per-image download action that saves the original image file.
+- Preview uses a larger modal/lightbox view.
+
+## 3D UI — Viewer + Download
+- Render mesh artifacts from generation responses.
+- Viewer must support rotate/zoom and show a loading state.
+- Provide a download action that saves the mesh as OBJ.
+- Viewer implementation depends on mesh format support:
+  - **Option A**: `three_dart` + OBJLoader for current OBJ output.
+  - **Option B**: `model_viewer_plus` if backend emits GLB/GLTF.
+- Web implementation uses `HtmlElementView` + `three_dart` with `DomLikeListenable` for orbit controls.
 
 ## State Model (Sketch)
 ```yaml
@@ -47,6 +63,9 @@ app_state:
     active_id: string
     items: [SessionSummary]
   messages: [Message]
+  attachments:
+    pending_images: [ImageAttachment]
+    max_total_mb: number
   images: [ImageResult]
   models: [ModelSummary]
   model_search:
@@ -70,7 +89,15 @@ app_state:
 id: string
 role: user|assistant
 content: string
+images: [base64]
 created_at: datetime
+```
+
+### ImageAttachment
+```yaml
+source: upload|paste|url
+preview_data: base64
+original_url: string|null
 ```
 
 ### ImageResult
@@ -116,11 +143,26 @@ flowchart TD
 ### Chat Send Flow
 ```mermaid
 flowchart TD
-    A[User types prompt] --> B[Submit]
-    B --> C[Send generate request]
-    C --> D[Stream tokens]
-    D --> E[Append to chat]
+    A[User types prompt] --> B[Attach images (optional)]
+    B --> C[Submit]
+    C --> D[Send generate request with input.images]
+    D --> E[Stream tokens / await completion]
+    E --> F[Append to chat]
 ```
+
+### Image Attachment Flow
+```mermaid
+flowchart TD
+  A[User uploads/pastes/URLs image] --> B[Validate type/size]
+  B -->|Valid| C[Resize to 1024px max edge]
+  B -->|Invalid| D[Show error]
+  C --> E[Show thumbnail + remove]
+  E --> F[Send with next prompt]
+```
+
+### Attachment Size Setting
+- Store a user-configurable max total attachment size (MB) in settings.
+- Default to 10MB.
 
 ### Session Switch Flow
 ```mermaid
@@ -170,6 +212,17 @@ flowchart TD
     B --> C{Invite valid?}
     C -->|No| D[Show error]
     C -->|Yes| E[Create account]
+  ```
+
+  ### Auth Gate Routing
+  ```mermaid
+  flowchart TD
+    A[App launch or route change] --> B{Auth token present?}
+    B -->|No| C[Redirect to /login]
+    B -->|Yes| D[Allow /chat and other app routes]
+    C --> E[Login/Register]
+    E --> F[Auth token stored]
+    F --> D
   ```
 
   ### Layout Selection Flow

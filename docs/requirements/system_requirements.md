@@ -30,7 +30,7 @@
 - **SYS-REQ-014**: Require API authentication and authorization with configurable support for multiple standard auth modes (e.g., API key, OAuth/JWT, local-only mode).
 - **SYS-REQ-015**: Provide an API endpoint to list available models and their capabilities.
 - **SYS-REQ-016**: Provide artifact storage for large outputs (images, 3D meshes) with signed, expiring download URLs.
-- **SYS-REQ-017**: Support streaming responses (SSE) for text generation requests.
+- **SYS-REQ-017**: Support streaming responses (SSE) for text generation requests. For non-text modalities (image, 3D), ignore the stream flag and return a standard response.
 - **SYS-REQ-018**: Automatically discover locally installed model files in storage and register them in the model catalog.
 - **SYS-REQ-019**: Provide a queryable API schema/parameter documentation endpoint for request parameters and model selection guidance.
 - **SYS-REQ-020**: Provide session management to associate multiple requests with a persistent conversational context.
@@ -40,11 +40,13 @@
 - **SYS-REQ-023**: Provide client libraries (Python and Dart/Flutter) with typed request/response models for all API endpoints.
 - **SYS-REQ-024**: Provide session helper utilities in each client library for create/reset/close flows.
 - **SYS-REQ-025**: Provide a cross-platform frontend UI (web + mobile) that integrates with the standard API.
+- **SYS-REQ-069**: Infer the modality from the selected model; clients do not need to specify modality explicitly when a model is provided.
 - **SYS-REQ-026**: Provide model selection UI with modality filtering (text/image/3D) and model metadata display.
 - **SYS-REQ-027**: Render a dynamic settings pane/drawer based on `/v1/schema` for the selected model.
 - **SYS-REQ-028**: Provide a chat-like interface for text models with streaming response rendering.
 - **SYS-REQ-029**: Provide an image generation UI with gallery, preview, and download support.
 - **SYS-REQ-030**: Provide a 3D generation UI with interactive viewer and download support.
+- **SYS-REQ-070**: Support image inputs in generation requests and the frontend UI (upload, paste, URL) for models that accept images.
 - **SYS-REQ-031**: Allow the web frontend to be hosted separately from the backend with configurable API base URL.
 - **SYS-REQ-032**: Provide frontend-driven session creation and switching, with per-user context preserved across turns.
 - **SYS-REQ-033**: Persist a model registry for internal and external models, including supported parameters and schemas.
@@ -189,6 +191,7 @@ Stakeholder → System
 | SH-REQ-025 | SYS-REQ-027 | Dynamic parameters |
 | SH-REQ-026 | SYS-REQ-028 | Chat UI |
 | SH-REQ-027 | SYS-REQ-029, SYS-REQ-030 | Image/3D UI |
+| SH-REQ-054 | SYS-REQ-070 | Image input attachments |
 | SH-REQ-028 | SYS-REQ-031 | Separate hosting |
 | SH-REQ-029 | SYS-REQ-032 | Frontend sessions |
 | SH-REQ-030 | SYS-REQ-033, SYS-REQ-034 | Model registry |
@@ -250,6 +253,7 @@ Requirements → Verification
 | SYS-REQ-028 | Manual | TEST-MAN-005 | docs/testing/manual_test_procedures.md | Chat UI |
 | SYS-REQ-029 | Manual | TEST-MAN-006 | docs/testing/manual_test_procedures.md | Image UI |
 | SYS-REQ-030 | Manual | TEST-MAN-007 | docs/testing/manual_test_procedures.md | 3D UI |
+| SYS-REQ-070 | Manual | TEST-MAN-018 | docs/testing/manual_test_procedures.md | Image input attachments |
 | SYS-REQ-031 | Manual | TEST-MAN-008 | docs/testing/manual_test_procedures.md | Separate hosting |
 | SYS-REQ-032 | Manual | TEST-MAN-009 | docs/testing/manual_test_procedures.md | Frontend sessions |
 | SYS-REQ-033 | Automated | TEST-INT-005 | tests/integration/ | Model registry persistence |
@@ -279,7 +283,7 @@ Requirements → Verification
 | SYS-REQ-057 | Automated | TEST-INT-CR001-003 | frontend/test/sdk/api_client_test.dart | Lifecycle endpoints |
 | SYS-REQ-058 | Automated | TEST-INT-CR001-004 | frontend/test/sdk/api_client_test.dart | Request endpoints |
 | SYS-REQ-059 | Automated | TEST-INT-CR001-005 | frontend/test/sdk/api_client_test.dart | User resource endpoints |
-| SYS-REQ-060 | Automated | TEST-INT-CR001-006 | src/llm_api/api/router.py | Session update endpoint |
+| SYS-REQ-060 | Automated | TEST-INT-CR001-006 | llm_api/api/router.py | Session update endpoint |
 | SYS-REQ-061 | Manual | TEST-MAN-CR001-001 | docs/api_endpoints.md | API reference review |
 | SYS-REQ-062 | Manual | TEST-MAN-CR002-001 | docs/testing/manual_test_procedures.md | Frontend uses shared Dart client |
 | SYS-REQ-063 | Automated + Manual | TEST-SYS-MVP-004, TEST-MAN-MVP-001 | tests/system/test_mvp_model_search.py, docs/testing/manual_test_procedures.md | Add/register model workflow |

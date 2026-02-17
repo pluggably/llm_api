@@ -176,7 +176,7 @@ created_at: datetime
 ```yaml
 request_id: string
 model: string
-modality: [text|image|3d]
+modality: [text|image|3d]  # Optional - inferred from model if not specified
 input:
   prompt: string
   images: [base64]
@@ -187,7 +187,12 @@ parameters:
   format: string
 session_id: string
 state_tokens: object  # provider/model-specific state passthrough
+stream: boolean  # Request streaming response (SSE) - only effective for text models
 ```
+
+**Modality Inference**: When a model is specified, the backend uses the model's registered modality for processing. Clients do not need to specify the modality explicitly.
+
+**Streaming Behavior**: The `stream` parameter requests SSE streaming, but is only honored for text generation. For image and 3D modalities, the stream flag is ignored and a standard JSON response is returned. This allows clients to use a single code path without needing to know model modalities.
 
 ### Standard Response
 ```yaml
@@ -492,10 +497,17 @@ flowchart TD
 - **Session state is persisted independently of model process lifecycle**: sessions survive model spindown/unload and can be resumed seamlessly after model reload.
 
 ## Model Discovery Strategy
-- Scan the configured `model_path` on startup for supported local model formats (e.g., `.gguf`).
+- Scan the configured `model_path` on startup for supported local model formats (e.g., `.gguf`, `.safetensors`).
 - Derive `id`, `name`, `version/quantization`, `size_bytes`, and `local_path` from filenames.
-- Do not overwrite explicit registry entries or persisted metadata.
+- Do not overwrite explicit registry entries already in the database.
 - Mark discovered models as `available` and include capabilities defaults (context size, output formats, hardware hints).
+
+## Model Registry Persistence
+- Model metadata is persisted in the SQLite database (`models` table).
+- The `ModelRegistry` class uses SQLAlchemy for all CRUD operations.
+- Downloaded models store their source information (`source_type`, `source_uri`) to preserve the original HuggingFace repo ID or URL.
+- Auto-discovered local files are registered with their filename as the ID unless already present in the database.
+- See ADR-005 for migration details from JSON-based persistence.
 
 ## Parameter Documentation Strategy
 - Provide a read-only schema endpoint that returns parameter descriptions, defaults, and examples.
@@ -528,7 +540,7 @@ Configuration is loaded via Pydantic Settings from environment variables and an 
 | `LLM_API_ARTIFACT_STORE` | str | local | Artifact store type: local, s3 |
 | `LLM_API_ARTIFACT_BUCKET` | str | (optional) | S3 bucket for artifacts (if s3) |
 | `LLM_API_ARTIFACT_EXPIRY_SECS` | int | 3600 | Artifact URL expiry in seconds |
-| `LLM_API_PERSIST_STATE` | bool | false | Persist registry/jobs to disk |
+| `LLM_API_PERSIST_STATE` | bool | false | Persist job state to disk (model registry always uses database) |
 | `LLM_API_DB_PATH` | str | ./data/plugai.sqlite | SQLite database path |
 | `LLM_API_REQUIRE_INVITE` | bool | true | Require invite token for registration |
 | `LLM_API_OPENAI_API_KEY` | str | (optional) | OpenAI API key |
@@ -586,6 +598,8 @@ local:
 
 
 providers:
+  # Commercial provider keys are user-scoped and stored via Profile → Provider Keys.
+  # Server env keys are optional fallbacks for admin/testing only.
   openai:
     api_key: "${OPENAI_API_KEY}"
     base_url: "https://api.openai.com/v1"

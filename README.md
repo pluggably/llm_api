@@ -27,7 +27,7 @@ export LLM_API_API_KEY=your-secret-key
 ### Run the Server
 
 ```bash
-PYTHONPATH=src uvicorn llm_api.main:app --reload --port 8080
+uvicorn llm_api.main:app --reload --port 8080
 ```
 
 ### Health Check
@@ -70,13 +70,16 @@ See [frontend/README.md](frontend/README.md) for full usage, tests, and known ga
 
 All endpoints require authentication via `X-API-Key` header.
 
+Commercial provider credentials are user-scoped and must be entered via the app’s Profile page.
+See [docs/ops/user_provider_credentials.md](docs/ops/user_provider_credentials.md).
+
 ### List Configured Providers
 
 ```bash
 curl -H "X-API-Key: your-key" http://localhost:8080/v1/providers
 ```
 
-Response:
+Response (depends on the current user’s saved credentials):
 ```json
 {
   "providers": [

@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT))
 from fastapi.testclient import TestClient
 
 from llm_api.config import get_settings
@@ -19,6 +19,7 @@ from llm_api.adapters.base import ProviderError
 from llm_api.registry import store as registry_store
 from llm_api.jobs import store as job_store
 from llm_api.observability import metrics
+from llm_api.db import database as db_module
 
 
 def _reset_state():
@@ -27,6 +28,10 @@ def _reset_state():
     registry_store._registry = None
     job_store._store = None
     metrics._store = None
+    # Close and reset database connection for isolation
+    db_module.close_db()
+    db_module._engine = None
+    db_module._SessionLocal = None
 
 
 def _build_client(tmp_path: Path, overrides: dict | None = None) -> TestClient:
@@ -64,14 +69,20 @@ def client_factory(tmp_path):
 def patch_local_runner(monkeypatch):
     from llm_api.runner.local_runner import LocalRunner
 
-    def _generate_text(self, prompt, model_path=None):
+    def _generate_text(self, prompt, model_path=None, model_id=None):
         if prompt == "RAISE_ERROR":
             raise ProviderError(500, "Simulated error")
         return f"local:{prompt}"
 
+    def _generate_image(self, prompt, model_path=None, model_id=None, **kwargs):
+        return b"LOCAL_IMAGE"
+    
+    def _generate_3d(self, prompt, model_path=None, model_id=None, **kwargs):
+        return b"LOCAL_3D"
+
     monkeypatch.setattr(LocalRunner, "generate_text", _generate_text)
-    monkeypatch.setattr(LocalRunner, "generate_image", lambda self, prompt: b"LOCAL_IMAGE")
-    monkeypatch.setattr(LocalRunner, "generate_3d", lambda self, prompt: b"LOCAL_3D")
+    monkeypatch.setattr(LocalRunner, "generate_image", _generate_image)
+    monkeypatch.setattr(LocalRunner, "generate_3d", _generate_3d)
 
 
 # ============================================================================
@@ -214,10 +225,23 @@ def mock_text_model_with_error():
 
 @pytest.fixture
 def tmp_model_dir(tmp_path):
-    """Temporary directory for model storage."""
+    """Temporary directory for model storage with isolated database.
+    
+    This fixture ensures tests don't pollute the production database by:
+    1. Setting LLM_API_MODEL_PATH to the temp directory
+    2. Resetting the settings cache and database connection
+    """
     model_dir = tmp_path / "models"
     model_dir.mkdir()
-    return model_dir
+    
+    # Isolate from production database
+    os.environ["LLM_API_MODEL_PATH"] = str(model_dir)
+    _reset_state()
+    
+    yield model_dir
+    
+    # Cleanup - restore to avoid affecting other tests
+    _reset_state()
 
 
 # ============================================================================

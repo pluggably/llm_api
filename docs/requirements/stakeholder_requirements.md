@@ -26,6 +26,7 @@ I need a single, standard API and a cross-platform UI that I can host on a home 
 - Hosting flexibility: home server or cloud deployment.
 - Model selection and configuration UI with dynamic parameters per model.
 - Chat-like interface for text models and modality-appropriate UI for image/3D.
+- Attach images to prompts via upload, paste, or URL for models that support image input.
 - Help with model hosting infrastructure and API integration logic.
 - Per-user sessions with persistent conversational context.
 - Per-user API keys (commercial providers) and OSS model access controls.
@@ -77,6 +78,7 @@ I need a single, standard API and a cross-platform UI that I can host on a home 
 - **SH-REQ-025**: Provide a dynamic settings pane/drawer that renders model-specific parameters from the schema.
 - **SH-REQ-026**: Provide a chat-like interface for text models with streaming responses.
 - **SH-REQ-027**: Provide modality-specific interfaces for image and 3D generation (gallery/preview, download).
+- **SH-REQ-054**: Allow users to attach images to prompts (upload, paste, URL) for models that support image input.
 - **SH-REQ-028**: Allow the frontend to be hosted separately from the backend (web app + API base URL config).
 - **SH-REQ-029**: Support creation of chats/sessions in the UI with maintained context per user.
 - **SH-REQ-030**: Maintain a persistent model registry (internal and external models) including supported parameters.
@@ -245,6 +247,7 @@ Stakeholder → System
 | SH-REQ-025 | SYS-REQ-027 | Dynamic parameters |
 | SH-REQ-026 | SYS-REQ-028 | Chat UI |
 | SH-REQ-027 | SYS-REQ-029, SYS-REQ-030 | Image/3D UI |
+| SH-REQ-054 | SYS-REQ-070 | Image input attachments |
 | SH-REQ-028 | SYS-REQ-031 | Separate hosting |
 | SH-REQ-029 | SYS-REQ-032 | Frontend sessions |
 | SH-REQ-030 | SYS-REQ-033, SYS-REQ-034 | Model registry |

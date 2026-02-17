@@ -42,8 +42,9 @@ class TestModelCatalogEndpoint:
         assert all(m["modality"] == "image" for m in response.json()["models"])
 
     def test_empty_catalog_returns_empty_list(self, client, empty_registry):
+        # Filter by a modality that has no models (audio is not a default modality)
         registry_store._registry = empty_registry
-        response = client.get("/v1/models", headers={"X-API-Key": "test-key"})
+        response = client.get("/v1/models?modality=audio", headers={"X-API-Key": "test-key"})
         assert response.status_code == 200
         assert response.json()["models"] == []
 

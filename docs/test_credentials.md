@@ -7,7 +7,7 @@ For testing the LLM API gateway, a test user has been created in the database.
 - **Password**: testpass123
 
 ## Usage
-1. Start the backend server: `PYTHONPATH=src uvicorn llm_api.main:app --port 8080`
+1. Start the backend server: `uvicorn llm_api.main:app --port 8080`
 2. Use the Flutter frontend or API to login with these credentials.
 3. For API login, POST to `/v1/users/login` with the email and password.
 

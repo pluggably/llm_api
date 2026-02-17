@@ -153,7 +153,7 @@ sequenceDiagram
 - **Framework**: Flutter (web + mobile)
 - **State**: Riverpod
 - **Networking**: Dart client SDK (HTTP)
-- **3D Viewer**: Flutter 3D plugin (TBD)
+- **3D Viewer**: TBD (options: `three_dart` + OBJLoader for current OBJ artifacts, or `model_viewer_plus` if backend emits GLB/GLTF)
 
 ## Error Handling
 - Inline validation errors on parameters

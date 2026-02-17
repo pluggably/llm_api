@@ -29,10 +29,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY src/ ./src/
+COPY llm_api/ ./llm_api/
 COPY .env.example .env
 
-ENV PYTHONPATH=/app/src
+ENV PYTHONPATH=/app
 ENV LLM_API_HOST=0.0.0.0
 ENV LLM_API_PORT=8080
 

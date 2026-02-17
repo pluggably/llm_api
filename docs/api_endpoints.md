@@ -4,6 +4,8 @@ This document provides a quick reference for all API endpoints in the LLM API Ga
 
 ## Authentication
 
+All endpoints require the `X-API-Key` header. User login (if enabled) provides a session token used by the frontend, but API access uses `X-API-Key`.
+
 ### Register User
 ```
 POST /v1/users/register
@@ -37,19 +39,19 @@ Response: {
 ### List Models
 ```
 GET /v1/models
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ### Get Model
 ```
 GET /v1/models/{model_id}
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ### Get Model Schema
 ```
 GET /v1/schema?model={model_id}
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ## Model Lifecycle
@@ -57,13 +59,13 @@ Authorization: Bearer <token>
 ### Get Model Status
 ```
 GET /v1/models/{model_id}/status
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ### Load Model
 ```
 POST /v1/models/{model_id}/load
-Authorization: Bearer <token>
+X-API-Key: <token>
 Content-Type: application/json
 
 {
@@ -75,7 +77,7 @@ Content-Type: application/json
 ### Unload Model
 ```
 POST /v1/models/{model_id}/unload
-Authorization: Bearer <token>
+X-API-Key: <token>
 Content-Type: application/json
 
 {
@@ -86,7 +88,7 @@ Content-Type: application/json
 ### List Loaded Models
 ```
 GET /v1/models/loaded
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ## Generation
@@ -94,7 +96,7 @@ Authorization: Bearer <token>
 ### Generate (Non-Streaming)
 ```
 POST /v1/generate
-Authorization: Bearer <token>
+X-API-Key: <token>
 Content-Type: application/json
 
 {
@@ -114,7 +116,7 @@ Content-Type: application/json
 ### Generate (Streaming)
 ```
 POST /v1/generate
-Authorization: Bearer <token>
+X-API-Key: <token>
 Content-Type: application/json
 
 {
@@ -135,25 +137,25 @@ Response: Server-Sent Events (SSE)
 ### Create Session
 ```
 POST /v1/sessions
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ### List Sessions
 ```
 GET /v1/sessions
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ### Get Session
 ```
 GET /v1/sessions/{session_id}
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ### Update Session
 ```
 PUT /v1/sessions/{session_id}
-Authorization: Bearer <token>
+X-API-Key: <token>
 Content-Type: application/json
 
 {
@@ -164,13 +166,13 @@ Content-Type: application/json
 ### Delete Session
 ```
 DELETE /v1/sessions/{session_id}
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ### Reset Session
 ```
 POST /v1/sessions/{session_id}/reset
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ## Requests
@@ -178,13 +180,13 @@ Authorization: Bearer <token>
 ### Get Request Status
 ```
 GET /v1/requests/{request_id}/status
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ### Cancel Request
 ```
 POST /v1/requests/{request_id}/cancel
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ## User API Tokens
@@ -192,13 +194,13 @@ Authorization: Bearer <token>
 ### List Tokens
 ```
 GET /v1/users/tokens
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ### Create Token
 ```
 POST /v1/users/tokens
-Authorization: Bearer <token>
+X-API-Key: <token>
 Content-Type: application/json
 
 {
@@ -211,21 +213,23 @@ Content-Type: application/json
 ### Revoke Token
 ```
 DELETE /v1/users/tokens/{token_id}
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ## Provider Keys
 
+Provider keys are user-scoped and unlock commercial models for that user.
+
 ### List Provider Keys
 ```
 GET /v1/users/provider-keys
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ### Add Provider Key
 ```
 POST /v1/users/provider-keys
-Authorization: Bearer <token>
+X-API-Key: <token>
 Content-Type: application/json
 
 {
@@ -237,7 +241,7 @@ Content-Type: application/json
 ### Delete Provider Key
 ```
 DELETE /v1/users/provider-keys/{provider}
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ## User Profile
@@ -245,13 +249,13 @@ Authorization: Bearer <token>
 ### Get Profile
 ```
 GET /v1/users/me
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
 
 ### Update Profile
 ```
 PATCH /v1/users/me
-Authorization: Bearer <token>
+X-API-Key: <token>
 Content-Type: application/json
 
 {
