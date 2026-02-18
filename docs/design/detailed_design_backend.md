@@ -20,6 +20,34 @@ This document details module responsibilities, data structures, and key flows fo
 - **Storage Manager**: Cache/retention, disk usage enforcement
 - **Observability**: Logs, metrics
 
+## CR-003 — Auto Model Selection (Proposed)
+**Goal**: Allow requests to omit `model` (or specify `model: "auto"`) and have the router pick a suitable model using a deterministic rule set.
+
+### Selection Rules (Initial)
+1. If `input.images` exists → select default image model.
+2. If `input.mesh` exists → select default 3D model.
+3. Else → select default text model.
+4. If default for the modality is unavailable → select the first available model for that modality.
+5. If no models exist for the detected modality → return a clear error with guidance.
+
+### Router Flow (Mermaid)
+```mermaid
+flowchart TD
+  A[Generate request] --> B{model set?}
+  B -->|Yes| C[Use explicit model]
+  B -->|No or auto| D[Infer modality from inputs]
+  D --> E[Pick default model for modality]
+  E --> F{Available?}
+  F -->|Yes| G[Route to adapter]
+  F -->|No| H[Fallback to first available model]
+  H --> I{Found?}
+  I -->|Yes| G
+  I -->|No| J[Return not found error]
+```
+
+### Error Handling
+- If no models are available for the inferred modality, return a `model_not_found` style error with a hint to download/register a model.
+
 ## Data Structures (Schema Sketch)
 
 ### Model Registry Entry

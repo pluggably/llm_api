@@ -33,6 +33,30 @@ This document describes UI structure, state management, data flow, and schema-dr
 - Frontend uses the shared Dart client package (`clients/dart`) for API calls.
 - Routing uses an auth gate: unauthenticated users are redirected to Login; authenticated users land on Chat.
 
+## CR-003 — Prompt-Side Model Selector (Proposed)
+**Goal**: Remove the hard requirement to pre-select a model and move selection to a compact dropdown next to the prompt input, defaulting to **Auto**.
+
+### UI Placement & Behavior
+- Add a dropdown adjacent to the prompt input.
+- Default selection is **Auto**.
+- When **Auto** is selected, the prompt can be submitted without a model selection.
+- When a specific model is selected, the settings drawer and modality follow the selected model as today.
+
+### Prompt-Side Layout (Sketch)
+```text
+[ Model: Auto ▼ ] [ Prompt input ..................................... ] [ Send ]
+```
+
+### UI Flow (Mermaid)
+```mermaid
+flowchart TD
+  A[Open chat UI] --> B[Model selector shows Auto]
+  B --> C[User types prompt]
+  C --> D[Submit without selecting model]
+  D --> E[Backend resolves model]
+  E --> F[Response includes resolved model]
+```
+
 ## Image UI — Gallery + Download
 - Render images from artifact URLs returned in generation responses.
 - Show loading placeholders while awaiting artifact availability.

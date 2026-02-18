@@ -466,6 +466,27 @@ So that the UI can show a green check on success
 
 ---
 
+**Story ID**: US-042
+**Title**: Auto model selection routing
+**Priority**: High
+**Story Points**: 5
+
+As a developer
+I want the router to resolve a model when `model` is omitted or set to `auto`
+So that clients can send prompts without pre-selecting a model
+
+**Acceptance Criteria**:
+- [ ] `model` may be omitted or set to `auto`
+- [ ] Rule-based resolver selects a model by inferred modality
+- [ ] Resolved model ID is returned in the response
+- [ ] If no model is available, return a clear error
+
+**Traceability**: SYS-REQ-CR003-001, SYS-REQ-CR003-002, SYS-REQ-CR003-004
+
+**Status**: Not Started
+
+---
+
 **Story ID**: US-017
 **Title**: Persistent model registry
 **Priority**: High
@@ -886,6 +907,9 @@ System → Software
 | SYS-REQ-066 | Backend | US-037 | Session naming |
 | SYS-REQ-067 | Backend | US-038 | Message timestamps |
 | SYS-REQ-068 | Backend | US-041 | Health check endpoint |
+| SYS-REQ-CR003-001 | Backend | US-042 | Auto model selection |
+| SYS-REQ-CR003-002 | Backend | US-042 | Rule-based resolver |
+| SYS-REQ-CR003-004 | Backend | US-042 | Manual override preserved |
 
 ## Definition of Ready / Done
 **Ready**

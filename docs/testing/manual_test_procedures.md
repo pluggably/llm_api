@@ -64,6 +64,19 @@ Manual run only if validating real artifact storage backends.
 - Model list and modality filtering work
 - Parameter panel updates with the selected model schema
 
+## TEST-MAN-CR003-001: Prompt-side model selector defaults to Auto
+**Purpose**: Validate the prompt-side model dropdown and Auto default behavior
+**Preconditions**: Frontend running; backend running
+**Steps**:
+1. Open the Chat UI.
+2. Confirm the model dropdown is displayed next to the prompt input.
+3. Confirm the default selection is **Auto**.
+4. Send a prompt without changing the model selection.
+5. Verify a response is returned and the resolved model is displayed in the response (or logs).
+**Expected Results**:
+- Dropdown is present and defaulted to Auto
+- Prompt submission succeeds without manual model selection
+
 ## TEST-MAN-005: Text chat UI streaming
 **Purpose**: Validate streaming responses in the chat UI
 **Preconditions**: Frontend running; backend streaming enabled

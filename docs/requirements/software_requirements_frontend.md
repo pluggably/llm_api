@@ -577,6 +577,26 @@ So that models that support image input can use them as context
 
 ---
 
+**Story ID**: US-FE-030
+**Title**: Prompt-side model dropdown (Auto default)
+**Priority**: High
+**Story Points**: 5
+
+As a user
+I want a model dropdown next to the prompt input with an Auto default
+So that I can send prompts without pre-selecting a model
+
+**Acceptance Criteria**:
+- [ ] Model dropdown is adjacent to the prompt input
+- [ ] Default selection is **Auto**
+- [ ] Auto allows sending without selecting a specific model
+- [ ] Choosing a model updates schema/parameters as usual
+
+**Traceability**: SYS-REQ-CR003-003, SYS-REQ-CR003-004
+**Status**: Not Started
+
+---
+
 ## Traceability: System → Software
 
 | System Req ID | Software Component | User Story ID(s) | Notes |
@@ -614,6 +634,8 @@ So that models that support image input can use them as context
 | SYS-REQ-067 | Frontend | US-FE-027 | Message timestamps |
 | SYS-REQ-068 | Frontend | US-FE-028 | Connection test |
 | SYS-REQ-070 | Frontend | US-FE-029 | Image input attachments |
+| SYS-REQ-CR003-003 | Frontend | US-FE-030 | Prompt-side dropdown |
+| SYS-REQ-CR003-004 | Frontend | US-FE-030 | Manual override preserved |
 
 ## Definition of Done
 - User stories and acceptance criteria defined

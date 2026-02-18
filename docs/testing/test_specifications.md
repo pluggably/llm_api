@@ -96,6 +96,32 @@
   - Session preserves tokens when omitted on subsequent calls
 - **Traceability**: SYS-REQ-022, DATA-REQ-009
 
+**TEST-SYS-CR003-001**: Auto selection when model omitted
+- **Purpose**: Verify the router resolves a model when `model` is omitted or set to `auto`
+- **Steps**:
+  1. Send a generate request without `model`
+  2. Repeat with `model: "auto"`
+- **Expected**:
+  - Response includes resolved `model`
+  - Output is generated successfully
+- **Traceability**: SYS-REQ-CR003-001
+
+**TEST-SYS-CR003-002**: Auto selection with image input
+- **Purpose**: Verify image inputs route to an image-capable model under Auto
+- **Steps**:
+  1. Send a request with `input.images` and `model: "auto"`
+- **Expected**:
+  - Selected model is the default image model (or first available image model)
+- **Traceability**: SYS-REQ-CR003-002
+
+**TEST-SYS-CR003-003**: Manual model selection preserved
+- **Purpose**: Verify explicit model IDs bypass auto-selection
+- **Steps**:
+  1. Send a request with an explicit `model` ID
+- **Expected**:
+  - Router uses the requested model
+- **Traceability**: SYS-REQ-CR003-004
+
 **TEST-UNIT-006**: Client library request/response models
 - **Purpose**: Verify SDK request/response serialization matches API schema (Python and Dart/Flutter)
 - **Steps**:
