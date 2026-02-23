@@ -28,17 +28,41 @@ jobs:
           script: |
             set -euo pipefail
 
+            APPS_ROOT="/srv/apps"
             APP_ROOT="/srv/apps/llm_api"
             VPS_CONFIG_ROOT="/srv/apps/vps-config"
+            DEPLOY_BRANCH="${{ github.ref_name }}"
 
-            test -d "$APP_ROOT/.git"
-            test -d "$VPS_CONFIG_ROOT/.git"
+            resolve_branch() {
+              local repo="$1"
+              local requested="$2"
 
-            git -C "$APP_ROOT" fetch --prune origin main
-            git -C "$APP_ROOT" reset --hard origin/main
+              if git -C "$repo" show-ref --verify --quiet "refs/remotes/origin/$requested"; then
+                echo "$requested"
+              elif git -C "$repo" show-ref --verify --quiet "refs/remotes/origin/main"; then
+                echo "main"
+              else
+                echo "master"
+              fi
+            }
 
-            git -C "$VPS_CONFIG_ROOT" fetch --prune origin main
-            git -C "$VPS_CONFIG_ROOT" reset --hard origin/main
+            mkdir -p "$APPS_ROOT"
+
+            if [ ! -d "$APP_ROOT/.git" ]; then
+              git clone git@github.com:pluggably/llm_api.git "$APP_ROOT"
+            fi
+
+            if [ ! -d "$VPS_CONFIG_ROOT/.git" ]; then
+              git clone git@github.com:pluggably/vps-config.git "$VPS_CONFIG_ROOT"
+            fi
+
+            git -C "$APP_ROOT" fetch --prune origin
+            APP_BRANCH="$(resolve_branch "$APP_ROOT" "$DEPLOY_BRANCH")"
+            git -C "$APP_ROOT" reset --hard "origin/$APP_BRANCH"
+
+            git -C "$VPS_CONFIG_ROOT" fetch --prune origin
+            VPS_BRANCH="$(resolve_branch "$VPS_CONFIG_ROOT" "$DEPLOY_BRANCH")"
+            git -C "$VPS_CONFIG_ROOT" reset --hard "origin/$VPS_BRANCH"
 
             cd "$VPS_CONFIG_ROOT/llm_api"
             docker compose up -d --build --remove-orphans
