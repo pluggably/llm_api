@@ -9,6 +9,7 @@
 - The system will run on macOS/Linux class hosts (home server) and common cloud providers.
 - GPU acceleration is optional but supported when available.
 - SQLite is the initial persistence layer; schema must be migratable to a cloud database (e.g., Supabase/Postgres).
+- Provider credit/usage availability depends on vendor APIs; when unavailable, the system will report status as unknown and avoid false “out of credits” signals.
 
 ## Out of Scope
 - Training new foundation models from scratch.
@@ -84,6 +85,11 @@
 - **SYS-REQ-066**: Support session naming in session create/update and list responses.
 - **SYS-REQ-067**: Persist and expose timestamps for prompts/commands/messages in session history.
 - **SYS-REQ-068**: Provide an API connectivity test endpoint (health) and surface success in the UI with a green check.
+- **SYS-REQ-071**: Discover accessible commercial models per user by querying provider APIs (OpenAI, Anthropic, Google, Azure, xAI; DeepSeek if configured) using the user’s stored credentials and include them in the model catalog.
+- **SYS-REQ-072**: Retrieve provider-reported credit/usage availability (when available) per user, use it during model selection, and expose it via API responses for UI display.
+- **SYS-REQ-073**: Indicate in API responses when premium credits are exhausted and the system has switched to a free-tier model.
+- **SYS-REQ-074**: Ensure the frontend model catalog and dropdown reflect provider model availability for the authenticated user.
+- **SYS-REQ-075**: Allow requests to specify a provider/vendor preference (instead of a model ID) and select a suitable model, including free-tier fallback when premium credits are exhausted.
 
 ## Non-Functional Requirements (System)
 - **SYS-NFR-001**: Secure secret storage for provider API keys (no secrets in logs).
@@ -106,6 +112,8 @@
 - **SYS-NFR-018**: Request queue must provide position updates within 1 second of state change.
 - **SYS-NFR-019**: Model loading/unloading must be graceful and not interrupt in-flight requests.
 - **SYS-NFR-020**: Default pinned model must load on startup and remain available.
+- **SYS-NFR-021**: Provider discovery and quota checks must be cached and rate-limited to avoid provider API throttling.
+- **SYS-NFR-022**: Provider discovery and quota logging must never include secrets or raw credentials.
 
 ## External Interface Requirements
 - **INT-REQ-001**: API contract must be documented (OpenAPI preferred) with versioning and error schemas.
@@ -120,6 +128,8 @@
 - **INT-REQ-010**: Document the health endpoint contract for UI connectivity checks.
 - **INT-REQ-011**: Document session list response shape, including title and timestamps.
 - **INT-REQ-012**: Document provider credential schemas and credential types per provider.
+- **INT-REQ-013**: Document the API fields or endpoints that expose provider model availability and credit/usage status.
+- **INT-REQ-014**: Document the request field for provider/vendor preference and how fallback selection works.
 
 ## Data Requirements
 - **DATA-REQ-001**: Define request/response schemas for text, image, and 3D generation.
@@ -136,6 +146,8 @@
 - **DATA-REQ-012**: Represent message timestamps for prompts and responses in session history.
 - **DATA-REQ-013**: Store provider credential types with typed payloads and encryption metadata.
 - **DATA-REQ-014**: Represent Hugging Face search results with model identifiers, tags, and modality hints.
+- **DATA-REQ-015**: Represent provider availability and credit/usage status in API responses in a machine-readable form.
+- **DATA-REQ-016**: Represent provider/vendor preference in the request schema without breaking existing model selection behavior.
 
 ## Error Modes
 - For unsupported model features, return a standardized “feature not supported” error.
@@ -218,6 +230,9 @@ Stakeholder → System
 | SH-REQ-051 | SYS-REQ-066 | Session naming |
 | SH-REQ-052 | SYS-REQ-067 | Session/message timestamps |
 | SH-REQ-053 | SYS-REQ-068 | API connection test |
+| SH-REQ-055 | SYS-REQ-071, SYS-REQ-074 | Provider model discovery + UI visibility |
+| SH-REQ-056 | SYS-REQ-072, SYS-REQ-073 | Credits/quota + fallback indication |
+| SH-REQ-057 | SYS-REQ-075 | Provider/vendor selection in requests |
 
 Requirements → Verification
 
@@ -292,3 +307,12 @@ Requirements → Verification
 | SYS-REQ-066 | Automated + Manual | TEST-SYS-MVP-002, TEST-MAN-MVP-003 | tests/system/test_mvp_sessions_contract.py, docs/testing/manual_test_procedures.md | Session naming |
 | SYS-REQ-067 | Automated + Manual | TEST-SYS-MVP-003, TEST-MAN-MVP-004 | tests/system/test_mvp_sessions_contract.py, docs/testing/manual_test_procedures.md | Message timestamps |
 | SYS-REQ-068 | Automated + Manual | TEST-SYS-004, TEST-MAN-MVP-005 | tests/system/test_health_readiness.py, docs/testing/manual_test_procedures.md | API connection test |
+| SYS-REQ-071 | Automated + Manual | TEST-INT-NEW-001, TEST-MAN-NEW-001 | tests/integration/, docs/testing/manual_test_procedures.md | Provider model discovery |
+| SYS-REQ-072 | Automated + Manual | TEST-INT-NEW-002, TEST-MAN-NEW-002 | tests/integration/, docs/testing/manual_test_procedures.md | Provider credits/quota |
+| SYS-REQ-073 | Automated + Manual | TEST-INT-NEW-003, TEST-MAN-NEW-003 | tests/integration/, docs/testing/manual_test_procedures.md | Fallback indication |
+| SYS-REQ-074 | Manual | TEST-MAN-NEW-004 | docs/testing/manual_test_procedures.md | UI visibility based on access |
+| SYS-REQ-075 | Automated + Manual | TEST-INT-NEW-005, TEST-MAN-NEW-005 | tests/integration/, docs/testing/manual_test_procedures.md | Provider/vendor selection |
+
+## DoR/DoD Checklist
+- [ ] Ready: SYS-REQ-071–075 defined with assumptions and NFRs.
+- [ ] Done: Traceability and verification tables updated for SYS-REQ-071–075.

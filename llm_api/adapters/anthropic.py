@@ -39,7 +39,12 @@ class AnthropicAdapter(Adapter):
         with httpx.Client(timeout=30) as client:
             response = client.post(url, json=payload, headers=headers)
         if response.status_code >= 400:
-            raise ProviderError(response.status_code, response.text)
+            error_code: str | None = None
+            try:
+                error_code = response.json().get("error", {}).get("type")
+            except Exception:
+                pass
+            raise ProviderError(response.status_code, response.text, error_code=error_code)
         data = response.json()
         return data["content"][0]["text"]
 

@@ -27,9 +27,7 @@ void main() {
     });
 
     test('fromJson handles missing optional fields', () {
-      final json = {
-        'id': 'llama-3',
-      };
+      final json = {'id': 'llama-3'};
 
       final model = Model.fromJson(json);
 
@@ -41,10 +39,7 @@ void main() {
     });
 
     test('fromJson parses status correctly', () {
-      final json = {
-        'id': 'model-1',
-        'status': 'loading',
-      };
+      final json = {'id': 'model-1', 'status': 'loading'};
 
       final model = Model.fromJson(json);
       expect(model.status, ModelStatus.loading);
@@ -102,9 +97,7 @@ void main() {
     });
 
     test('fromJson handles empty properties', () {
-      final json = {
-        'model_id': 'simple-model',
-      };
+      final json = {'model_id': 'simple-model'};
 
       final schema = ModelSchema.fromJson(json);
 
@@ -204,10 +197,7 @@ void main() {
     });
 
     test('fromJson handles empty messages', () {
-      final json = {
-        'id': 'session-2',
-        'created_at': '2026-01-26T10:00:00Z',
-      };
+      final json = {'id': 'session-2', 'created_at': '2026-01-26T10:00:00Z'};
 
       final session = Session.fromJson(json);
 
@@ -243,10 +233,7 @@ void main() {
             'finish_reason': 'stop',
           },
         ],
-        'usage': {
-          'prompt_tokens': 10,
-          'completion_tokens': 20,
-        },
+        'usage': {'prompt_tokens': 10, 'completion_tokens': 20},
       };
 
       final response = GenerationResponse.fromJson(json);
@@ -262,10 +249,7 @@ void main() {
       final json = {
         'id': 'gen-456',
         'choices': [
-          {
-            'text': 'Legacy text',
-            'finish_reason': 'length',
-          },
+          {'text': 'Legacy text', 'finish_reason': 'length'},
         ],
       };
 
@@ -346,6 +330,7 @@ void main() {
         'token_type': 'bearer',
         'user': <String, dynamic>{
           'id': 'user-1',
+          'username': 'testuser',
           'email': 'test@example.com',
           'preferences': <String, dynamic>{},
           'created_at': '2026-01-26T10:00:00Z',
@@ -354,7 +339,7 @@ void main() {
 
       final auth = AuthResponse.fromJson(json);
 
-      expect(auth.user?.email, 'test@example.com');
+      expect(auth.user?.username, 'testuser');
     });
   });
 
@@ -362,6 +347,7 @@ void main() {
     test('fromJson parses correctly', () {
       final json = {
         'id': 'user-1',
+        'username': 'testuser',
         'email': 'test@example.com',
         'preferences': {'theme': 'dark'},
         'created_at': '2026-01-26T10:00:00Z',
@@ -370,6 +356,7 @@ void main() {
       final profile = UserProfile.fromJson(json);
 
       expect(profile.id, 'user-1');
+      expect(profile.username, 'testuser');
       expect(profile.email, 'test@example.com');
       expect(profile.preferences['theme'], 'dark');
     });

@@ -81,6 +81,27 @@ paths:
         '404':
           description: Model not found
 
+  /v1/models/{modelId}/default:
+    post:
+      summary: Set the default model for the model's modality
+      operationId: setDefaultModel
+      tags: [Models]
+      security:
+        - apiKey: []
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated model info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelInfo'
+
   /v1/schema:
     get:
       summary: Get API schema and parameter documentation
@@ -357,6 +378,9 @@ components:
         model:
           type: string
           description: Model ID (optional; uses default if omitted)
+        provider:
+          type: string
+          description: Provider/vendor preference (optional; used when model is omitted)
         session_id:
           type: string
           description: Optional session ID to reuse context
@@ -406,6 +430,34 @@ components:
         state_tokens:
           type: object
           additionalProperties: true
+        selection:
+          type: object
+          description: Selection metadata (provider/vendor and fallback)
+          properties:
+            selected_model:
+              type: string
+            selected_provider:
+              type: string
+            fallback_used:
+              type: boolean
+            fallback_reason:
+              type: string
+        credits_status:
+          type: object
+          description: Provider credit/usage status when available
+          properties:
+            provider:
+              type: string
+            status:
+              type: string
+              enum: [available, exhausted, unknown]
+            remaining:
+              type: number
+              nullable: true
+            reset_at:
+              type: string
+              format: date-time
+              nullable: true
         output:
           type: object
           properties:
@@ -526,6 +578,28 @@ components:
         status:
           type: string
           enum: [available, downloading, failed, disabled, evicted]
+        availability:
+          type: object
+          description: Provider access and credit status for this user (if applicable)
+          properties:
+            provider:
+              type: string
+            access:
+              type: string
+              enum: [available, locked, unknown]
+            credits_status:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [available, exhausted, unknown]
+                remaining:
+                  type: number
+                  nullable: true
+                reset_at:
+                  type: string
+                  format: date-time
+                  nullable: true
 
     ModelDownloadRequest:
       type: object

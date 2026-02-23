@@ -45,6 +45,8 @@ I need a single, standard API and a cross-platform UI that I can host on a home 
 - Option to fall back to a default model while requested model is loading, or choose to wait for the requested model.
 - Add models from the UI by searching Hugging Face and downloading new models; include text search to filter large model lists.
 - Manage commercial provider credentials from the profile UI, including non-API-key auth types when required.
+- Automatically discover which commercial models are accessible for a user and show them in the model catalog and dropdown.
+- Inform users about remaining premium credits/quotas (when providers expose it) and indicate when the app must switch to free-tier models.
 - Manage and switch sessions from the left-pane sessions list (no separate sessions page), with reliable display.
 - Name sessions for easier organization.
 - Track timestamps for prompts/commands/messages within sessions.
@@ -105,6 +107,9 @@ I need a single, standard API and a cross-platform UI that I can host on a home 
 - **SH-REQ-051**: Allow users to name sessions.
 - **SH-REQ-052**: Track timestamps for prompts/commands/messages in sessions.
 - **SH-REQ-053**: Provide a settings UI action to test API connectivity and show a green check on success.
+- **SH-REQ-055**: Discover and display commercial provider models that are accessible to the authenticated user based on their provider credentials.
+- **SH-REQ-056**: Surface premium credit/usage availability (when provided by the vendor) and indicate in the UI/API when the system must fall back to free-tier models.
+- **SH-REQ-057**: Allow API requests to specify a provider/vendor preference instead of a model ID; backend selects a suitable model and can fall back to free-tier models when premium credits are exhausted.
 
 ## Non-Functional Requirements (Stakeholder)
 - **SH-NFR-001**: Secure handling of API keys/secrets for commercial providers.
@@ -168,35 +173,6 @@ I need a single, standard API and a cross-platform UI that I can host on a home 
 - GPU availability differs between home and cloud environments.
 
 ## Success Criteria (Measurable)
-- Client can switch providers with no changes to request schema.
-- At least one commercial and one local OSS model are successfully invoked through the API.
-- Deployment works on both home server and cloud with documented steps.
-- Installed local models appear in the catalog without manual registration.
-- API consumers can retrieve parameter documentation from the service.
-- Multi-turn requests within a session produce coherent, stateful behavior across calls.
-- Clients can start and end sessions and see them reflected in session listings.
-- Developers can integrate the API via the client libraries with minimal boilerplate in Python and Dart/Flutter.
-- Users can interact with models through the UI with dynamic parameter controls.
-- Users can create and switch chat sessions with maintained context.
-- The system tracks models and parameter schemas persistently.
-- Users can authenticate and manage profile preferences.
-- Users can create private API tokens for the LLM API.
-- Model entries include usage docs and parameter guidance when available.
-- UI adapts to modality/device with user override.
-- Model downloads run in the background with status and reuse.
-- Default model is always loaded and available for immediate use.
-- Users can pre-load models and see loading status.
-- Requests queue when resources are busy with position feedback.
-- Users can cancel in-flight requests.
-- Users can regenerate responses with modified parameters.
-- Users can choose (via API or UI) to use a fallback model while the preferred model loads, or to wait.
-- Users can add/register models from the UI by searching Hugging Face and filtering large lists.
-- Users can manage commercial provider credentials, including non-API-key auth types.
-- Users can manage and switch sessions from the left-pane sessions list.
-- Users can name sessions and see those names in lists.
-- Messages include timestamps for prompts/commands/responses.
-- Users can test API connectivity from settings and receive a green check on success.
-
 ## Decisions (Resolved Open Questions)
 - **API shape**: Custom schema (not strictly OpenAI-compatible), but similar patterns.
 - **Streaming responses**: Yes, support SSE for text streaming (WebSocket optional/future).
@@ -274,6 +250,13 @@ Stakeholder → System
 | SH-REQ-051 | SYS-REQ-066 | Session naming |
 | SH-REQ-052 | SYS-REQ-067 | Session/message timestamps |
 | SH-REQ-053 | SYS-REQ-068 | API connection test |
+| SH-REQ-055 | SYS-REQ-071, SYS-REQ-074 | Provider model discovery + UI visibility |
+| SH-REQ-056 | SYS-REQ-072, SYS-REQ-073 | Credits/quota + fallback indication |
+| SH-REQ-057 | SYS-REQ-075 | Provider/vendor selection in requests |
+
+## DoR/DoD Checklist
+- [ ] Ready: Provider discovery and vendor selection needs captured in stakeholder requirements.
+- [ ] Done: Traceability updated for SH-REQ-055–057.
 | SH-REQ-024 | SYS-REQ-026 | Model selection UI |
 | SH-REQ-025 | SYS-REQ-027 | Dynamic parameters |
 | SH-REQ-026 | SYS-REQ-028 | Chat UI |

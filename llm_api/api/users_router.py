@@ -4,11 +4,14 @@ from __future__ import annotations
 import secrets
 from typing import Any, Dict, List, Optional
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from llm_api.api.schemas import (
+    ChangePasswordRequest,
     CreateTokenRequest,
     ProviderKeyInfo,
     ProviderKeyRequest,
@@ -40,13 +43,23 @@ def _get_current_user_id(request: Request) -> str:
     )
 
 
+def _require_admin(request: Request) -> str:
+    """Require admin privileges and return current user_id."""
+    user_id = _get_current_user_id(request)
+    user_service = get_user_service()
+    user = user_service.get_user(user_id)
+    if not user or not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    return user_id
+
+
 @users_router.post("/register")
 async def register(request: UserRegisterRequest) -> JSONResponse:
     """Register a new user (requires invite token if configured)."""
     user_service = get_user_service()
     
     result = user_service.register(
-        email=request.email,
+        email=request.username,
         password=request.password,
         invite_token=request.invite_token,
         display_name=request.display_name,
@@ -55,7 +68,7 @@ async def register(request: UserRegisterRequest) -> JSONResponse:
     if not result:
         raise HTTPException(
             status_code=400,
-            detail="Registration failed. Invalid invite token or email already exists.",
+            detail="Registration failed. Invalid invite token or username already exists.",
         )
     
     return JSONResponse(jsonable_encoder(result), status_code=201)
@@ -66,7 +79,7 @@ async def login(request: UserLoginRequest) -> JSONResponse:
     """Authenticate and get an access token."""
     user_service = get_user_service()
     
-    user = user_service.authenticate(request.email, request.password)
+    user = user_service.authenticate(request.username, request.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
@@ -112,6 +125,28 @@ async def update_profile(
     if not result:
         raise HTTPException(status_code=404, detail="User not found")
     return JSONResponse(jsonable_encoder(result))
+
+
+@users_router.post("/change-password")
+async def change_password(
+    request: Request,
+    body: ChangePasswordRequest,
+    _=Depends(require_api_key),
+) -> JSONResponse:
+    """Change current user's password."""
+    user_id = _get_current_user_id(request)
+    user_service = get_user_service()
+    changed = user_service.change_password(
+        user_id=user_id,
+        current_password=body.current_password,
+        new_password=body.new_password,
+    )
+    if not changed:
+        raise HTTPException(
+            status_code=400,
+            detail="Password change failed. Check current password and password policy.",
+        )
+    return JSONResponse({"changed": True})
 
 
 @users_router.post("/tokens")
@@ -173,8 +208,14 @@ async def set_provider_key(
     _=Depends(require_api_key),
 ) -> JSONResponse:
     """Set a provider API key."""
+    logger = logging.getLogger(__name__)
     user_id = _get_current_user_id(request)
     user_service = get_user_service()
+
+    logger.debug(
+        "Received provider key update",
+        extra={"provider": body.provider, "credential_type": body.credential_type, "user_id": user_id},
+    )
 
     payload = {}
     if body.credential_type == "api_key":
@@ -238,8 +279,8 @@ async def delete_provider_key(
 @users_router.post("/invites")
 async def create_invite(request: Request, _=Depends(require_api_key)) -> JSONResponse:
     """Create an invite token (admin only)."""
-    user_id = _get_current_user_id(request)
+    user_id = _require_admin(request)
     user_service = get_user_service()
     
-    token = user_service.create_invite()
+    token = user_service.create_invite(created_by=user_id)
     return JSONResponse({"invite_token": token}, status_code=201)

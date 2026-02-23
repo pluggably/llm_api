@@ -44,3 +44,32 @@ class TestModelDownloadWorkflow:
         second = client.post("/v1/models/download", json=payload, headers={"X-API-Key": "test-key"})
         assert first.status_code == 202
         assert second.status_code == 202
+
+    def test_add_hf_hosted_model_without_local_download(self, client):
+        payload = {
+            "model": {
+                "id": "meta-llama/Llama-3.2-1B-Instruct",
+                "name": "meta-llama/Llama-3.2-1B-Instruct",
+                "version": "latest",
+                "modality": "text",
+                "provider": "huggingface",
+            },
+            "source": {
+                "type": "huggingface",
+                "id": "meta-llama/Llama-3.2-1B-Instruct",
+            },
+            "options": {
+                "install_local": False,
+            },
+        }
+
+        response = client.post("/v1/models/download", json=payload, headers={"X-API-Key": "test-key"})
+        assert response.status_code == 202
+        assert response.json()["status"] == "completed"
+
+        models_resp = client.get("/v1/models", headers={"X-API-Key": "test-key"})
+        assert models_resp.status_code == 200
+        hosted = [m for m in models_resp.json()["models"] if m["id"] == "meta-llama/Llama-3.2-1B-Instruct"]
+        assert hosted
+        assert hosted[0]["provider"] == "huggingface"
+        assert hosted[0]["local_path"] is None

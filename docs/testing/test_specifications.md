@@ -122,6 +122,15 @@
   - Router uses the requested model
 - **Traceability**: SYS-REQ-CR003-004
 
+**TEST-SYS-CR003-004**: Selection mode filters
+- **Purpose**: Verify free-only and commercial-only filters constrain auto-selection
+- **Steps**:
+  1. Send a request with `selection_mode=free_only` and `model: "auto"`
+  2. Send a request with `selection_mode=commercial_only` and `model: "auto"`
+- **Expected**:
+  - Selected model respects the requested filter or returns a clear error
+- **Traceability**: SYS-REQ-CR003-005
+
 **TEST-UNIT-006**: Client library request/response models
 - **Purpose**: Verify SDK request/response serialization matches API schema (Python and Dart/Flutter)
 - **Steps**:
@@ -180,6 +189,53 @@
   - Response includes model id, name, tags, modality hints
   - Pagination fields present when applicable
 - **Traceability**: SYS-REQ-063
+
+## Integration Test Specifications (Provider Discovery & Vendor Selection)
+
+**TEST-INT-NEW-001**: Provider model discovery per user
+- **Purpose**: Verify provider APIs are queried and accessible models are cached per user
+- **Steps**:
+  1. Store provider credentials for a user
+  2. Trigger discovery refresh
+  3. Fetch `/v1/models` as the user
+- **Expected**:
+  - Provider models appear in the catalog
+  - Discovery results are cached
+- **Traceability**: SYS-REQ-071, SYS-REQ-074
+
+**TEST-INT-NEW-002**: Provider credits/quota retrieval
+- **Purpose**: Verify credit/usage status is retrieved and exposed
+- **Steps**:
+  1. Trigger provider discovery with quota retrieval enabled
+  2. Fetch `/v1/models` and/or a generate response
+- **Expected**:
+  - Responses include credit/usage status when available
+- **Traceability**: SYS-REQ-072, DATA-REQ-015
+
+**TEST-INT-NEW-003**: Free-tier fallback indication
+- **Purpose**: Verify responses indicate fallback when premium credits are exhausted
+- **Steps**:
+  1. Simulate exhausted credits for a provider
+  2. Send a generate request with provider/vendor specified
+- **Expected**:
+  - Response includes fallback indicator and selected free-tier model
+- **Traceability**: SYS-REQ-073, SYS-REQ-075
+
+**TEST-INT-NEW-004**: Vendor selection without model ID
+- **Purpose**: Verify provider/vendor preference selects a suitable model
+- **Steps**:
+  1. Send a generate request with `provider` and no `model`
+- **Expected**:
+  - Response includes selected model and provider
+- **Traceability**: SYS-REQ-075, DATA-REQ-016
+
+**TEST-INT-NEW-005**: Discovery caching and rate limits
+- **Purpose**: Verify discovery and quota checks are cached and rate-limited
+- **Steps**:
+  1. Trigger repeated discovery refreshes in a short interval
+- **Expected**:
+  - Provider API calls are throttled and cache is reused
+- **Traceability**: SYS-NFR-021
 
 ## Test Reporting
 Automated test runs should generate reports for review.
@@ -342,7 +398,7 @@ Use the script documented in [docs/ops/test_reporting.md](docs/ops/test_reportin
   - Green check on success, error message on failure
 - **Traceability**: SYS-REQ-068
 
-**TEST-MAN-018**: Image inputs in chat
+**TEST-MAN-021**: Image inputs in chat
 - **Purpose**: Validate image upload, paste, and URL attachments
 - **Preconditions**: Frontend running; model that supports image input
 - **Steps**:
@@ -782,6 +838,15 @@ Requirements → Verification
 | SYS-REQ-048 | Manual | TEST-MAN-017 | docs/testing/manual_test_procedures.md | Regenerate |
 | SYS-REQ-049 | Automated | TEST-INT-013 | tests/integration/ | Prepare/load model |
 | SYS-REQ-050 | Automated | TEST-INT-014 | tests/integration/ | Model runtime status |
+| SYS-REQ-071 | Automated + Manual | TEST-INT-NEW-001, TEST-MAN-NEW-001 | tests/integration/, docs/testing/manual_test_procedures.md | Provider model discovery |
+| SYS-REQ-072 | Automated + Manual | TEST-INT-NEW-002, TEST-MAN-NEW-002 | tests/integration/, docs/testing/manual_test_procedures.md | Provider credits/quota |
+| SYS-REQ-073 | Automated + Manual | TEST-INT-NEW-003, TEST-MAN-NEW-003 | tests/integration/, docs/testing/manual_test_procedures.md | Fallback indication |
+| SYS-REQ-074 | Manual | TEST-MAN-NEW-004 | docs/testing/manual_test_procedures.md | UI visibility based on access |
+| SYS-REQ-075 | Automated + Manual | TEST-INT-NEW-004, TEST-MAN-NEW-005 | tests/integration/, docs/testing/manual_test_procedures.md | Provider/vendor selection |
+
+## DoR/DoD Checklist
+- [ ] Ready: Provider discovery and vendor selection tests specified.
+- [ ] Done: Traceability includes SYS-REQ-071–075.
 | SYS-REQ-051 | Automated | TEST-INT-015 | tests/integration/ | Get loaded models |
 | SYS-REQ-052 | Automated | TEST-INT-016 | tests/integration/ | Default pinned model |
 | SYS-REQ-053 | Automated | TEST-INT-017 | tests/integration/ | Fallback configuration |

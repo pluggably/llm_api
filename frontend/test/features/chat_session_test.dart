@@ -26,11 +26,13 @@ class _FakeLlmApiClient extends LlmApiClient {
   @override
   Stream<GenerationStreamEvent> generateStreamEvents({
     List<String>? images,
-    required String modelId,
+    String? modelId,
+    String? provider,
     required String prompt,
     String modality = 'text',
     String? sessionId,
     Map<String, dynamic>? parameters,
+    String selectionMode = 'auto',
   }) async* {
     lastSessionId = sessionId;
     final response = GenerationResponse(
@@ -59,10 +61,7 @@ void main() {
       ),
     );
 
-    await tester.enterText(
-      find.byType(TextField),
-      'hello',
-    );
+    await tester.enterText(find.byType(TextField).last, 'hello');
     await tester.tap(find.byIcon(Icons.send));
     await tester.pumpAndSettle();
 
@@ -72,5 +71,52 @@ void main() {
     final context = tester.element(find.byType(ChatPage));
     final container = ProviderScope.containerOf(context);
     expect(container.read(activeSessionIdProvider), 'session-1');
+  });
+
+  testWidgets('shows provider submenus in model picker', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final fakeClient = _FakeLlmApiClient();
+
+    final models = [
+      const Model(
+        id: 'openai-gpt-4o-mini',
+        name: 'GPT-4o mini',
+        provider: 'openai',
+        modality: 'text',
+      ),
+      const Model(
+        id: 'hf-tinyllama',
+        name: 'TinyLlama',
+        provider: 'huggingface',
+        modality: 'text',
+      ),
+      const Model(
+        id: 'local-llama',
+        name: 'Local Llama',
+        provider: 'local',
+        modality: 'text',
+      ),
+    ];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          sharedPreferencesProvider.overrideWithValue(prefs),
+          apiClientProvider.overrideWithValue(fakeClient),
+          modelsProvider.overrideWith((ref) async => models),
+        ],
+        child: const MaterialApp(home: ChatPage()),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(OutlinedButton).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('OpenAI (1)'), findsOneWidget);
+    expect(find.text('Hugging Face (1)'), findsOneWidget);
+    expect(find.text('Local (1)'), findsOneWidget);
   });
 }

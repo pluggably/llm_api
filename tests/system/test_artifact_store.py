@@ -28,7 +28,8 @@ class TestArtifactStore:
             artifact_url = urlparse(artifact_url).path
         fetch = client.get(artifact_url)
         assert fetch.status_code == 200
-        assert fetch.json()["content_base64"]
+        # Artifact endpoint returns raw bytes with appropriate content-type
+        assert len(fetch.content) > 0
 
     def test_artifact_url_expires(self, client_factory):
         client = client_factory({"artifact_inline_threshold_kb": "0"})

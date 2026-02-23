@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,12 +12,12 @@ from sqlalchemy import select, or_
 from llm_api.api.schemas import ModelCapabilities, ModelInfo, ModelSource
 from llm_api.config import get_settings
 from llm_api.db.database import get_db_session
-from llm_api.db.models import ModelRecord
+from llm_api.db.models import DefaultModelRecord, ModelRecord
 
 logger = logging.getLogger(__name__)
 
 
-def _model_record_to_info(record: ModelRecord) -> ModelInfo:
+def _model_record_to_info(record: ModelRecord, default_ids: set[str]) -> ModelInfo:
     """Convert a database record to a ModelInfo schema."""
     settings = get_settings()
     source = None
@@ -43,11 +42,7 @@ def _model_record_to_info(record: ModelRecord) -> ModelInfo:
             image_input_formats=record.image_input_formats,
         )
     
-    is_default = record.id in {
-        settings.default_model,
-        settings.default_image_model,
-        settings.default_3d_model,
-    }
+    is_default = record.id in default_ids
 
     return ModelInfo(
         id=record.id,
@@ -203,8 +198,10 @@ class ModelRegistry:
         self.ready = True
 
     def _prune_non_default_local_models(self, allowed_ids: set[str]) -> None:
-        """Remove auto-discovered local models that are not in the defaults list."""
+        """Remove auto-discovered local models that are not in the defaults list,
+        and deduplicate rows that share (name, modality) with a canonical default."""
         with get_db_session() as db:
+            # Phase 1 – original prune: remove non-default local/untyped models
             query = (
                 select(ModelRecord)
                 .where(ModelRecord.id.notin_(allowed_ids))
@@ -213,6 +210,28 @@ class ModelRegistry:
             records = db.execute(query).scalars().all()
             for record in records:
                 db.delete(record)
+
+            # Phase 2 – deduplicate: remove rows with UUID-style IDs that
+            # duplicate a canonical default (same name + modality, but wrong ID).
+            # This cleans up damage from the empty-env-var bug where add_model()
+            # assigned random UUIDs to models that should have had a fixed ID.
+            canonical = {
+                (r.name, r.modality)
+                for r in db.execute(
+                    select(ModelRecord).where(ModelRecord.id.in_(allowed_ids))
+                ).scalars().all()
+            }
+            if canonical:
+                dupes = (
+                    db.execute(
+                        select(ModelRecord).where(ModelRecord.id.notin_(allowed_ids))
+                    )
+                    .scalars()
+                    .all()
+                )
+                for record in dupes:
+                    if (record.name, record.modality) in canonical:
+                        db.delete(record)
         self._invalidate_cache()
 
     def _is_cache_valid(self) -> bool:
@@ -315,6 +334,47 @@ class ModelRegistry:
             self.add_model(model)
             logger.info(f"Auto-registered model from file: {model_id}")
 
+    def _get_default_ids(self) -> set[str]:
+        """Get the set of default model IDs (DB overrides settings defaults)."""
+        settings = get_settings()
+        defaults_map: Dict[str, str] = {}
+        with get_db_session() as db:
+            rows = db.execute(select(DefaultModelRecord)).scalars().all()
+            for row in rows:
+                defaults_map[row.modality] = row.model_id
+
+        if "text" not in defaults_map and settings.default_model:
+            defaults_map["text"] = settings.default_model
+        if "image" not in defaults_map and settings.default_image_model:
+            defaults_map["image"] = settings.default_image_model
+        if "3d" not in defaults_map and settings.default_3d_model:
+            defaults_map["3d"] = settings.default_3d_model
+
+        return set(defaults_map.values())
+
+    def get_default_model_id(self, modality: str) -> Optional[str]:
+        """Get default model ID for a modality, preferring DB over settings."""
+        settings = get_settings()
+        with get_db_session() as db:
+            record = db.get(DefaultModelRecord, modality)
+            if record:
+                return record.model_id
+        if modality == "image":
+            return settings.default_image_model
+        if modality == "3d":
+            return settings.default_3d_model
+        return settings.default_model
+
+    def set_default_model(self, modality: str, model_id: str) -> None:
+        """Set the default model for a modality (replaces any existing default)."""
+        with get_db_session() as db:
+            existing = db.get(DefaultModelRecord, modality)
+            if existing:
+                existing.model_id = model_id
+                db.add(existing)
+            else:
+                db.add(DefaultModelRecord(modality=modality, model_id=model_id))
+
     def list_models(self, modality: Optional[str] = None) -> List[ModelInfo]:
         """List all registered models, optionally filtered by modality."""
         with get_db_session() as db:
@@ -323,7 +383,8 @@ class ModelRegistry:
                 query = query.where(ModelRecord.modality == modality)
             
             records = db.execute(query).scalars().all()
-            return [_model_record_to_info(r) for r in records]
+            default_ids = self._get_default_ids()
+            return [_model_record_to_info(r, default_ids) for r in records]
 
     def get_model(self, model_id: str) -> Optional[ModelInfo]:
         """Get a model by ID."""
@@ -333,7 +394,8 @@ class ModelRegistry:
                 # Update last_used_at
                 record.last_used_at = datetime.now(timezone.utc)
                 db.add(record)
-                return _model_record_to_info(record)
+                default_ids = self._get_default_ids()
+                return _model_record_to_info(record, default_ids)
             return None
 
     def get_model_by_local_path(self, local_path: str) -> Optional[ModelInfo]:
@@ -342,13 +404,25 @@ class ModelRegistry:
             query = select(ModelRecord).where(ModelRecord.local_path == local_path)
             record = db.execute(query).scalars().first()
             if record:
-                return _model_record_to_info(record)
+                default_ids = self._get_default_ids()
+                return _model_record_to_info(record, default_ids)
             return None
 
     def add_model(self, model: ModelInfo) -> ModelInfo:
-        """Add or update a model in the registry."""
+        """Add or update a model in the registry.
+
+        Raises:
+            ValueError: If ``model.id`` is empty or None.  Every model must
+                have an explicit, deterministic ID so that restarts do not
+                create duplicates.
+        """
         if not model.id:
-            model.id = str(uuid.uuid4())
+            raise ValueError(
+                f"Cannot register a model without an explicit ID "
+                f"(name={model.name!r}, modality={model.modality!r}).  "
+                f"Ensure default_model / default_image_model / default_3d_model "
+                f"settings are not empty."
+            )
         
         with get_db_session() as db:
             existing = db.get(ModelRecord, model.id)
@@ -390,7 +464,8 @@ class ModelRegistry:
             
             db.add(record)
             self._invalidate_cache()
-            return _model_record_to_info(record)
+            default_ids = self._get_default_ids()
+            return _model_record_to_info(record, default_ids)
 
     def delete_model(self, model_id: str) -> bool:
         """Delete a model from the registry."""
@@ -455,4 +530,5 @@ def get_registry() -> ModelRegistry:
     if _registry is None:
         _registry = ModelRegistry()
         _registry.load_defaults()
+        _registry._scan_local_models()
     return _registry

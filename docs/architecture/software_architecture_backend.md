@@ -29,6 +29,9 @@ graph LR
     Sessions[Session Manager]
     Keys[User Key Manager]
     Creds[Credential Vault]
+    ProviderDiscovery[Provider Discovery]
+    Quota[Credits/Quota]
+    AvailabilityCache[Availability Cache]
     Users[User Auth/Profile]
     Tokens[User API Tokens]
     DB[(SQLite Registry DB)]
@@ -61,6 +64,9 @@ graph LR
     API --> Sessions
     API --> Keys
     API --> Creds
+    API --> ProviderDiscovery
+    ProviderDiscovery --> Quota
+    ProviderDiscovery --> AvailabilityCache
     API --> Users
     API --> Tokens
 ```
@@ -82,6 +88,8 @@ graph LR
 - `sessions/`: session store and history management
 - `keys/`: per-user provider/OSS key management
 - `credentials/`: provider credential types and secure storage
+- `provider_discovery/`: provider model discovery and quota status (per user)
+- `availability/`: cached provider availability, credits, and access metadata
 - `users/`: invite-only auth, sessions, profiles
 - `tokens/`: user API token management
 - `lifecycle/`: model loading/unloading, idle timeout, LRU eviction
@@ -106,6 +114,8 @@ graph LR
 - **Router → Sessions**: append messages and fetch session context
 - **API → Keys**: manage provider and OSS keys
 - **API → Creds**: manage provider credential types and secrets
+- **API → ProviderDiscovery**: discover accessible provider models + quota status (cached)
+- **ProviderDiscovery → Availability Cache**: store model access + credits/quota
 - **Keys → DB**: CRUD key records and encryption metadata
 - **API → Users**: invite-only registration, login/logout, profile management
 - **Users → DB**: CRUD users, invites, and preferences
@@ -227,6 +237,46 @@ sequenceDiagram
     Registry-->>Registry: register discovered models
 ```
 
+### Provider Discovery & Quota Flow
+```mermaid
+sequenceDiagram
+    participant API as API Layer
+    participant Users as User Auth/Profile
+    participant Creds as Credential Vault
+    participant Discovery as Provider Discovery
+    participant Provider as Provider API
+    participant Cache as Availability Cache
+
+    API->>Users: resolve user
+    API->>Creds: get provider credentials
+    API->>Discovery: refresh(user, provider)
+    Discovery->>Provider: list models + quota (per provider)
+    Provider-->>Discovery: models + credit status
+    Discovery->>Cache: store availability + credits
+    Cache-->>API: availability snapshot
+```
+
+### Vendor Selection with Free-Tier Fallback
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant API as API Layer
+    participant Router as Router
+    participant Cache as Availability Cache
+    participant Adapters as Provider Adapter
+
+    C->>API: POST /v1/generate (provider/vendor specified)
+    API->>Router: route(request)
+    Router->>Cache: get availability + credits
+    alt Premium available
+        Router->>Adapters: call selected provider model
+    else Premium exhausted
+        Router->>Adapters: call free-tier model
+    end
+    Router-->>API: response + fallback indicator
+    API-->>C: 200 + response
+```
+
 ### Session Request Flow
 ```mermaid
 sequenceDiagram
@@ -313,6 +363,11 @@ System → Software
 | SYS-REQ-066 | Backend | US-037 | Session naming |
 | SYS-REQ-067 | Backend | US-038 | Message timestamps |
 | SYS-REQ-068 | Backend | US-041 | Health check endpoint |
+| SYS-REQ-071 | Backend | US-043 | Provider model discovery |
+| SYS-REQ-072 | Backend | US-043 | Provider credits/quota |
+| SYS-REQ-073 | Backend | US-043 | Fallback indication |
+| SYS-REQ-074 | Backend | US-043 | Availability in model catalog |
+| SYS-REQ-075 | Backend | US-043 | Vendor selection |
 
 ## Definition of Ready / Done
 **Ready**
@@ -323,3 +378,7 @@ System → Software
 - Interface contracts implemented for key endpoints.
 - Traceability matrix updated.
 - Reviewed and approved by user.
+
+## DoR/DoD Checklist
+- [ ] Ready: Provider discovery and vendor selection diagrams added.
+- [ ] Done: Provider discovery interfaces reviewed and traced to SYS-REQ-071–075.

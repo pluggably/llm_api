@@ -54,12 +54,16 @@ class TestModelSelectionLogic:
     def test_uses_default_when_no_model_specified(self, mock_registry):
         """Test that default model is used when none specified."""
         settings = Settings(api_key="test-key", openai_api_key="sk-test-key", default_model="gpt-4")
+        # Override get_default_model_id to avoid DB-seeded defaults
+        mock_registry.get_default_model_id = lambda modality: "gpt-4"
         selection = select_backend(None, mock_registry, settings)
         assert selection.model.id == "gpt-4"
 
-    def test_provider_not_configured_raises_error(self, mock_registry):
+    def test_provider_not_configured_raises_error(self, mock_registry, monkeypatch):
         """Test that missing API key raises ProviderNotConfiguredError."""
-        settings = Settings(api_key="test-key")  # No openai_api_key
+        # Explicitly unset env var so .env doesn't leak a real key
+        monkeypatch.delenv("LLM_API_OPENAI_API_KEY", raising=False)
+        settings = Settings(api_key="test-key", openai_api_key=None)
         with pytest.raises(ProviderNotConfiguredError) as exc_info:
             select_backend("gpt-4", mock_registry, settings)
         assert "OpenAI API key not configured" in str(exc_info.value)

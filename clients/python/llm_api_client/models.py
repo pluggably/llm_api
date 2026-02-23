@@ -18,14 +18,39 @@ class GenerateParameters(BaseModel):
     format: Optional[str] = None
 
 
+SelectionMode = Literal["auto", "free_only", "commercial_only", "model"]
+
+
 class GenerateRequest(BaseModel):
     model: Optional[str] = None
+    provider: Optional[str] = None
     session_id: Optional[str] = None
     state_tokens: Optional[Dict[str, Any]] = None
     modality: Literal["text", "image", "3d"]
     input: GenerateInput
     parameters: Optional[GenerateParameters] = None
     stream: bool = False
+    selection_mode: Optional[SelectionMode] = None
+
+
+class CreditsStatus(BaseModel):
+    provider: str
+    status: Literal["available", "exhausted", "unknown"] = "unknown"
+    remaining: Optional[float] = None
+    reset_at: Optional[datetime] = None
+
+
+class AvailabilityInfo(BaseModel):
+    provider: str
+    access: Literal["available", "locked", "unknown"] = "unknown"
+    credits_status: Optional[CreditsStatus] = None
+
+
+class SelectionInfo(BaseModel):
+    selected_model: str
+    selected_provider: Optional[str] = None
+    fallback_used: bool = False
+    fallback_reason: Optional[str] = None
 
 
 class GenerateOutput(BaseModel):
@@ -47,6 +72,8 @@ class GenerateResponse(BaseModel):
     modality: Literal["text", "image", "3d"]
     session_id: Optional[str] = None
     state_tokens: Optional[Dict[str, Any]] = None
+    selection: Optional[SelectionInfo] = None
+    credits_status: Optional[CreditsStatus] = None
     output: GenerateOutput
     usage: Usage
 
@@ -55,6 +82,9 @@ class ModelCapabilities(BaseModel):
     max_context_tokens: Optional[int] = None
     output_formats: Optional[List[str]] = None
     hardware_requirements: Optional[List[str]] = None
+    image_input_max_edge: Optional[int] = None
+    image_input_max_pixels: Optional[int] = None
+    image_input_formats: Optional[List[str]] = None
 
 
 class ModelSource(BaseModel):
@@ -75,6 +105,7 @@ class ModelInfo(BaseModel):
     last_used_at: Optional[datetime] = None
     is_default: Optional[bool] = None
     status: Literal["available", "downloading", "failed", "disabled", "evicted"] = "available"
+    availability: Optional[AvailabilityInfo] = None
 
 
 class ModelCatalog(BaseModel):
@@ -110,12 +141,176 @@ class ModelDownloadRequest(BaseModel):
     options: Optional[ModelDownloadOptions] = None
 
 
+class DownloadJobStatus(BaseModel):
+    job_id: str
+    model_id: str
+    status: Literal["queued", "running", "completed", "failed", "cancelled"]
+    progress_pct: float
+    error: Optional[str] = None
+    created_at: datetime
+
+
 class Session(BaseModel):
     id: str
     status: Literal["active", "closed"]
+    title: Optional[str] = None
     created_at: datetime
     last_used_at: Optional[datetime] = None
+    message_count: int = 0
+    messages: Optional[List["SessionMessageResponse"]] = None
+
+
+class SessionMessageResponse(BaseModel):
+    id: str
+    role: Literal["user", "assistant"]
+    content: str
+    created_at: datetime
+
+
+class SessionSummary(BaseModel):
+    id: str
+    title: Optional[str] = None
+    created_at: datetime
+    last_used_at: Optional[datetime] = None
+    message_count: int = 0
 
 
 class SessionList(BaseModel):
-    sessions: List[Session]
+    sessions: List[SessionSummary]
+
+
+class UserLoginResponse(BaseModel):
+    token: str
+    user: Dict[str, Any]
+
+
+class UserProfile(BaseModel):
+    id: str
+    email: str
+    display_name: Optional[str] = None
+    preferred_model: Optional[str] = None
+    preferences: Dict[str, Any] = Field(default_factory=dict)
+
+
+class UpdateProfileRequest(BaseModel):
+    display_name: Optional[str] = None
+    preferred_model: Optional[str] = None
+    preferences: Optional[Dict[str, Any]] = None
+
+
+class CreateTokenRequest(BaseModel):
+    name: Optional[str] = None
+    scopes: Optional[List[str]] = None
+    expires_days: Optional[int] = None
+
+
+class TokenInfo(BaseModel):
+    id: str
+    name: Optional[str] = None
+    scopes: List[str] = Field(default_factory=list)
+    created_at: str
+    last_used_at: Optional[str] = None
+    expires_at: Optional[str] = None
+
+
+class TokenCreatedResponse(BaseModel):
+    token: str
+    info: TokenInfo
+
+
+class ProviderKeyRequest(BaseModel):
+    provider: str
+    credential_type: Literal[
+        "api_key",
+        "endpoint_key",
+        "oauth_token",
+        "service_account",
+    ] = "api_key"
+    api_key: Optional[str] = None
+    endpoint: Optional[str] = None
+    oauth_token: Optional[str] = None
+    service_account_json: Optional[str] = None
+
+
+class ProviderKeyInfo(BaseModel):
+    id: str
+    provider: str
+    credential_type: str
+    masked_key: Optional[str] = None
+    created_at: str
+
+
+class ModelSearchResult(BaseModel):
+    id: str
+    name: str
+    tags: List[str] = Field(default_factory=list)
+    modality_hints: List[Literal["text", "image", "3d"]] = Field(default_factory=list)
+    downloads: Optional[int] = None
+    last_modified: Optional[datetime] = None
+
+
+class ModelSearchResponse(BaseModel):
+    results: List[ModelSearchResult]
+    next_cursor: Optional[str] = None
+
+
+class ModelRuntimeStatus(BaseModel):
+    model_id: str
+    runtime_status: Literal["unloaded", "loading", "loaded", "busy"]
+    queue_depth: int = 0
+
+
+class LoadedModelInfo(BaseModel):
+    model_id: str
+    loaded_at: str
+    last_used_at: str
+    is_pinned: bool
+    memory_bytes: int
+    is_busy: bool
+    busy_count: int
+
+
+class LoadedModelsResponse(BaseModel):
+    models: List[LoadedModelInfo]
+
+
+class LoadModelRequest(BaseModel):
+    wait: bool = False
+    use_fallback: bool = False
+    fallback_model_id: Optional[str] = None
+
+
+class QueuePositionResponse(BaseModel):
+    request_id: str
+    status: Literal["pending", "queued", "running", "completed", "cancelled", "failed"]
+    queue_position: Optional[int] = None
+
+
+class CancelRequestResponse(BaseModel):
+    request_id: str
+    cancelled: bool
+    status: str
+
+
+class RegenerateRequest(BaseModel):
+    model: Optional[str] = None
+    parameters: Optional[GenerateParameters] = None
+    stream: bool = False
+    selection_mode: Optional[SelectionMode] = None
+
+
+class SchemaParameter(BaseModel):
+    name: str
+    type: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    default: Optional[Any] = None
+    minimum: Optional[float] = None
+    maximum: Optional[float] = None
+    enum: Optional[List[Any]] = None
+
+
+class ModelSchema(BaseModel):
+    model_id: str
+    version: Optional[str] = None
+    parameters: Dict[str, SchemaParameter]

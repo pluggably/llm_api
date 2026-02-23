@@ -1,15 +1,29 @@
 # Test User Credentials
 
-For testing the LLM API gateway, a test user has been created in the database.
+Users are not bootstrapped automatically.
+Create test/admin users explicitly with the helper script.
 
 ## Credentials
-- **Email**: test@example.com
-- **Password**: testpass123
+- **Username**: test
+- **Password**: choose a strong password
+
+## Admin Accounts
+
+Create admins explicitly:
+
+```bash
+python scripts/create_user.py --username hassan --password '<strong-password>' --admin
+python scripts/create_user.py --username ben --password '<strong-password>' --admin
+python scripts/create_user.py --username test --password '<strong-password>'
+```
+
+Use unique passwords per environment.
 
 ## Usage
 1. Start the backend server: `uvicorn llm_api.main:app --port 8080`
-2. Use the Flutter frontend or API to login with these credentials.
-3. For API login, POST to `/v1/users/login` with the email and password.
+2. Create users via `scripts/create_user.py`.
+3. Use the Flutter frontend or API to login with these credentials.
+4. For API login, POST to `/v1/users/login` with the username (or legacy email) and password.
 
 ## API Endpoint Corrections (Jan 26, 2026)
 The frontend SDK has been updated to match the actual backend API endpoints:
@@ -41,6 +55,6 @@ The frontend SDK has been updated to match the actual backend API endpoints:
 - ✅ Provider keys deleted by provider name, not ID
 
 ## Notes
-- This user is created directly in the SQLite database for testing purposes.
 - The password is hashed using PBKDF2 with SHA256.
-- Invite requirement has been disabled in the config for testing.
+- Registration is invite-gated when `LLM_API_INVITE_REQUIRED=true`.
+- Authenticated users can change their password via `POST /v1/users/change-password`.

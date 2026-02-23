@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import json
+import logging
 import uuid
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
+
+logger = logging.getLogger(__name__)
+TEXT_GENERATION_TIMEOUT_SECONDS = 180.0
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 import httpx
@@ -11,6 +16,9 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from llm_api.api.schemas import (
+    AvailabilityInfo,
+    CreditsStatus,
+    GenerateInput,
     GenerateRequest,
     GenerateResponse,
     GenerateOutput,
@@ -35,15 +43,25 @@ from llm_api.registry import get_registry
 from llm_api.storage import encode_inline, get_artifact_store
 from llm_api.runner.mesh_preview import render_mesh_preview
 from llm_api.router.selector import (
+    BackendSelection,
     ModelNotFoundError,
     ProviderNotSupportedError,
     ProviderNotConfiguredError,
     select_backend,
+    select_provider_tier_fallback,
 )
+from llm_api.api.schemas import SelectionInfo as _SelectionInfo
 from llm_api.adapters import ProviderError, map_provider_error
 from llm_api.sessions import get_session_store
 from llm_api.users import get_user_service
 from llm_api.processing.images import preprocess_images
+from llm_api.integrations.provider_discovery import (
+    get_provider_availability,
+    get_provider_catalog_models,
+    get_cached_availability,
+    mark_provider_quota_exhausted,
+    mark_provider_rate_limited,
+)
 
 
 api_router = APIRouter()
@@ -90,91 +108,6 @@ def _make_output_urls_absolute(output: GenerateOutput, base_url: str) -> Generat
     return output
 
 
-def _provider_model_catalog() -> dict[str, list[ModelInfo]]:
-    return {
-        "openai": [
-            ModelInfo(
-                id="gpt-4o-mini",
-                name="GPT-4o mini",
-                version="latest",
-                modality="text",
-                provider="openai",
-                status="available",
-                is_default=False,
-            ),
-            ModelInfo(
-                id="gpt-4o",
-                name="GPT-4o",
-                version="latest",
-                modality="text",
-                provider="openai",
-                status="available",
-                is_default=False,
-            ),
-        ],
-        "anthropic": [
-            ModelInfo(
-                id="claude-3-5-sonnet",
-                name="Claude 3.5 Sonnet",
-                version="latest",
-                modality="text",
-                provider="anthropic",
-                status="available",
-                is_default=False,
-            ),
-            ModelInfo(
-                id="claude-3-5-haiku",
-                name="Claude 3.5 Haiku",
-                version="latest",
-                modality="text",
-                provider="anthropic",
-                status="available",
-                is_default=False,
-            ),
-        ],
-        "google": [
-            ModelInfo(
-                id="gemini-1.5-flash",
-                name="Gemini 1.5 Flash",
-                version="latest",
-                modality="text",
-                provider="google",
-                status="available",
-                is_default=False,
-            ),
-            ModelInfo(
-                id="gemini-1.5-pro",
-                name="Gemini 1.5 Pro",
-                version="latest",
-                modality="text",
-                provider="google",
-                status="available",
-                is_default=False,
-            ),
-        ],
-        "xai": [
-            ModelInfo(
-                id="grok-2",
-                name="Grok 2",
-                version="latest",
-                modality="text",
-                provider="xai",
-                status="available",
-                is_default=False,
-            ),
-            ModelInfo(
-                id="grok-2-mini",
-                name="Grok 2 Mini",
-                version="latest",
-                modality="text",
-                provider="xai",
-                status="available",
-                is_default=False,
-            ),
-        ],
-    }
-
-
 @api_router.post("/v1/generate", dependencies=[Depends(require_api_key)], response_model=None)
 async def generate(request: GenerateRequest, http_request: Request) -> JSONResponse | StreamingResponse:
     settings = get_settings()
@@ -186,18 +119,56 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
     user_id = user.get("user_id") if isinstance(user, dict) else None
     provider_credentials: dict[str, dict[str, str]] = {}
     if user_id:
-        for provider in ["openai", "anthropic", "google", "azure", "xai", "huggingface"]:
+        for provider in ["openai", "anthropic", "google", "azure", "xai", "deepseek", "huggingface"]:
             creds = user_service.get_provider_credentials(user_id, provider)
             if creds:
                 provider_credentials[provider] = creds
 
+    logger.debug(
+        "generate: user_id=%s model=%r session_id=%r providers_with_creds=%s",
+        user_id, request.model, request.session_id,
+        list(provider_credentials.keys()),
+    )
+
+    provider_preference = request.provider
+    provider_models = None
+    credits_status: CreditsStatus | None = None
+    if provider_preference:
+        if user_id:
+            creds = user_service.get_provider_credentials(user_id, provider_preference)
+            if creds:
+                availability = get_provider_availability(user_id, provider_preference, creds)
+                provider_models = availability.models
+                credits_status = availability.credits_status
+            else:
+                credits_status = CreditsStatus(provider=provider_preference, status="exhausted")
+        else:
+            credits_status = CreditsStatus(provider=provider_preference, status="unknown")
+
+    selection_mode = request.selection_mode or (
+        "model" if request.model and request.model != "auto" else "auto"
+    )
     model_id = request.model
+    if model_id == "auto":
+        model_id = None
+    if selection_mode == "model" and not model_id:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "model_required",
+                "message": "Selection mode 'model' requires a specific model ID.",
+            },
+        )
+    if model_id is not None:
+        selection_mode = "model"
     session_id = request.session_id
     session = None
     if session_id:
         session = session_store.get_session(session_id)
         if not session:
+            logger.warning("generate: session_id=%r not found", session_id)
             raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+        logger.debug("generate: session found session_id=%s status=%s", session_id, session.status)
         if session.status != "active":
             raise HTTPException(status_code=400, detail="Session is closed")
 
@@ -206,21 +177,37 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
         effective_state_tokens = session.state_tokens
 
     try:
+        request_parameters = (
+            request.parameters.model_dump(exclude_none=True)
+            if request.parameters is not None
+            else None
+        )
         selection = select_backend(
             model_id,
             registry,
             settings,
             modality=request.modality,
+            selection_mode=selection_mode,
+            prompt=request.input.prompt,
+            images=request.input.images,
+            mesh=request.input.mesh,
+            provider=provider_preference,
+            provider_models=provider_models,
+            credits_status=credits_status,
             provider_credentials=provider_credentials,
+            parameters=request_parameters,
         )
     except ModelNotFoundError as exc:
+        logger.warning("generate: ModelNotFoundError model_id=%r error=%s", model_id, exc)
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ProviderNotSupportedError as exc:
+        logger.warning("generate: ProviderNotSupportedError model_id=%r error=%s", model_id, exc)
         raise HTTPException(
             status_code=400,
             detail={"code": "unsupported_provider", "message": str(exc)},
         ) from exc
     except ProviderNotConfiguredError as exc:
+        logger.warning("generate: ProviderNotConfiguredError model_id=%r error=%s", model_id, exc)
         raise HTTPException(
             status_code=400,
             detail={"code": "provider_not_configured", "message": str(exc)},
@@ -254,14 +241,174 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
             # Stream text responses token by token (or in chunks)
             async def event_stream() -> AsyncGenerator[str, None]:
                 try:
-                    # Run blocking generation in thread pool to not block event loop
-                    output_text = await asyncio.to_thread(
-                        selection.adapter.generate_text, request.input.prompt or ""
+                    model_payload = json.dumps(
+                        {
+                            "event": "model_selected",
+                            "model": model_id,
+                            "model_name": selection.model.name,
+                            "modality": effective_modality,
+                            "provider": selection.model.provider,
+                            "fallback_used": selection.selection.fallback_used if selection.selection else False,
+                            "fallback_reason": selection.selection.fallback_reason if selection.selection else None,
+                        }
                     )
+                    yield f"data: {model_payload}\n\n"
+                    # Run blocking generation with periodic keepalive heartbeats
+                    # (local HF models can take 30-120s; without heartbeats the
+                    # connection may time out or the client may stall forever)
+                    _loop = asyncio.get_running_loop()
+                    _gen_future = _loop.run_in_executor(
+                        None, selection.adapter.generate_text, request.input.prompt or ""
+                    )
+                    _deadline = _loop.time() + TEXT_GENERATION_TIMEOUT_SECONDS
+                    while True:
+                        try:
+                            output_text = await asyncio.wait_for(
+                                asyncio.shield(_gen_future), timeout=15.0
+                            )
+                            break
+                        except asyncio.TimeoutError:
+                            if _loop.time() >= _deadline:
+                                err_payload = json.dumps(
+                                    {
+                                        "error": {
+                                            "code": "generation_timeout",
+                                            "message": (
+                                                "Local generation exceeded "
+                                                f"{int(TEXT_GENERATION_TIMEOUT_SECONDS)}s. "
+                                                "Try a smaller max_tokens value or a smaller model."
+                                            ),
+                                        }
+                                    }
+                                )
+                                yield f"data: {err_payload}\n\n"
+                                yield "data: [DONE]\n\n"
+                                return
+                            yield ": heartbeat\n\n"
                 except ProviderError as exc:
+                    # Tiered fallback on rate-limit / provider overload:
+                    #   1) Same provider's cheaper tier model (skips if quota exhausted)
+                    #   2) Local free model
+                    if exc.status_code in (429, 503):
+                        failed_provider = selection.model.provider or ""
+                        base_reason = "rate_limited" if exc.status_code == 429 else "provider_overloaded"
+                        is_quota_exceeded = exc.error_code == "insufficient_quota"
+                        logger.warning(
+                            "generate: provider %s returned %d (error_code=%s), starting fallback chain",
+                            failed_provider, exc.status_code, exc.error_code,
+                        )
+
+                        # Write back rate-limit / quota status to the availability cache
+                        if user_id:
+                            if is_quota_exceeded:
+                                mark_provider_quota_exhausted(user_id, failed_provider)
+                            elif exc.status_code == 429:
+                                mark_provider_rate_limited(user_id, failed_provider)
+
+                        # Also check cache: a previous request may have already marked exhausted
+                        if not is_quota_exceeded and user_id:
+                            cached = get_cached_availability(user_id, failed_provider)
+                            if cached and cached.credits_status.status == "exhausted":
+                                is_quota_exceeded = True
+                                logger.info(
+                                    "generate: provider %s already exhausted in cache, skipping tier fallback",
+                                    failed_provider,
+                                )
+
+                        fb: Optional[BackendSelection] = None
+                        fallback_output: Optional[str] = None
+
+                        # Step 1: cheaper tier from same provider (skip if quota exhausted)
+                        if not is_quota_exceeded:
+                            try:
+                                fb = select_provider_tier_fallback(
+                                    failed_provider,
+                                    selection.model.id,
+                                    settings,
+                                    provider_credentials=provider_credentials,
+                                    modality=effective_modality,
+                                    parameters=request_parameters,
+                                )
+                                fallback_output = await asyncio.wait_for(
+                                    asyncio.to_thread(
+                                        fb.adapter.generate_text,
+                                        request.input.prompt or "",
+                                    ),
+                                    timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
+                                )
+                                logger.info(
+                                    "generate: tier fallback to %s succeeded for provider %s",
+                                    fb.model.id, failed_provider,
+                                )
+                            except Exception as tier_exc:
+                                logger.warning(
+                                    "generate: tier fallback for %s failed: %s",
+                                    failed_provider, tier_exc,
+                                )
+                                fb = None
+
+                        # Step 2: local free model
+                        if fb is None:
+                            local_reason = "quota_exceeded" if is_quota_exceeded else f"{base_reason}_local"
+                            try:
+                                local_fb = select_backend(
+                                    None, registry, settings,
+                                    modality=effective_modality,
+                                    selection_mode="free_only",
+                                    provider_credentials=provider_credentials,
+                                    parameters=request_parameters,
+                                )
+                                fallback_output = await asyncio.wait_for(
+                                    asyncio.to_thread(
+                                        local_fb.adapter.generate_text,
+                                        request.input.prompt or "",
+                                    ),
+                                    timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
+                                )
+                                if local_fb.selection:
+                                    local_fb.selection.fallback_used = True
+                                    local_fb.selection.fallback_reason = local_reason
+                                else:
+                                    local_fb.selection = _SelectionInfo(
+                                        selected_model=local_fb.model.id,
+                                        selected_provider=local_fb.model.provider,
+                                        fallback_used=True,
+                                        fallback_reason=local_reason,
+                                    )
+                                fb = local_fb
+                                logger.info(
+                                    "generate: local fallback to %s succeeded after %d from %s",
+                                    local_fb.model.id, exc.status_code, failed_provider,
+                                )
+                            except Exception as fb_exc:
+                                logger.warning("generate: local fallback also failed: %s", fb_exc)
+
+                        if fb is not None and fallback_output is not None:
+                            fb_reason = fb.selection.fallback_reason if fb.selection else base_reason
+                            fb_payload = json.dumps({
+                                "event": "model_selected",
+                                "model": fb.model.id,
+                                "model_name": fb.model.name,
+                                "modality": effective_modality,
+                                "provider": fb.model.provider,
+                                "fallback_used": True,
+                                "fallback_reason": fb_reason,
+                            })
+                            yield f"data: {fb_payload}\n\n"
+                            payload = json.dumps({"choices": [{"delta": {"content": fallback_output}}]})
+                            yield f"data: {payload}\n\n"
+                            yield "data: [DONE]\n\n"
+                            return
                     error = map_provider_error(exc)
                     payload = json.dumps({"error": {"code": error.code, "message": error.message}})
                     yield f"data: {payload}\n\n"
+                    yield "data: [DONE]\n\n"
+                    return
+                except Exception as exc:
+                    logger.exception("generate: unexpected error during local text generation")
+                    err_payload = json.dumps({"error": {"code": "internal_error", "message": str(exc)}})
+                    yield f"data: {err_payload}\n\n"
+                    yield "data: [DONE]\n\n"
                     return
 
                 payload = json.dumps({"choices": [{"delta": {"content": output_text}}]})
@@ -269,6 +416,7 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                 yield "data: [DONE]\n\n"
 
             if session:
+                assert session_id is not None
                 session_store.append_message(
                     session_id,
                     effective_modality,
@@ -276,7 +424,11 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                     {"stream": True},
                     effective_state_tokens,
                 )
-            return StreamingResponse(event_stream(), media_type="text/event-stream")
+            return StreamingResponse(
+                event_stream(),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
         else:
             # For non-text modalities, generate and wrap result in SSE format
             # so frontend streaming parser can handle it uniformly
@@ -285,10 +437,22 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                 
                 # Send initial heartbeat to indicate processing started
                 yield ": heartbeat\n\n"
+
+                model_payload = json.dumps(
+                    {
+                        "event": "model_selected",
+                        "model": model_id,
+                        "model_name": selection.model.name,
+                        "modality": effective_modality,
+                        "provider": selection.model.provider,
+                        "fallback_used": selection.selection.fallback_used if selection.selection else False,
+                        "fallback_reason": selection.selection.fallback_reason if selection.selection else None,
+                    }
+                )
+                yield f"data: {model_payload}\n\n"
                 
                 # Run generation in background and send keepalive heartbeats
-                import concurrent.futures
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
                 
                 try:
@@ -355,27 +519,31 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                         modality=effective_modality,
                         session_id=session_id,
                         state_tokens=effective_state_tokens,
+                        selection=selection.selection,
+                        credits_status=selection.credits_status,
                         output=output,
                         usage=Usage(),
                         warnings=preprocessing_warnings or None,
                     )
                     payload = json.dumps(jsonable_encoder(response))
-                    import logging
-                    logging.info(f"Sending SSE response: modality={effective_modality}, payload_len={len(payload)}")
+                    logger.info("Sending SSE response: modality=%s, payload_len=%d", effective_modality, len(payload))
                     yield f"data: {payload}\n\n"
                     yield "data: [DONE]\n\n"
-                    logging.info("SSE response sent with [DONE]")
+                    logger.info("SSE response sent with [DONE]")
                 except ProviderError as exc:
                     error = map_provider_error(exc)
                     payload = json.dumps({"error": {"code": error.code, "message": error.message}})
                     yield f"data: {payload}\n\n"
+                    yield "data: [DONE]\n\n"
                 except Exception as exc:
                     payload = json.dumps({"error": {"code": "internal_error", "message": str(exc)}})
                     yield f"data: {payload}\n\n"
+                    yield "data: [DONE]\n\n"
                 finally:
                     executor.shutdown(wait=False)
 
             if session:
+                assert session_id is not None
                 session_store.append_message(
                     session_id,
                     effective_modality,
@@ -383,16 +551,136 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                     {"stream": True},
                     effective_state_tokens,
                 )
-            return StreamingResponse(single_event_stream(), media_type="text/event-stream")
+            return StreamingResponse(
+                single_event_stream(),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+            )
 
     request_id = str(uuid.uuid4())
 
     # Non-streaming path - also use thread pool for blocking operations
     try:
         if effective_modality == "text":
-            output_text = await asyncio.to_thread(
-                selection.adapter.generate_text, request.input.prompt or ""
-            )
+            try:
+                output_text = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        selection.adapter.generate_text,
+                        request.input.prompt or "",
+                    ),
+                    timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
+                )
+            except asyncio.TimeoutError as exc:
+                raise ProviderError(
+                    504,
+                    (
+                        "Text generation timed out after "
+                        f"{int(TEXT_GENERATION_TIMEOUT_SECONDS)}s. "
+                        "Try a smaller max_tokens value or a smaller model."
+                    ),
+                ) from exc
+            except ProviderError as exc:
+                if exc.status_code in (429, 503):
+                    failed_provider = selection.model.provider or ""
+                    base_reason = "rate_limited" if exc.status_code == 429 else "provider_overloaded"
+                    is_quota_exceeded = exc.error_code == "insufficient_quota"
+                    logger.warning(
+                        "generate: provider %s returned %d (error_code=%s), starting fallback chain",
+                        failed_provider, exc.status_code, exc.error_code,
+                    )
+
+                    # Write back rate-limit / quota status to the availability cache
+                    if user_id:
+                        if is_quota_exceeded:
+                            mark_provider_quota_exhausted(user_id, failed_provider)
+                        elif exc.status_code == 429:
+                            mark_provider_rate_limited(user_id, failed_provider)
+
+                    # Also check cache: a previous request may have already marked exhausted
+                    if not is_quota_exceeded and user_id:
+                        cached_ns = get_cached_availability(user_id, failed_provider)
+                        if cached_ns and cached_ns.credits_status.status == "exhausted":
+                            is_quota_exceeded = True
+                            logger.info(
+                                "generate: provider %s already exhausted in cache, skipping tier fallback",
+                                failed_provider,
+                            )
+
+                    fb_ns: Optional[BackendSelection] = None
+
+                    # Step 1: cheaper tier from same provider (skip if quota exhausted)
+                    if not is_quota_exceeded:
+                        try:
+                            tier_fb = select_provider_tier_fallback(
+                                failed_provider,
+                                selection.model.id,
+                                settings,
+                                provider_credentials=provider_credentials,
+                                modality=effective_modality,
+                                parameters=request_parameters,
+                            )
+                            output_text = await asyncio.wait_for(
+                                asyncio.to_thread(
+                                    tier_fb.adapter.generate_text,
+                                    request.input.prompt or "",
+                                ),
+                                timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
+                            )
+                            fb_ns = tier_fb
+                            logger.info(
+                                "generate: tier fallback to %s succeeded for provider %s",
+                                tier_fb.model.id, failed_provider,
+                            )
+                        except Exception as tier_exc:
+                            logger.warning(
+                                "generate: tier fallback for %s failed: %s",
+                                failed_provider, tier_exc,
+                            )
+
+                    # Step 2: local free model
+                    if fb_ns is None:
+                        local_reason = "quota_exceeded" if is_quota_exceeded else f"{base_reason}_local"
+                        try:
+                            local_fb = select_backend(
+                                None, registry, settings,
+                                modality=effective_modality,
+                                selection_mode="free_only",
+                                provider_credentials=provider_credentials,
+                                parameters=request_parameters,
+                            )
+                            output_text = await asyncio.wait_for(
+                                asyncio.to_thread(
+                                    local_fb.adapter.generate_text,
+                                    request.input.prompt or "",
+                                ),
+                                timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
+                            )
+                            if local_fb.selection:
+                                local_fb.selection.fallback_used = True
+                                local_fb.selection.fallback_reason = local_reason
+                            else:
+                                local_fb.selection = _SelectionInfo(
+                                    selected_model=local_fb.model.id,
+                                    selected_provider=local_fb.model.provider,
+                                    fallback_used=True,
+                                    fallback_reason=local_reason,
+                                )
+                            fb_ns = local_fb
+                            logger.info(
+                                "generate: local fallback to %s succeeded after %d from %s",
+                                local_fb.model.id, exc.status_code, failed_provider,
+                            )
+                        except Exception as fb_exc:
+                            logger.warning("generate: local fallback also failed: %s", fb_exc)
+                            raise exc  # re-raise original error
+
+                    if fb_ns is not None:
+                        selection = fb_ns
+                        model_id = fb_ns.model.id
+                    else:
+                        raise exc
+                else:
+                    raise
             output = GenerateOutput(text=output_text)
             usage = _build_usage(request.input.prompt, output_text)
         elif effective_modality == "image":
@@ -443,11 +731,14 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
         modality=effective_modality,
         session_id=session_id,
         state_tokens=effective_state_tokens,
+        selection=selection.selection,
+        credits_status=selection.credits_status,
         output=output,
         usage=usage,
         warnings=preprocessing_warnings or None,
     )
     if session:
+        assert session_id is not None
         session_store.append_message(
             session_id,
             effective_modality,
@@ -565,15 +856,19 @@ async def regenerate(session_id: str, request: RegenerateRequest, http_request: 
     # Build a generate request from the original user input
     prompt = last_user_msg.input.get("prompt", "")
     images = last_user_msg.input.get("images")
+    mesh = last_user_msg.input.get("mesh")
     modality = last_user_msg.modality
+    if modality not in ("text", "image", "3d"):
+        raise HTTPException(status_code=400, detail="Unsupported modality in session history")
 
     gen_request = GenerateRequest(
         model=request.model,
         session_id=session_id,
         modality=modality,
-        input={"prompt": prompt, "images": images},
+        input=GenerateInput(prompt=prompt, images=images, mesh=mesh),
         parameters=request.parameters,
         stream=request.stream,
+        selection_mode=request.selection_mode,
     )
     return await generate(gen_request, http_request)
 
@@ -593,16 +888,26 @@ async def list_models(
 
     user = getattr(http_request.state, "user", None)
     user_id = user.get("user_id") if isinstance(user, dict) else None
-    if user_id:
-        catalog = _provider_model_catalog()
-        for provider, provider_models in catalog.items():
-            creds = user_service.get_provider_credentials(user_id, provider)
-            if not creds:
+    for provider in ["openai", "anthropic", "google", "azure", "xai", "deepseek"]:
+        creds = user_service.get_provider_credentials(user_id, provider) if user_id else None
+        if creds:
+            availability = get_provider_availability(user_id, provider, creds)
+            provider_models = availability.models
+            credits_status: CreditsStatus | None = availability.credits_status
+            access = "available"
+        else:
+            provider_models = get_provider_catalog_models(provider)
+            credits_status = None
+            access = "locked"
+        for model in provider_models:
+            if modality and model.modality != modality:
                 continue
-            for model in provider_models:
-                if modality and model.modality != modality:
-                    continue
-                models_by_id.setdefault(model.id, model)
+            model.availability = AvailabilityInfo(
+                provider=provider,
+                access=access,
+                credits_status=credits_status,
+            )
+            models_by_id.setdefault(model.id, model)
 
     models = list(models_by_id.values())
     if limit:
@@ -687,6 +992,7 @@ async def list_providers(http_request: Request) -> JSONResponse:
         ProviderStatus(name="google", configured=_has_creds("google"), supported_modalities=["text"]),
         ProviderStatus(name="azure", configured=_has_creds("azure"), supported_modalities=["text"]),
         ProviderStatus(name="xai", configured=_has_creds("xai"), supported_modalities=["text"]),
+        ProviderStatus(name="huggingface", configured=_has_creds("huggingface"), supported_modalities=["text", "image"]),
         ProviderStatus(name="local", configured=True, supported_modalities=["text", "image", "3d"]),
     ]
     return JSONResponse(jsonable_encoder(ProvidersResponse(providers=providers)))
@@ -759,6 +1065,19 @@ async def get_model_info(model_id: str) -> JSONResponse:
     if not model:
         raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found")
     return JSONResponse(jsonable_encoder(model))
+
+
+@api_router.post("/v1/models/{model_id:path}/default", dependencies=[Depends(require_api_key)])
+async def set_default_model(model_id: str) -> JSONResponse:
+    """Set the default model for the model's modality (one default per modality)."""
+    registry = get_registry()
+    model = registry.get_model(model_id)
+    if not model:
+        raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found")
+
+    registry.set_default_model(model.modality, model.id)
+    updated = registry.get_model(model.id)
+    return JSONResponse(jsonable_encoder(updated or model))
 
 
 # Model-specific parameter schemas by modality

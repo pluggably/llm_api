@@ -21,14 +21,21 @@ This document details module responsibilities, data structures, and key flows fo
 - **Observability**: Logs, metrics
 
 ## CR-003 — Auto Model Selection (Proposed)
-**Goal**: Allow requests to omit `model` (or specify `model: "auto"`) and have the router pick a suitable model using a deterministic rule set.
+**Goal**: Allow requests to omit `model` (or specify `model: "auto"`) and have the router pick a suitable model using a deterministic rule set, optionally constrained to free-only or commercial-only providers via `selection_mode`.
 
 ### Selection Rules (Initial)
-1. If `input.images` exists → select default image model.
-2. If `input.mesh` exists → select default 3D model.
-3. Else → select default text model.
-4. If default for the modality is unavailable → select the first available model for that modality.
-5. If no models exist for the detected modality → return a clear error with guidance.
+1. Infer modality from prompt intent and inputs:
+  - If `input.images` exists → select image-capable model.
+  - If `input.mesh` exists → select 3D-capable model.
+  - If prompt contains image intent keywords (e.g., "generate an image", "draw", "illustration") → prefer image models.
+  - If prompt contains 3D intent keywords (e.g., "3D model", "mesh", "OBJ") → prefer 3D models.
+  - Else → select text model.
+2. Apply optional selection filters:
+  - **free_only** → restrict to local/free providers.
+  - **commercial_only** → restrict to commercial providers (openai, anthropic, google, azure, xai).
+  - **model** → bypass auto-selection and use explicit `model`.
+3. If default for the modality is unavailable → select the first available model for that modality.
+4. If no models exist for the detected modality (after filters) → return a clear error with guidance.
 
 ### Router Flow (Mermaid)
 ```mermaid
@@ -47,6 +54,60 @@ flowchart TD
 
 ### Error Handling
 - If no models are available for the inferred modality, return a `model_not_found` style error with a hint to download/register a model.
+- If filters eliminate all options, return a `model_not_found` style error indicating the filter.
+
+### Request Shape (Delta)
+- Add optional `selection_mode` field: `auto | free_only | commercial_only | model`.
+- Default is `auto` when omitted.
+
+## Provider Discovery & Vendor Selection (Proposed)
+**Goal**: Allow requests to specify a provider/vendor instead of a model ID, discover accessible provider models per user, and select a suitable model with credit-aware fallback.
+
+### Provider Discovery Rules
+1. For each configured provider with user credentials, call provider APIs to list accessible models.
+2. Retrieve credit/usage availability when the provider exposes it.
+3. Cache results per user/provider with TTL to avoid rate limits.
+4. Expose availability and credits via API responses and the model catalog.
+
+### Vendor Selection Rules
+1. If `provider` is specified and `model` is omitted:
+   - Use availability cache for the provider.
+   - Prefer a premium model if credits are available.
+   - If credits are exhausted/unknown, select a free-tier fallback model.
+2. If `model` is specified, it takes precedence over `provider`.
+3. If no model can be selected, return a clear error indicating access/credits.
+
+### Selection Flow (Mermaid)
+```mermaid
+flowchart TD
+  A[Generate request] --> B{model set?}
+  B -->|Yes| C[Use explicit model]
+  B -->|No| D{provider set?}
+  D -->|Yes| E[Read provider availability + credits]
+  E --> F{Premium credits?}
+  F -->|Yes| G[Pick premium provider model]
+  F -->|No/Unknown| H[Pick free-tier fallback]
+  D -->|No| I[Auto-selection rules]
+  G --> J[Route request]
+  H --> J
+  I --> J
+```
+
+### Request Shape (Delta)
+- Add optional `provider` field (string, e.g., `openai`, `anthropic`, `google`, `azure`, `xai`).
+- `model` still takes precedence when provided.
+
+### Response Shape (Delta)
+- Add `selection` metadata:
+  - `selected_model` (string)
+  - `selected_provider` (string)
+  - `fallback_used` (boolean)
+  - `fallback_reason` (string; e.g., `credits_exhausted`, `no_access`)
+- Add optional `credits_status` object when available:
+  - `provider` (string)
+  - `status` (`available` | `exhausted` | `unknown`)
+  - `remaining` (number | null)
+  - `reset_at` (datetime | null)
 
 ## Data Structures (Schema Sketch)
 
@@ -183,6 +244,19 @@ updated_at: datetime
 - **xai**: api_key
 - **azure**: endpoint_key (endpoint + api_key)
 - **huggingface**: api_key (token)
+
+### Provider Availability Snapshot
+```yaml
+user_id: string
+provider: string
+models: [string]
+credits_status:
+  status: [available|exhausted|unknown]
+  remaining: number
+  reset_at: datetime
+cached_at: datetime
+ttl_seconds: integer
+```
 
 ### Session Summary
 ```yaml
@@ -704,6 +778,10 @@ class Settings(BaseSettings):
 - Request ID propagation
 - Structured logs with latency, model, backend
 - Metrics: request count, error count, p95 latency
+
+## DoR/DoD Checklist
+- [ ] Ready: Provider discovery and vendor selection flows documented.
+- [ ] Done: Request/response deltas and availability schema reviewed and approved.
 
 ## Traceability
 Requirements → Design

@@ -35,6 +35,17 @@ class LocalAdapter(Adapter):
     def generate_text(self, prompt: str) -> str:
         if self.simulate_error:
             raise self.simulate_error
+        if self.parameters:
+            try:
+                return self.runner.generate_text(
+                    prompt,
+                    model_path=self.model_path,
+                    model_id=self.model_id,
+                    parameters=self.parameters,
+                    hf_token=self.hf_token,
+                )
+            except TypeError:
+                pass
         return self.runner.generate_text(
             prompt,
             model_path=self.model_path,

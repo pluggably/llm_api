@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 
 from llm_api.api.schemas import DownloadJobStatus, ModelDownloadRequest, ModelSource
+from llm_api.background_tasks import get_background_task_registry
 from llm_api.config import get_settings
 from llm_api.jobs.store import JobStore
 from llm_api.registry.store import ModelRegistry
@@ -70,14 +71,32 @@ class DownloadService:
                 self.registry.update_model_status(model.id, "failed")
                 return failed or job
 
+            install_local = True
+            if request.options is not None and request.options.install_local is not None:
+                install_local = bool(request.options.install_local)
+
+            if not install_local:
+                model.provider = "huggingface"
+                model.status = "available"
+                model.local_path = None
+                model.source = ModelSource(type="huggingface", uri=repo_id)
+                self.registry.add_model(model)
+                completed = self.jobs.update_job(
+                    job.job_id,
+                    status="completed",
+                    progress_pct=100,
+                )
+                return completed or job
+
             # Start async download
-            asyncio.create_task(
+            get_background_task_registry().create_task(
                 self._download_from_huggingface(
                     job_id=job.job_id,
                     model_id=model.id,
                     repo_id=repo_id,
                     revision=request.options.revision if request.options else None,
-                )
+                ),
+                name=f"download-hf:{model.id}",
             )
             return job
 
@@ -91,12 +110,13 @@ class DownloadService:
                 self.registry.update_model_status(model.id, "failed")
                 return failed or job
 
-            asyncio.create_task(
+            get_background_task_registry().create_task(
                 self._download_from_url(
                     job_id=job.job_id,
                     model_id=model.id,
                     url=url,
-                )
+                ),
+                name=f"download-url:{model.id}",
             )
             return job
 

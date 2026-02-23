@@ -27,6 +27,12 @@ For detailed, step-by-step instructions (with links), see [docs/ops/user_provide
 1. Create an API key at https://console.x.ai/
 2. Paste it into Profile → xAI.
 
+## DeepSeek
+1. Sign in at https://platform.deepseek.com/
+2. Go to **API Keys** (left sidebar) and click **Create new secret key**.
+3. Copy the key — it is only shown once.
+4. Paste it into Profile → Provider Keys → **DeepSeek**.
+
 ## Local Testing Models (recommended)
 For local runtimes, pick one model per modality:
 - **Text**: llama.cpp (GGUF) — simple CPU/GPU testing.

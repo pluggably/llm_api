@@ -3,9 +3,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from cryptography.fernet import Fernet
@@ -49,20 +51,49 @@ _fallback_encryption_key: bytes | None = None
 
 
 def _get_encryption_key() -> bytes:
-    """Get a stable encryption key for provider keys."""
-    global _fallback_encryption_key
+    """Get a stable encryption key for provider keys.
+
+    Priority:
+    1. ``LLM_API_ENCRYPTION_KEY`` env/config (production)
+    2. A key persisted to ``<model_path>/.llm_api_enc.key`` (auto-generated on
+       first run, then reused — survives restarts without extra config)
+    """
+    import base64
     settings = get_settings()
     if settings.encryption_key:
-        # Derive a deterministic Fernet-compatible key from the configured secret.
-        # Fernet requires a 32-byte url-safe base64-encoded key.
-        import base64
         raw = hashlib.sha256(settings.encryption_key.encode()).digest()
         return base64.urlsafe_b64encode(raw)
-    # Fallback: generate once per process (dev only — keys are lost on restart)
-    if _fallback_encryption_key is None:
-        import logging
+
+    # Persist a generated key alongside the database so it survives restarts.
+    key_file = Path(settings.model_path) / ".llm_api_enc.key"
+    try:
+        key_file.parent.mkdir(parents=True, exist_ok=True)
+        if key_file.exists():
+            stored = key_file.read_bytes().strip()
+            if len(stored) == 44:  # Fernet key is always 44 url-safe base64 chars
+                return stored
+        # Generate and persist a new key
+        new_key = Fernet.generate_key()
+        key_file.write_bytes(new_key)
+        # Restrict permissions on Unix
+        try:
+            import os
+            os.chmod(key_file, 0o600)
+        except Exception:
+            pass
         logging.getLogger(__name__).warning(
-            "No encryption_key configured — using ephemeral key. "
+            "No encryption_key configured — generated and persisted a key at %s. "
+            "Set LLM_API_ENCRYPTION_KEY for production deployments.",
+            key_file,
+        )
+        return new_key
+    except Exception:
+        pass  # Fall through to in-memory fallback
+
+    global _fallback_encryption_key
+    if _fallback_encryption_key is None:
+        logging.getLogger(__name__).warning(
+            "Could not persist encryption key — using ephemeral key. "
             "Provider credentials will be lost on restart. "
             "Set LLM_API_ENCRYPTION_KEY for production."
         )
@@ -84,8 +115,69 @@ def _decrypt_key(ciphertext: str) -> str:
     return f.decrypt(ciphertext.encode("utf-8")).decode("utf-8")
 
 
+def _mask_provider_payload(payload: Dict[str, Any], credential_type: str) -> Optional[str]:
+    secret = payload.get("api_key") or payload.get("oauth_token")
+    if isinstance(secret, str) and len(secret) >= 6:
+        return f"{secret[:3]}...{secret[-3:]}"
+    if isinstance(secret, str):
+        return "***"
+    if credential_type == "endpoint_key":
+        endpoint = payload.get("endpoint")
+        return f"{endpoint} (key hidden)" if endpoint else "(key hidden)"
+    if credential_type == "service_account":
+        return "service_account_json"
+    return None
+
+
 class UserService:
     """Service for user management."""
+
+    def ensure_user(
+        self,
+        email: str,
+        password: str,
+        *,
+        display_name: Optional[str] = None,
+        is_admin: bool = False,
+    ) -> Dict[str, Any]:
+        """Create or update a user with the provided credentials/role."""
+        password_hash, salt = _hash_password(password)
+        combined_hash = f"{salt}:{password_hash}"
+
+        with get_db_session() as db:
+            user = db.query(UserRecord).filter(UserRecord.email == email).first()
+            if user:
+                user.password_hash = combined_hash
+                user.is_admin = bool(is_admin)
+                user.is_active = True
+                if display_name is not None:
+                    user.display_name = display_name
+                db.flush()
+                return {
+                    "id": user.id,
+                    "username": user.email,
+                    "email": user.email,
+                    "display_name": user.display_name,
+                    "is_admin": user.is_admin,
+                }
+
+            user_id = str(uuid.uuid4())
+            user = UserRecord(
+                id=user_id,
+                email=email,
+                password_hash=combined_hash,
+                is_admin=bool(is_admin),
+                display_name=display_name or email.split("@")[0],
+            )
+            db.add(user)
+            db.flush()
+            return {
+                "id": user_id,
+                "username": email,
+                "email": email,
+                "display_name": user.display_name,
+                "is_admin": user.is_admin,
+            }
     
     def create_invite(self, created_by: Optional[str] = None, expires_days: int = 7) -> str:
         """Create an invite token."""
@@ -169,6 +261,7 @@ class UserService:
         
         return {
             "id": user_id,
+            "username": email,
             "email": email,
             "display_name": user.display_name,
         }
@@ -198,10 +291,39 @@ class UserService:
             
             return {
                 "id": user.id,
+                "username": user.email,
                 "email": user.email,
                 "display_name": user.display_name,
                 "is_admin": user.is_admin,
             }
+
+    def change_password(
+        self,
+        user_id: str,
+        current_password: str,
+        new_password: str,
+    ) -> bool:
+        """Change password for an existing user after verifying current password."""
+        if len(new_password) < 12:
+            return False
+
+        with get_db_session() as db:
+            user = db.query(UserRecord).filter(UserRecord.id == user_id).first()
+            if not user or not user.is_active:
+                return False
+
+            parts = user.password_hash.split(":", 1)
+            if len(parts) != 2:
+                return False
+
+            salt, existing_hash = parts
+            if not _verify_password(current_password, existing_hash, salt):
+                return False
+
+            password_hash, new_salt = _hash_password(new_password)
+            user.password_hash = f"{new_salt}:{password_hash}"
+            db.flush()
+            return True
     
     def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get a user by ID."""
@@ -212,6 +334,7 @@ class UserService:
             
             return {
                 "id": user.id,
+                "username": user.email,
                 "email": user.email,
                 "display_name": user.display_name,
                 "is_admin": user.is_admin,
@@ -338,6 +461,7 @@ class UserService:
             
             return {
                 "user_id": user.id,
+                "username": user.email,
                 "email": user.email,
                 "scopes": token_record.scopes or [],
             }
@@ -350,6 +474,11 @@ class UserService:
         payload: Dict[str, Any],
     ) -> Dict[str, Any]:
         """Set a provider credential for a user."""
+        logger = logging.getLogger(__name__)
+        logger.debug(
+            "Setting provider key",
+            extra={"provider": provider, "credential_type": credential_type, "user_id": user_id},
+        )
         encrypted = _encrypt_key(json.dumps(payload))
         
         with get_db_session() as db:
@@ -363,6 +492,7 @@ class UserService:
                 existing.credential_type = credential_type
                 existing.is_active = True
                 key_id = existing.id
+                created_at = existing.created_at
             else:
                 key_record = ProviderKeyRecord(
                     id=str(uuid.uuid4()),
@@ -372,9 +502,18 @@ class UserService:
                     encrypted_key=encrypted,
                 )
                 db.add(key_record)
+                db.flush()
                 key_id = key_record.id
-        
-        return {"id": key_id, "provider": provider, "credential_type": credential_type}
+                created_at = key_record.created_at
+
+        masked_key = _mask_provider_payload(payload, credential_type)
+        return {
+            "id": key_id,
+            "provider": provider,
+            "credential_type": credential_type,
+            "masked_key": masked_key,
+            "created_at": created_at.isoformat() if created_at else None,
+        }
     
     def get_provider_key(self, user_id: str, provider: str) -> Optional[str]:
         """Get a decrypted provider API key for a user."""
@@ -426,16 +565,7 @@ class UserService:
                 masked_key = None
                 try:
                     payload = json.loads(_decrypt_key(k.encrypted_key))
-                    secret = payload.get("api_key") or payload.get("oauth_token")
-                    if isinstance(secret, str) and len(secret) >= 6:
-                        masked_key = f"{secret[:3]}...{secret[-3:]}"
-                    elif isinstance(secret, str):
-                        masked_key = "***"
-                    elif k.credential_type == "endpoint_key":
-                        endpoint = payload.get("endpoint")
-                        masked_key = f"{endpoint} (key hidden)" if endpoint else "(key hidden)"
-                    elif k.credential_type == "service_account":
-                        masked_key = "service_account_json"
+                    masked_key = _mask_provider_payload(payload, k.credential_type)
                 except Exception:
                     masked_key = None
                 results.append(

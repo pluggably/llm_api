@@ -11,11 +11,11 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    JSON,
     String,
     Text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy.dialects.sqlite import JSON
 
 
 class Base(DeclarativeBase):
@@ -68,6 +68,19 @@ class ModelRecord(Base):
         Index("ix_models_modality", "modality"),
         Index("ix_models_provider", "provider"),
         Index("ix_models_status", "status"),
+    )
+
+
+class DefaultModelRecord(Base):
+    """Default model per modality (text/image/3d)."""
+    __tablename__ = "default_models"
+
+    modality: Mapped[str] = mapped_column(String(20), primary_key=True)
+    model_id: Mapped[str] = mapped_column(String(255), ForeignKey("models.id"))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
 

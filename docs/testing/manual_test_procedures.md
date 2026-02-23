@@ -249,7 +249,7 @@ Manual run only if validating real artifact storage backends.
 4. Submit regeneration and verify a new response appears.
 **Expected Results**:
 
-## TEST-MAN-018: Image inputs in chat
+## TEST-MAN-021: Image inputs in chat
 **Purpose**: Validate image upload, paste, and URL attachments for multimodal prompts
 **Preconditions**: Frontend running; backend reachable; model that supports image input selected
 **Steps**:
@@ -363,6 +363,52 @@ Manual run only if validating real artifact storage backends.
 - Position updates as queue moves
 - Request completes when at front
 
+## TEST-MAN-NEW-001: Provider model discovery (per user)
+**Purpose**: Validate provider models appear after adding credentials
+**Preconditions**: Backend running; user has valid provider credentials
+**Steps**:
+1. Add provider credentials in Profile → Provider Keys.
+2. Navigate to Models and refresh.
+3. Verify provider models appear for that user.
+**Expected Results**:
+- Provider models visible for authenticated user.
+
+## TEST-MAN-NEW-002: Provider credits/quota display
+**Purpose**: Validate credit/usage status is visible when available
+**Preconditions**: Provider supports quota/credit reporting
+**Steps**:
+1. Trigger a discovery refresh (restart backend or refresh Models).
+2. Observe any credit/usage status in UI or API response metadata.
+**Expected Results**:
+- Credit/usage status shown or marked as unknown if unavailable.
+
+## TEST-MAN-NEW-003: Free-tier fallback indication
+**Purpose**: Validate fallback indication when premium credits are exhausted
+**Preconditions**: Simulate exhausted credits for a provider
+**Steps**:
+1. Submit a request targeting a provider/vendor with exhausted credits.
+2. Observe response metadata or UI notice.
+**Expected Results**:
+- Response indicates fallback to a free-tier model and shows selected model.
+
+## TEST-MAN-NEW-004: Model catalog visibility based on access
+**Purpose**: Verify model visibility is tied to provider access
+**Preconditions**: Two users (one with credentials, one without)
+**Steps**:
+1. Log in as user with credentials and open Models.
+2. Log in as user without credentials and open Models.
+**Expected Results**:
+- Provider models appear only for the user with credentials.
+
+## TEST-MAN-NEW-005: Vendor selection without model ID
+**Purpose**: Verify provider/vendor selection works without explicit model IDs
+**Preconditions**: Provider credentials configured
+**Steps**:
+1. Call generate with `provider` set and `model` omitted.
+2. Observe response selection metadata.
+**Expected Results**:
+- Response includes selected model and provider; fallback indicated when applicable.
+
 ## Traceability
 Requirements → Verification
 
@@ -392,3 +438,13 @@ Requirements → Verification
 | SYS-REQ-047 | Manual | TEST-MAN-019 | docs/testing/manual_test_procedures.md | Cancel UI |
 | SYS-REQ-048 | Manual | TEST-MAN-017 | docs/testing/manual_test_procedures.md | Regenerate |
 | SYS-REQ-050 | Manual | TEST-MAN-018 | docs/testing/manual_test_procedures.md | Model loading state |
+| SYS-REQ-031 | Manual | TEST-MAN-021 | docs/testing/manual_test_procedures.md | Image inputs in chat |
+| SYS-REQ-071 | Manual | TEST-MAN-NEW-001 | docs/testing/manual_test_procedures.md | Provider model discovery |
+| SYS-REQ-072 | Manual | TEST-MAN-NEW-002 | docs/testing/manual_test_procedures.md | Credits/quota display |
+| SYS-REQ-073 | Manual | TEST-MAN-NEW-003 | docs/testing/manual_test_procedures.md | Free-tier fallback indication |
+| SYS-REQ-074 | Manual | TEST-MAN-NEW-004 | docs/testing/manual_test_procedures.md | Model visibility by access |
+| SYS-REQ-075 | Manual | TEST-MAN-NEW-005 | docs/testing/manual_test_procedures.md | Provider/vendor selection |
+
+## DoR/DoD Checklist
+- [ ] Ready: Manual procedures added for provider discovery and vendor selection.
+- [ ] Done: Traceability includes SYS-REQ-071–075.

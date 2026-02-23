@@ -309,16 +309,23 @@ class ModelLifecycleManager:
     async def start_idle_monitor(self) -> None:
         """Start the background idle timeout monitor."""
         async def monitor_loop():
-            while True:
-                await asyncio.sleep(30)  # Check every 30 seconds
-                await self.check_idle_timeout()
+            try:
+                while True:
+                    await asyncio.sleep(30)  # Check every 30 seconds
+                    await self.check_idle_timeout()
+            except asyncio.CancelledError:
+                pass  # Clean exit on cancellation
         
         self._idle_task = asyncio.create_task(monitor_loop())
     
-    def stop_idle_monitor(self) -> None:
-        """Stop the background idle timeout monitor."""
-        if self._idle_task:
+    async def stop_idle_monitor(self, timeout: float = 5.0) -> None:
+        """Stop the background idle timeout monitor and wait for it to exit."""
+        if self._idle_task and not self._idle_task.done():
             self._idle_task.cancel()
+            try:
+                await asyncio.wait_for(asyncio.shield(self._idle_task), timeout=max(0.0, timeout))
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                pass
             self._idle_task = None
 
 

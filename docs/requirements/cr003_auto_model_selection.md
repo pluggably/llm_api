@@ -7,11 +7,12 @@
 **Affected Components**: Frontend UI, Backend Router, Dart/Python SDKs, Test Specs
 
 ## Problem Statement
-The current workflow requires the user to select a model before composing a prompt. This adds friction and prevents a streamlined “just type” experience. The UI should allow a lightweight model picker next to the prompt input with a default of **Auto**, and the backend should start supporting basic auto-selection logic.
+The current workflow requires the user to select a model before composing a prompt. This adds friction and prevents a streamlined “just type” experience. The UI should allow a lightweight model picker next to the prompt input with a default of **Auto**, and the backend should start supporting basic auto-selection logic. The selector must also support **Free models only** and **Commercial models only** options to reduce cognitive load.
 
 ## Goals
 - Remove the hard requirement for pre-selecting a model in the UI.
 - Add a compact model dropdown next to the prompt input with a default **Auto** option.
+- Provide selection modes: **Auto**, **Free models only**, **Commercial models only**, or **Specific model**.
 - Introduce an initial auto-selection strategy in the backend (rule-based) as a foundation for smarter selection.
 
 ## Non‑Goals
@@ -32,11 +33,12 @@ The current workflow requires the user to select a model before composing a prom
 - The backend resolves an appropriate model when **Auto** is used.
 
 ### SH-REQ-CR003-002: Clear and discoverable model selector
-**Description**: Users should have a compact model selector near the prompt input with a default **Auto** option.
+**Description**: Users should have a compact model selector near the prompt input with a default **Auto** option and additional selection modes.
 
 **Success Criteria**:
 - The selector appears next to the prompt input.
 - Default is **Auto**.
+- Users can choose **Free models only** or **Commercial models only**.
 - Users can still choose a specific model if they want.
 
 ### SH-REQ-CR003-003: Predictable auto-selection
@@ -62,12 +64,15 @@ The current workflow requires the user to select a model before composing a prom
 **Test**: TEST-SYS-CR003-001
 
 ### SYS-REQ-CR003-002: Rule-based model auto-detection
-**Description**: Provide an initial rule-based model selection strategy.
+**Description**: Provide an initial rule-based model selection strategy with prompt-based inference.
 
 **Specification**:
-- If `input.images` present → select default image model.
-- If `input.mesh` present → select default 3D model.
-- Else → select default text model.
+- Infer **modality intent** from prompt content and inputs:
+  - If `input.images` present → select image-capable model.
+  - If `input.mesh` present → select 3D-capable model.
+  - If prompt contains image intent keywords (e.g., "generate an image", "draw", "illustration") → prefer image models.
+  - If prompt contains 3D intent keywords (e.g., "3D model", "mesh", "OBJ") → prefer 3D models.
+  - Else → select text model.
 - If the default for the detected modality is unavailable, fall back to the first available model in that modality.
 
 **Test**: TEST-SYS-CR003-002
@@ -78,6 +83,7 @@ The current workflow requires the user to select a model before composing a prom
 **Specification**:
 - Selector is shown adjacent to the prompt input field.
 - Default is **Auto**.
+- Selector modes: **Auto**, **Free models only**, **Commercial models only**, or **Specific model**.
 - Selecting a model updates any schema/parameters panel as today.
 
 **Test**: TEST-INT-CR003-001
@@ -88,6 +94,16 @@ The current workflow requires the user to select a model before composing a prom
 **Specification**:
 - If `model` is set to a concrete model ID, auto-selection is bypassed.
 - The router uses the selected model’s modality for processing.
+### SYS-REQ-CR003-005: Selection mode filters
+**Description**: The API must accept selection modes that constrain auto-selection to free or commercial models.
+
+**Specification**:
+- Client may send `model: "auto"` with an additional `selection_mode` value: `auto | free_only | commercial_only | model`.
+- `free_only` restricts selection to models with provider type `local` or other non-commercial providers.
+- `commercial_only` restricts selection to models from commercial providers (openai, anthropic, google, azure, xai).
+- If no model matches the constraint, return a clear error with guidance.
+
+**Test**: TEST-SYS-CR003-004
 
 **Test**: TEST-SYS-CR003-003
 
@@ -98,7 +114,7 @@ The current workflow requires the user to select a model before composing a prom
 ### Frontend
 
 **Story ID**: US-FE-CR003-001
-**Title**: Prompt-side model dropdown with Auto default
+**Title**: Prompt-side model dropdown with selection modes
 **Priority**: High
 **Story Points**: 5
 
@@ -109,7 +125,7 @@ So that I can keep focus on the prompt while still choosing a model
 **Acceptance Criteria**:
 - [ ] A dropdown is shown next to the prompt input.
 - [ ] Default value is **Auto**.
-- [ ] The dropdown lists available models plus Auto.
+- [ ] The dropdown offers **Auto**, **Free models only**, **Commercial models only**, and specific models.
 - [ ] When a model is selected, schema/parameters update as usual.
 
 **Traceability**: SYS-REQ-CR003-003, SYS-REQ-CR003-004
@@ -120,7 +136,7 @@ So that I can keep focus on the prompt while still choosing a model
 ### Backend
 
 **Story ID**: US-BE-CR003-001
-**Title**: Auto selection routing
+**Title**: Auto selection routing with filters
 **Priority**: High
 **Story Points**: 5
 
@@ -130,7 +146,8 @@ So that clients can send prompts without selecting a model
 
 **Acceptance Criteria**:
 - [ ] `model` may be omitted or set to `auto`.
-- [ ] Rule-based selection chooses an appropriate model.
+- [ ] Rule-based selection chooses an appropriate model using prompt intent.
+- [ ] Selection can be constrained to free-only or commercial-only providers.
 - [ ] Response includes the resolved `model`.
 - [ ] If no suitable model exists, return a clear error.
 
@@ -153,12 +170,15 @@ So that clients can send prompts without selecting a model
 
 ### Backend Design
 - Extend router selection logic to recognize `model: "auto"` or `model` omitted.
-- Add rule-based resolver that maps input hints → modality → default or first available model.
+- Add rule-based resolver that maps prompt intent + input hints → modality → default or first available model.
+- Apply selection filters for **Free models only** and **Commercial models only** when specified.
 - Ensure resolved model ID is returned in the response.
 
 ### Data & Interface Notes
 - No breaking API changes; `model` already optional. Treat `"auto"` as synonym for `null`.
 - Explicit model IDs must bypass auto-selection.
+- Introduce `selection_mode` field in the request (non-breaking default: `auto`).
+- `input.images` and `input.mesh` are optional input payloads for multimodal requests (see Glossary).
 
 ---
 
@@ -175,6 +195,10 @@ So that clients can send prompts without selecting a model
 **TEST-SYS-CR003-003**: Manual model selection preserved
 - **Steps**: Send request with explicit model ID.
 - **Expected**: Router uses the specified model, no auto-selection applied.
+
+**TEST-SYS-CR003-004**: Selection mode filters
+- **Steps**: Send request with `selection_mode=free_only` and `selection_mode=commercial_only`.
+- **Expected**: Router selects a model within the specified provider class or returns a clear error.
 
 **TEST-INT-CR003-001**: Prompt-side dropdown default
 - **Steps**: Open chat UI.
@@ -200,6 +224,7 @@ System → Software
 | SYS-REQ-CR003-002 | Backend | US-BE-CR003-001 | Rule-based selection |
 | SYS-REQ-CR003-003 | Frontend | US-FE-CR003-001 | Dropdown UI |
 | SYS-REQ-CR003-004 | Frontend/Backend | US-FE-CR003-001, US-BE-CR003-001 | Manual override |
+| SYS-REQ-CR003-005 | Frontend/Backend | US-FE-CR003-001, US-BE-CR003-001 | Selection mode filters |
 
 Requirements → Verification
 
@@ -209,6 +234,7 @@ Requirements → Verification
 | SYS-REQ-CR003-002 | Automated | TEST-SYS-CR003-002 | tests/system/test_auto_model_selection.py | New |
 | SYS-REQ-CR003-003 | Manual | TEST-INT-CR003-001 | docs/testing/manual_test_procedures.md | UI placement |
 | SYS-REQ-CR003-004 | Automated | TEST-SYS-CR003-003 | tests/system/test_auto_model_selection.py | New |
+| SYS-REQ-CR003-005 | Automated | TEST-SYS-CR003-004 | tests/system/test_auto_model_selection.py | New |
 
 ---
 
@@ -217,6 +243,14 @@ Requirements → Verification
   - **Mitigation**: Rule-based selection only; document rules and provide explicit override.
 - **Risk**: UI still depends on model schema for parameter rendering.
   - **Mitigation**: In **Auto**, show a minimal parameter panel or default to text schema until a model is resolved.
+- **Risk**: Free vs commercial classification is ambiguous for some providers.
+  - **Mitigation**: Use a documented provider classification map and make it configurable.
+
+---
+
+## Glossary
+- **input.images**: Optional array of base64-encoded image inputs included with a generation request. Used by image-capable or multimodal models.
+- **input.mesh**: Optional base64-encoded 3D mesh payload (e.g., OBJ). Used by 3D-capable models.
 
 ---
 

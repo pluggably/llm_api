@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 
 @dataclass
 class ProviderError(Exception):
     status_code: int
     message: str
+    error_code: Optional[str] = field(default=None)
 
 
 @dataclass
@@ -31,6 +33,8 @@ class Adapter:
 
 def map_provider_error(error: ProviderError) -> StandardError:
     if error.status_code == 429:
+        if error.error_code == "insufficient_quota":
+            return StandardError(code="insufficient_quota", status_code=429, message=error.message)
         return StandardError(code="rate_limit", status_code=429, message=error.message)
     if error.status_code == 401:
         return StandardError(code="auth_error", status_code=401, message=error.message)

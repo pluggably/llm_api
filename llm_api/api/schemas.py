@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ErrorDetail(BaseModel):
@@ -31,14 +31,39 @@ class GenerateParameters(BaseModel):
     format: Optional[str] = None
 
 
+SelectionMode = Literal["auto", "free_only", "commercial_only", "model"]
+
+
 class GenerateRequest(BaseModel):
     model: Optional[str] = None
+    provider: Optional[str] = None
     session_id: Optional[str] = None
     state_tokens: Optional[Dict[str, Any]] = None
     modality: Literal["text", "image", "3d"]
     input: GenerateInput
     parameters: Optional[GenerateParameters] = None
     stream: bool = False
+    selection_mode: Optional[SelectionMode] = None
+
+
+class CreditsStatus(BaseModel):
+    provider: str
+    status: Literal["available", "exhausted", "rate_limited", "unknown"] = "unknown"
+    remaining: Optional[float] = None
+    reset_at: Optional[datetime] = None
+
+
+class AvailabilityInfo(BaseModel):
+    provider: str
+    access: Literal["available", "locked", "unknown"] = "unknown"
+    credits_status: Optional[CreditsStatus] = None
+
+
+class SelectionInfo(BaseModel):
+    selected_model: str
+    selected_provider: Optional[str] = None
+    fallback_used: bool = False
+    fallback_reason: Optional[str] = None
 
 
 class GenerateOutput(BaseModel):
@@ -60,6 +85,8 @@ class GenerateResponse(BaseModel):
     modality: Literal["text", "image", "3d"]
     session_id: Optional[str] = None
     state_tokens: Optional[Dict[str, Any]] = None
+    selection: Optional[SelectionInfo] = None
+    credits_status: Optional[CreditsStatus] = None
     output: GenerateOutput
     usage: Usage
     warnings: Optional[List[str]] = None
@@ -92,6 +119,7 @@ class ModelInfo(BaseModel):
     last_used_at: Optional[datetime] = None
     is_default: Optional[bool] = None
     status: Literal["available", "downloading", "failed", "disabled", "evicted"] = "available"
+    availability: Optional[AvailabilityInfo] = None
 
 
 class ModelCatalog(BaseModel):
@@ -152,6 +180,7 @@ class ModelDownloadOptions(BaseModel):
     revision: Optional[str] = None
     sha256: Optional[str] = None
     allow_large: Optional[bool] = False
+    install_local: Optional[bool] = True
 
 
 class ModelDownloadRequest(BaseModel):
@@ -171,15 +200,35 @@ class DownloadJobStatus(BaseModel):
 
 # User authentication schemas
 class UserRegisterRequest(BaseModel):
-    email: str
+    username: Optional[str] = None
+    email: Optional[str] = None
     password: str
     invite_token: Optional[str] = None
     display_name: Optional[str] = None
 
+    @model_validator(mode="after")
+    def normalize_identifier(self) -> "UserRegisterRequest":
+        identifier = (self.username or self.email or "").strip()
+        if not identifier:
+            raise ValueError("username or email is required")
+        self.username = identifier
+        self.email = identifier
+        return self
+
 
 class UserLoginRequest(BaseModel):
-    email: str
+    username: Optional[str] = None
+    email: Optional[str] = None
     password: str
+
+    @model_validator(mode="after")
+    def normalize_identifier(self) -> "UserLoginRequest":
+        identifier = (self.username or self.email or "").strip()
+        if not identifier:
+            raise ValueError("username or email is required")
+        self.username = identifier
+        self.email = identifier
+        return self
 
 
 class UserLoginResponse(BaseModel):
@@ -189,16 +238,32 @@ class UserLoginResponse(BaseModel):
 
 class UserProfile(BaseModel):
     id: str
-    email: str
+    username: Optional[str] = None
+    email: Optional[str] = None
     display_name: Optional[str] = None
     preferred_model: Optional[str] = None
     preferences: Dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def normalize_identifier(self) -> "UserProfile":
+        identifier = (self.username or self.email or "").strip()
+        if not identifier:
+            raise ValueError("username or email is required")
+        self.username = identifier
+        if self.email is None:
+            self.email = identifier
+        return self
 
 
 class UpdateProfileRequest(BaseModel):
     display_name: Optional[str] = None
     preferred_model: Optional[str] = None
     preferences: Optional[Dict[str, Any]] = None
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 class CreateTokenRequest(BaseModel):
@@ -302,3 +367,4 @@ class RegenerateRequest(BaseModel):
     model: Optional[str] = None
     parameters: Optional[GenerateParameters] = None
     stream: bool = False
+    selection_mode: Optional[SelectionMode] = None

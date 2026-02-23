@@ -6,17 +6,27 @@ from pathlib import Path
 from typing import Any, Dict, Literal, Optional
 
 import yaml
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+# Class-level defaults for model IDs.  Defined here so the validator can
+# restore them when an empty string leaks in via .env / env vars.
+_DEFAULT_MODEL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+_DEFAULT_IMAGE_MODEL = "stabilityai/sdxl-turbo"
+_DEFAULT_3D_MODEL = "openai/shap-e"
 
 
 class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8080
     log_level: str = "INFO"
+    verbose_logs: bool = False
 
     model_path: Path = Path("./models")
     max_disk_gb: float = 100.0
+    database_url: Optional[str] = None
+    database_schema: Optional[str] = None
 
     # Authentication - supports multiple methods:
     # 1. Static API key (X-Api-Key header)
@@ -38,9 +48,26 @@ class Settings(BaseSettings):
 
     persist_state: bool = False
 
-    default_model: str = "meta-llama/Meta-Llama-3.1-8B-Instruct"
-    default_image_model: str = "stabilityai/sdxl-turbo"
-    default_3d_model: str = "openai/shap-e"
+    default_model: str = _DEFAULT_MODEL
+    default_image_model: str = _DEFAULT_IMAGE_MODEL
+    default_3d_model: str = _DEFAULT_3D_MODEL
+
+    @model_validator(mode="after")
+    def _replace_empty_model_ids(self) -> "Settings":
+        """Treat empty-string model IDs as unset and restore class defaults.
+
+        pydantic-settings reads `LLM_API_DEFAULT_MODEL=` (empty value) from
+        .env and sets the field to "", which is truthy-False but a valid str.
+        This caused load_defaults() to register models with id="" and then
+        add_model() auto-assigned a UUID, creating duplicates on every restart.
+        """
+        if not self.default_model:
+            self.default_model = _DEFAULT_MODEL
+        if not self.default_image_model:
+            self.default_image_model = _DEFAULT_IMAGE_MODEL
+        if not self.default_3d_model:
+            self.default_3d_model = _DEFAULT_3D_MODEL
+        return self
     default_temperature: float = 0.7
     default_max_tokens: int = 4096
 
@@ -56,6 +83,9 @@ class Settings(BaseSettings):
     xai_api_key: Optional[str] = None
     xai_base_url: str = "https://api.x.ai/v1"
 
+    deepseek_api_key: Optional[str] = None
+    deepseek_base_url: str = "https://api.deepseek.com/v1"
+
     local_text_model_path: Optional[Path] = None
     local_text_model_id: Optional[str] = "meta-llama/Meta-Llama-3.1-8B-Instruct"
     local_image_model_id: str = "stabilityai/sdxl-turbo"
@@ -69,11 +99,16 @@ class Settings(BaseSettings):
     # Request queue settings
     max_queue_depth: int = 100
     max_concurrent_requests_per_model: int = 1
+
+    # Shutdown behavior
+    shutdown_background_task_timeout_seconds: float = 10.0
+    shutdown_queue_timeout_seconds: float = 10.0
+    shutdown_idle_monitor_timeout_seconds: float = 5.0
     
     # User authentication settings
     invite_required: bool = True
     encryption_key: Optional[str] = None  # For encrypting provider keys
-    
+
     # HuggingFace integration
     hf_token: Optional[str] = None
     hf_trust_remote_code: bool = False
@@ -105,6 +140,7 @@ def _flatten_yaml(data: Dict[str, Any]) -> Dict[str, Any]:
     google = providers.get("google", {})
     azure = providers.get("azure", {})
     xai = providers.get("xai", {})
+    deepseek = providers.get("deepseek", {})
     persistence = data.get("persistence", {})
     local = data.get("local", {})
 
@@ -132,7 +168,11 @@ def _flatten_yaml(data: Dict[str, Any]) -> Dict[str, Any]:
         "azure_openai_api_version": azure.get("api_version"),
         "xai_api_key": xai.get("api_key"),
         "xai_base_url": xai.get("base_url"),
+        "deepseek_api_key": deepseek.get("api_key"),
+        "deepseek_base_url": deepseek.get("base_url"),
         "persist_state": persistence.get("enabled"),
+        "database_url": persistence.get("database_url"),
+        "database_schema": persistence.get("database_schema"),
         "local_text_model_path": local.get("text_model_path"),
         "local_text_model_id": local.get("text_model_id"),
         "local_image_model_id": local.get("image_model_id"),
@@ -171,8 +211,12 @@ def get_settings() -> Settings:
         "host": "LLM_API_HOST",
         "port": "LLM_API_PORT",
         "log_level": "LLM_API_LOG_LEVEL",
+        "verbose_logs": "LLM_API_VERBOSE_LOGS",
         "model_path": "LLM_API_MODEL_PATH",
         "max_disk_gb": "LLM_API_MAX_DISK_GB",
+        "shutdown_background_task_timeout_seconds": "LLM_API_SHUTDOWN_BACKGROUND_TASK_TIMEOUT_SECONDS",
+        "shutdown_queue_timeout_seconds": "LLM_API_SHUTDOWN_QUEUE_TIMEOUT_SECONDS",
+        "shutdown_idle_monitor_timeout_seconds": "LLM_API_SHUTDOWN_IDLE_MONITOR_TIMEOUT_SECONDS",
         "api_key": "LLM_API_API_KEY",
         "jwt_secret": "LLM_API_JWT_SECRET",
         "local_only": "LLM_API_LOCAL_ONLY",
@@ -193,7 +237,11 @@ def get_settings() -> Settings:
         "azure_openai_api_version": "LLM_API_AZURE_OPENAI_API_VERSION",
         "xai_api_key": "LLM_API_XAI_API_KEY",
         "xai_base_url": "LLM_API_XAI_BASE_URL",
+        "deepseek_api_key": "LLM_API_DEEPSEEK_API_KEY",
+        "deepseek_base_url": "LLM_API_DEEPSEEK_BASE_URL",
         "persist_state": "LLM_API_PERSIST_STATE",
+        "database_url": "LLM_API_DATABASE_URL",
+        "database_schema": "LLM_API_DATABASE_SCHEMA",
         "local_text_model_path": "LLM_API_LOCAL_TEXT_MODEL_PATH",
         "local_text_model_id": "LLM_API_LOCAL_TEXT_MODEL_ID",
         "local_image_model_id": "LLM_API_LOCAL_IMAGE_MODEL_ID",

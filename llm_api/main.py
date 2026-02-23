@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import time
 from contextlib import asynccontextmanager
 
@@ -9,16 +10,37 @@ from fastapi.responses import JSONResponse, PlainTextResponse
 
 from llm_api.api.router import api_router
 from llm_api.api.users_router import users_router
+from llm_api.background_tasks import get_background_task_registry
 from llm_api.api.lifecycle_router import lifecycle_router
 from llm_api.config import get_settings
 from llm_api.db import init_db
 from llm_api.lifecycle import get_lifecycle_manager
 from llm_api.observability import get_metrics_store
 from llm_api.registry import get_registry
+from llm_api.queue import get_queue_manager
+from llm_api.runner.local_runner import clear_model_caches
+
+
+def _configure_logging(settings) -> None:
+    level = logging.DEBUG if settings.verbose_logs else getattr(
+        logging, settings.log_level.upper(), logging.INFO
+    )
+    # basicConfig is a no-op when handlers already exist (e.g. uvicorn
+    # configures the root logger before create_app runs), so we also set
+    # the level explicitly on the root logger and every attached handler.
+    logging.basicConfig(
+        level=level,
+        format="%(levelname)s:%(name)s:%(message)s",
+    )
+    root = logging.getLogger()
+    root.setLevel(level)
+    for handler in root.handlers:
+        handler.setLevel(level)
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    _configure_logging(settings)
     
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -40,8 +62,21 @@ def create_app() -> FastAPI:
         
         yield
         
-        # Shutdown
-        lifecycle.stop_idle_monitor()
+        try:
+            # Shutdown — cancel/await background tasks with bounded waits so
+            # Ctrl+C does not hang forever.
+            await get_background_task_registry().shutdown(
+                timeout=settings.shutdown_background_task_timeout_seconds,
+            )
+            await get_queue_manager().shutdown(
+                timeout=settings.shutdown_queue_timeout_seconds,
+            )
+            await lifecycle.stop_idle_monitor(
+                timeout=settings.shutdown_idle_monitor_timeout_seconds,
+            )
+        finally:
+            # Always free model weights even if graceful shutdown timed out.
+            clear_model_caches()
     
     app = FastAPI(
         title="Pluggably LLM API Gateway",

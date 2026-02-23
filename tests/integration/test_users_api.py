@@ -243,6 +243,11 @@ class TestInvites:
     
     def test_create_invite(self, client, mock_user_service, auth_headers):
         """Test creating an invite code."""
+        mock_user_service.get_user.return_value = {
+            "id": "test-user-123",
+            "email": "admin@example.com",
+            "is_admin": True,
+        }
         mock_user_service.create_invite.return_value = "inv-abc123"
         
         response = client.post("/v1/users/invites", json={}, headers=auth_headers)
@@ -250,3 +255,53 @@ class TestInvites:
         assert response.status_code == 201
         data = response.json()
         assert "invite_token" in data
+
+    def test_create_invite_forbidden_for_non_admin(
+        self,
+        client,
+        mock_user_service,
+        auth_headers,
+    ):
+        """Invite creation is forbidden for non-admin users."""
+        mock_user_service.get_user.return_value = {
+            "id": "test-user-123",
+            "email": "user@example.com",
+            "is_admin": False,
+        }
+
+        response = client.post("/v1/users/invites", json={}, headers=auth_headers)
+
+        assert response.status_code == 403
+
+
+class TestPasswordChange:
+    """Test /v1/users/change-password endpoint."""
+
+    def test_change_password_success(self, client, mock_user_service, auth_headers):
+        mock_user_service.change_password.return_value = True
+
+        response = client.post(
+            "/v1/users/change-password",
+            json={
+                "current_password": "OldPassword123!",
+                "new_password": "NewPassword123!",
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        assert response.json().get("changed") is True
+
+    def test_change_password_failure(self, client, mock_user_service, auth_headers):
+        mock_user_service.change_password.return_value = False
+
+        response = client.post(
+            "/v1/users/change-password",
+            json={
+                "current_password": "WrongPassword123!",
+                "new_password": "short",
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 400

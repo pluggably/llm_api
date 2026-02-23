@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import threading
 import uuid
 from collections import deque
@@ -10,6 +11,9 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Deque, Dict, List, Literal, Optional, Set
 
 from llm_api.config import get_settings
+
+
+logger = logging.getLogger(__name__)
 
 
 RequestStatus = Literal["pending", "queued", "running", "completed", "cancelled", "failed"]
@@ -267,6 +271,29 @@ class RequestQueueManager:
         with self._lock:
             if model_id in self._workers:
                 del self._workers[model_id]
+
+    async def shutdown(self, timeout: float = 10.0) -> None:
+        """Cancel running worker tasks and wait up to timeout seconds."""
+        with self._lock:
+            tasks = list(self._workers.values())
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        if tasks:
+            try:
+                await asyncio.wait_for(
+                    asyncio.gather(*tasks, return_exceptions=True),
+                    timeout=max(0.0, timeout),
+                )
+            except asyncio.TimeoutError:
+                pending = [task for task in tasks if not task.done()]
+                if pending:
+                    logger.warning(
+                        "Queue shutdown timed out with %d worker task(s) still pending",
+                        len(pending),
+                    )
+        with self._lock:
+            self._workers.clear()
 
 
 # Global instance

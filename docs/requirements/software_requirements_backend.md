@@ -367,6 +367,12 @@ So that clients can reliably render the left-pane sessions list
 
 ---
 
+## DoR/DoD Checklist
+- [ ] Ready: US-043 captured with acceptance criteria and traceability.
+- [ ] Done: Backend requirements reviewed for SYS-REQ-071–075 alignment.
+
+---
+
 **Story ID**: US-037
 **Title**: Session naming support
 **Priority**: Medium
@@ -477,11 +483,13 @@ So that clients can send prompts without pre-selecting a model
 
 **Acceptance Criteria**:
 - [ ] `model` may be omitted or set to `auto`
-- [ ] Rule-based resolver selects a model by inferred modality
+- [ ] Rule-based resolver selects a model by inferred modality and prompt intent
+- [ ] Selection can be constrained with `selection_mode` (`auto | free_only | commercial_only | model`)
 - [ ] Resolved model ID is returned in the response
 - [ ] If no model is available, return a clear error
 
 **Traceability**: SYS-REQ-CR003-001, SYS-REQ-CR003-002, SYS-REQ-CR003-004
+**Traceability**: SYS-REQ-CR003-001, SYS-REQ-CR003-002, SYS-REQ-CR003-004, SYS-REQ-CR003-005
 
 **Status**: Not Started
 
@@ -523,6 +531,30 @@ So that clients can render accurate dynamic settings
 
 **Traceability**: SYS-REQ-034
 
+**Status**: Not Started
+
+---
+
+**Story ID**: US-043
+**Title**: Provider model discovery and credits/quota reporting
+**Priority**: High
+**Story Points**: 8
+
+As a developer
+I want the backend to discover accessible commercial models and credit status per user
+So that the UI can show available models and warn when premium credits are exhausted
+
+**Acceptance Criteria**:
+- [ ] On startup and when provider keys change, the system queries provider APIs for accessible models per user
+- [ ] Results are cached and rate-limited to avoid provider throttling
+- [ ] `/v1/models` includes discovered provider models when a user has valid credentials
+- [ ] API responses include provider credit/usage status when available
+- [ ] Model selection uses available credits/quota when choosing a model
+- [ ] API indicates when premium credits are exhausted and the system has switched to a free-tier model
+- [ ] Requests may specify a provider/vendor instead of a model ID and the backend selects a suitable model
+- [ ] Logs never include secrets or raw credential payloads
+
+**Traceability**: SYS-REQ-071, SYS-REQ-072, SYS-REQ-073, SYS-REQ-075, SYS-NFR-021, SYS-NFR-022, INT-REQ-013, INT-REQ-014, DATA-REQ-015, DATA-REQ-016
 **Status**: Not Started
 
 ---
@@ -910,6 +942,7 @@ System → Software
 | SYS-REQ-CR003-001 | Backend | US-042 | Auto model selection |
 | SYS-REQ-CR003-002 | Backend | US-042 | Rule-based resolver |
 | SYS-REQ-CR003-004 | Backend | US-042 | Manual override preserved |
+| SYS-REQ-CR003-005 | Backend | US-042 | Selection mode filters |
 
 ## Definition of Ready / Done
 **Ready**

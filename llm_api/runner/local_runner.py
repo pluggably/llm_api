@@ -12,14 +12,35 @@ from llm_api.adapters.base import ProviderError
 from llm_api.config import get_settings
 
 
+def _best_device() -> str:
+    """Return the best available compute device: 'cuda', 'mps', or 'cpu'.
+
+    Checks CUDA first (typical GPU VPS), then Apple Metal (MPS) for Apple
+    Silicon Macs, then falls back to CPU.  Safe to call even when torch is
+    not installed — returns 'cpu' in that case.
+    """
+    try:
+        torch = importlib.import_module("torch")
+        if torch.cuda.is_available():
+            return "cuda"
+        if torch.backends.mps.is_available():
+            return "mps"
+    except ImportError:
+        pass
+    return "cpu"
+
+
 @lru_cache
 def _load_llama(model_path: str):
     try:
         llama_cpp = importlib.import_module("llama_cpp")
     except ImportError as exc:
         raise ProviderError(500, "llama-cpp-python is not installed") from exc
+    device = _best_device()
+    # -1 offloads all layers to GPU (Metal or CUDA); 0 = CPU only.
+    n_gpu_layers = -1 if device != "cpu" else 0
     llama_class = getattr(llama_cpp, "Llama")
-    return llama_class(model_path=model_path)
+    return llama_class(model_path=model_path, n_gpu_layers=n_gpu_layers)
 
 
 @lru_cache(maxsize=2)
@@ -96,6 +117,7 @@ def _generate_hf_text(
     prompt: str,
     model_id_or_path: str,
     settings: Any,
+    parameters: Optional[dict[str, Any]] = None,
     hf_token: Optional[str] = None,
 ) -> str:
     try:
@@ -110,12 +132,7 @@ def _generate_hf_text(
         local_files_only = False
         target = model_id_or_path
 
-    if torch.cuda.is_available():
-        device = "cuda"
-    elif torch.backends.mps.is_available():
-        device = "mps"
-    else:
-        device = "cpu"
+    device = _best_device()
 
     # User-provided token takes precedence over global config
     effective_token = hf_token or settings.hf_token
@@ -143,9 +160,33 @@ def _generate_hf_text(
     inputs = tokenizer(prompt_text, return_tensors="pt")
     inputs = inputs.to(device)
 
+    req_max_tokens = (parameters or {}).get("max_tokens")
+    max_new_tokens = 64
+    if req_max_tokens is not None:
+        try:
+            max_new_tokens = int(req_max_tokens)
+        except (TypeError, ValueError):
+            max_new_tokens = 64
+    max_cap = 64 if device == "cpu" else 256
+    max_new_tokens = max(1, min(max_new_tokens, max_cap))
+
+    req_temperature = (parameters or {}).get("temperature")
+    generation_kwargs: dict[str, Any] = {
+        "max_new_tokens": max_new_tokens,
+        "do_sample": False,
+    }
+    if req_temperature is not None:
+        try:
+            temperature = float(req_temperature)
+            if temperature > 0:
+                generation_kwargs["temperature"] = temperature
+                generation_kwargs["do_sample"] = True
+        except (TypeError, ValueError):
+            pass
+
     output_ids = model.generate(
         **inputs,
-        max_new_tokens=128,
+        **generation_kwargs,
     )
 
     new_tokens = output_ids[0][inputs.input_ids.shape[-1]:]
@@ -177,7 +218,7 @@ def _load_diffusion(model_id: str, local_path: Optional[str] = None):
             if StableDiffusionXLPipeline:
                 pipe = StableDiffusionXLPipeline.from_single_file(
                     str(full_path),
-                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
+                    torch_dtype=torch.float16 if _best_device() != "cpu" else torch.float32,
                 )
             else:
                 pipe = diffusion_pipeline.from_single_file(str(full_path))
@@ -360,17 +401,46 @@ class LocalRunner:
         prompt: str,
         model_path: Optional[Path] = None,
         model_id: Optional[str] = None,
+        parameters: Optional[dict[str, Any]] = None,
         hf_token: Optional[str] = None,
     ) -> str:
         settings = get_settings()
 
+        req_max_tokens = (parameters or {}).get("max_tokens")
+        max_tokens = 64
+        if req_max_tokens is not None:
+            try:
+                max_tokens = int(req_max_tokens)
+            except (TypeError, ValueError):
+                max_tokens = 64
+        device = _best_device()
+        max_cap = 64 if device == "cpu" else 256
+        max_tokens = max(1, min(max_tokens, max_cap))
+
+        req_temperature = (parameters or {}).get("temperature")
+        temperature: Optional[float] = None
+        if req_temperature is not None:
+            try:
+                temperature = float(req_temperature)
+            except (TypeError, ValueError):
+                temperature = None
+
         runtime, target = _resolve_text_runtime(model_path, model_id, settings)
         if runtime == "llama_cpp":
             llama = _load_llama(target)
-            output = llama(prompt, max_tokens=128)
+            llama_kwargs: dict[str, Any] = {"max_tokens": max_tokens}
+            if temperature is not None:
+                llama_kwargs["temperature"] = temperature
+            output = llama(prompt, **llama_kwargs)
             return output["choices"][0]["text"]
 
-        return _generate_hf_text(prompt, target, settings, hf_token=hf_token)
+        return _generate_hf_text(
+            prompt,
+            target,
+            settings,
+            parameters=parameters,
+            hf_token=hf_token,
+        )
 
     def generate_image(
         self,
@@ -518,3 +588,16 @@ class LocalRunner:
         text_buffer = io.StringIO()
         tri_mesh.write_obj(text_buffer)
         return text_buffer.getvalue().encode("utf-8")
+
+
+def clear_model_caches() -> None:
+    """Clear all LRU-cached model instances to free memory.
+
+    Called on server shutdown so that ``uvicorn --reload`` workers don't
+    hold multi-GB model weights in memory while the replacement worker
+    loads its own copy.
+    """
+    _load_llama.cache_clear()
+    _load_hf_text_model.cache_clear()
+    _load_diffusion.cache_clear()
+    _load_shap_e.cache_clear()

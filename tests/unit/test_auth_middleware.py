@@ -24,6 +24,11 @@ class TestAuthMiddleware:
         response = client.get("/v1/models")
         assert response.status_code == 401
 
+    def test_no_auth_methods_configured_still_requires_auth(self, client_factory):
+        client = client_factory({"api_key": "", "jwt_secret": "", "local_only": "false"})
+        response = client.get("/v1/models")
+        assert response.status_code == 401
+
     def test_valid_jwt_passes(self, client_factory):
         secret = "test-jwt-secret"
         token = pyjwt.encode(

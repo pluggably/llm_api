@@ -161,6 +161,40 @@ void main() {
       });
     });
 
+    group('downloadModel', () {
+      test('sends install_local and provider in payload', () async {
+        final mockClient = MockClient((request) async {
+          expect(request.method, 'POST');
+          expect(request.url.path, '/v1/models/download');
+          final body = jsonDecode(request.body) as Map<String, dynamic>;
+          expect(body['model']['id'], 'meta-llama/Llama-3.2-1B-Instruct');
+          expect(body['model']['provider'], 'huggingface');
+          expect(body['source']['type'], 'huggingface');
+          expect(body['source']['id'], 'meta-llama/Llama-3.2-1B-Instruct');
+          expect(body['options']['install_local'], false);
+          return http.Response(
+            jsonEncode({'job_id': 'job-1', 'status': 'completed'}),
+            202,
+          );
+        });
+
+        client = LlmApiClient(
+          baseUrl: 'http://localhost:8000',
+          httpClient: mockClient,
+        );
+
+        await client.downloadModel(
+          modelId: 'meta-llama/Llama-3.2-1B-Instruct',
+          name: 'meta-llama/Llama-3.2-1B-Instruct',
+          modality: 'text',
+          sourceType: 'huggingface',
+          sourceId: 'meta-llama/Llama-3.2-1B-Instruct',
+          installLocal: false,
+          provider: 'huggingface',
+        );
+      });
+    });
+
     group('sessions', () {
       test('listSessions returns sessions', () async {
         final mockClient = MockClient((request) async {
@@ -285,7 +319,7 @@ void main() {
           httpClient: mockClient,
         );
         final auth = await client.login(
-          email: 'test@example.com',
+          username: 'testuser',
           password: 'password',
         );
 
@@ -309,7 +343,7 @@ void main() {
           httpClient: mockClient,
         );
         final auth = await client.register(
-          email: 'new@example.com',
+          username: 'newuser',
           password: 'password',
           inviteToken: 'invite-123',
         );

@@ -37,12 +37,17 @@ curl http://localhost:8080/health
 # {"status": "ok"}
 ```
 
-### Test User
+### Create Users
 
-A test user has been created for development and testing:
+Users are not created automatically on startup.
 
-- **Email**: test@example.com
-- **Password**: testpass123
+Create accounts explicitly:
+
+```bash
+python scripts/create_user.py --username hassan --password 'strong-password' --admin
+python scripts/create_user.py --username ben --password 'strong-password' --admin
+python scripts/create_user.py --username test --password 'strong-password'
+```
 
 See [docs/test_credentials.md](docs/test_credentials.md) for details.
 
@@ -63,6 +68,22 @@ flutter run -d chrome
 Then open **Settings** in the app to set the API URL (default: `http://localhost:8000`).
 
 See [frontend/README.md](frontend/README.md) for full usage, tests, and known gaps.
+
+Deployment and release runbooks:
+- [docs/ops/deployment.md](docs/ops/deployment.md)
+- [docs/ops/supabase_vps_release.md](docs/ops/supabase_vps_release.md)
+
+### Auto-redeploy on `main` / `master`
+
+This repo includes [`.github/workflows/deploy-vps-main.yml`](.github/workflows/deploy-vps-main.yml), which redeploys to the VPS on every push to `main` or `master` (and can be run manually via `workflow_dispatch`).
+
+Set these GitHub repository secrets before enabling it:
+- `DEPLOY_SSH_HOST`
+- `DEPLOY_SSH_USER`
+- `DEPLOY_SSH_KEY` (private key for that user)
+
+The workflow SSHes into the VPS, fast-forwards both server checkouts, and runs:
+- `cd /srv/apps/vps-config/llm_api && docker compose up -d --build --remove-orphans`
 
 ---
 

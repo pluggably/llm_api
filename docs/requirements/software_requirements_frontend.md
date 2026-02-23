@@ -198,6 +198,33 @@ So that I can access local models securely
 - [ ] UI allows creating and revoking OSS access keys
 - [ ] Keys are stored and displayed securely
 
+---
+
+**Story ID**: US-FE-011
+**Title**: Provider model availability and credit status
+**Priority**: High
+**Story Points**: 5
+
+As a user
+I want to see which commercial models are available to me
+So that I can select them when my provider credentials allow access
+
+**Acceptance Criteria**:
+- [ ] Models page displays commercial provider models when provider keys exist
+- [ ] Model dropdown includes commercial models unless “Free only” is selected
+- [ ] UI indicates when premium credits are exhausted and that fallback to free-tier is in effect
+- [ ] UI surfaces provider credit/usage status when available
+- [ ] When a provider/vendor is selected (without a model ID), the UI shows the selected model returned by the API
+
+**Traceability**: SYS-REQ-071, SYS-REQ-072, SYS-REQ-073, SYS-REQ-074, SYS-REQ-075
+**Status**: Not Started
+
+---
+
+## DoR/DoD Checklist
+- [ ] Ready: US-FE-011 captured with acceptance criteria and traceability.
+- [ ] Done: Frontend requirements reviewed for SYS-REQ-071–075 alignment.
+
 **Traceability**: SYS-REQ-036
 **Status**: Not Started
 

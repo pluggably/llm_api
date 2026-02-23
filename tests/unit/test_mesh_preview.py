@@ -17,10 +17,11 @@ def test_generate_3d_includes_preview_artifact(client: TestClient, monkeypatch):
 
     monkeypatch.setattr(router_module, "render_mesh_preview", _fake_preview)
 
+    # Use modality-based auto-selection instead of explicit "openai/shap-e" which
+    # gets parsed as provider prefix "openai" and fails without an API key.
     response = client.post(
         "/v1/generate",
         json={
-            "model": "openai/shap-e",
             "modality": "3d",
             "input": {"prompt": "a chair"},
         },

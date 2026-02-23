@@ -41,10 +41,12 @@ This document describes UI structure, state management, data flow, and schema-dr
 - Default selection is **Auto**.
 - When **Auto** is selected, the prompt can be submitted without a model selection.
 - When a specific model is selected, the settings drawer and modality follow the selected model as today.
+- Selection modes include **Auto**, **Free models only**, **Commercial models only**, and **Specific model**.
 
 ### Prompt-Side Layout (Sketch)
 ```text
 [ Model: Auto ▼ ] [ Prompt input ..................................... ] [ Send ]
+(Dropdown modes: Auto | Free models only | Commercial models only | Specific model)
 ```
 
 ### UI Flow (Mermaid)

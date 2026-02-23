@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+markers = [
+    "gpu: tests that require GPU hardware (CUDA or MPS) — deselected by default",
+]

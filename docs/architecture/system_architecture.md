@@ -36,6 +36,7 @@ Primary system elements:
 10. **Session Manager**: Stores and retrieves session context and history. Session state is persisted independently of model processes, ensuring sessions survive model spindown and can be resumed after model reload.
 11. **Model Catalog Search**: Searches Hugging Face for new models to download/register.
 12. **Credential Vault**: Stores per-user commercial provider credentials with typed auth schemes.
+13. **Provider Discovery & Quota**: Queries commercial provider APIs per user to discover accessible models and credit/usage status (cached).
 
 ## System Element Diagram (Mermaid)
 ```mermaid
@@ -50,6 +51,9 @@ graph LR
     Registry[Model Registry]
     CatalogSearch[Catalog Search]
     Creds[Credential Vault]
+    ProviderDiscovery[Provider Discovery]
+    Quota[Credits/Quota]
+    AvailabilityCache[Availability Cache]
     RegistryDB[(SQLite Registry DB)]
     Downloader[Model Downloader/Jobs]
     StorageMgr[Storage Manager]
@@ -72,6 +76,9 @@ graph LR
     Downloader --> StorageMgr
     Gateway --> Creds
     CatalogSearch --> Registry
+    Gateway --> ProviderDiscovery
+    ProviderDiscovery --> Quota
+    ProviderDiscovery --> AvailabilityCache
 ```
 
 ## Interface Definitions (Summary)
@@ -89,6 +96,7 @@ graph LR
 - **Frontend → Gateway**: Model catalog search (Hugging Face), download/register, and text filtering.
 - **Gateway → Hugging Face**: Search and metadata lookup for models.
 - **Frontend → Gateway**: Health endpoint for connection testing.
+- **Gateway → Provider APIs**: Discover accessible models and credit/usage status per user (cached).
 
 ## Data Flow Diagram (Mermaid)
 ```mermaid
@@ -96,6 +104,7 @@ graph TD
     Req[Frontend/Client Request] --> Gateway[API Gateway]
     Gateway --> Validate[Validate & Auth]
     Validate --> Select[Select Backend & Model]
+    Select --> Availability[Check provider availability/credits]
     Select -->|External| Adapter[Provider Adapter]
     Select -->|Local| Runner[Local Model Runner]
     Adapter --> Resp[Standard Response]
@@ -106,6 +115,7 @@ graph TD
     Gateway --> Logs[Logs/Metrics]
     Gateway --> RegistryDB[(SQLite Registry DB)]
     Gateway --> HF[Hugging Face Search]
+    Gateway --> ProviderDiscovery[Provider Discovery]
     HF --> RegistryDB
 ```
 
@@ -150,6 +160,10 @@ graph TD
 - Interface contracts implemented (OpenAPI/Schema).
 - Traceability updated to system requirements.
 - Reviewed and approved by user.
+
+## DoR/DoD Checklist
+- [ ] Ready: Provider discovery/quota elements documented and diagrams updated.
+- [ ] Done: Provider discovery/quota interfaces and data flow validated in review.
 
 ## Traceability
 System → Software (per software component)
@@ -204,6 +218,12 @@ System → Software (per software component)
 | SYS-REQ-066 | Client Library | US-CL-013 | Session metadata |
 | SYS-REQ-067 | Backend | US-038 | Message timestamps |
 | SYS-REQ-067 | Frontend | US-FE-027 | Message timestamps UI |
+| SYS-REQ-071 | Backend | US-043 | Provider model discovery |
+| SYS-REQ-072 | Backend | US-043 | Credits/quota |
+| SYS-REQ-073 | Backend | US-043 | Free-tier fallback indicator |
+| SYS-REQ-074 | Frontend | US-FE-011 | Availability in catalog + dropdown |
+| SYS-REQ-075 | Backend | US-043 | Vendor selection |
+| SYS-REQ-075 | Frontend | US-FE-011 | Vendor selection UX |
 | SYS-REQ-067 | Client Library | US-CL-013 | Message timestamps |
 | SYS-REQ-068 | Backend | US-041 | Health endpoint |
 | SYS-REQ-068 | Frontend | US-FE-028 | Connection test UI |

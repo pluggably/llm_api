@@ -25,9 +25,22 @@ class TestMultimodalRequests:
         assert output.get("mesh") or output.get("artifacts")
 
     def test_request_with_image_input(self, client):
+        # Image preprocessor requires data-URL format, not raw base64.
+        # Specify model explicitly to avoid modality inference override
+        # (without a model, images cause _infer_modality → "image").
+        import base64
+        # 1x1 red PNG pixel
+        pixel = (
+            b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01"
+            b"\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde\x00"
+            b"\x00\x00\x0cIDATx\x9cc\xf8\x0f\x00\x00\x01\x01\x00"
+            b"\x05\x18\xd8N\x00\x00\x00\x00IEND\xaeB`\x82"
+        )
+        data_url = f"data:image/png;base64,{base64.b64encode(pixel).decode()}"
         payload = {
+            "model": "local-text",
             "modality": "text",
-            "input": {"prompt": "Describe", "images": ["ZmFrZQ=="]},
+            "input": {"prompt": "Describe", "images": [data_url]},
         }
         response = client.post("/v1/generate", json=payload, headers={"X-API-Key": "test-key"})
         assert response.status_code == 200

@@ -10,6 +10,7 @@ import 'package:plugai/state/providers.dart';
 import 'package:plugai/features/models/models_page.dart';
 import 'package:plugai/features/sessions/sessions_rail.dart';
 import 'package:plugai/features/settings/settings_page.dart';
+import 'package:pluggably_llm_client/sdk.dart';
 
 void main() {
   late SharedPreferences prefs;
@@ -23,12 +24,8 @@ void main() {
     testWidgets('displays loading indicator initially', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-          ],
-          child: const MaterialApp(
-            home: ModelsPage(),
-          ),
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          child: const MaterialApp(home: ModelsPage()),
         ),
       );
 
@@ -38,12 +35,8 @@ void main() {
     testWidgets('displays modality filter chips', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-          ],
-          child: const MaterialApp(
-            home: ModelsPage(),
-          ),
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          child: const MaterialApp(home: ModelsPage()),
         ),
       );
 
@@ -53,18 +46,94 @@ void main() {
       expect(find.text('Text'), findsOneWidget);
       expect(find.text('Image'), findsOneWidget);
     });
+
+    testWidgets('filters visible models by selected providers', (tester) async {
+      final models = [
+        const Model(
+          id: 'openai-gpt-4o-mini',
+          name: 'GPT-4o mini',
+          provider: 'openai',
+          modality: 'text',
+        ),
+        const Model(
+          id: 'hf-tinyllama',
+          name: 'TinyLlama',
+          provider: 'huggingface',
+          modality: 'text',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            modelsProvider.overrideWith((ref) async => models),
+          ],
+          child: const MaterialApp(home: ModelsPage()),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('All providers'), findsOneWidget);
+      expect(find.text('OpenAI (1)'), findsOneWidget);
+      expect(find.text('Hugging Face (1)'), findsOneWidget);
+      expect(find.text('GPT-4o mini'), findsOneWidget);
+      expect(find.text('TinyLlama'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilterChip, 'Hugging Face (1)'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('GPT-4o mini'), findsOneWidget);
+      expect(find.text('TinyLlama'), findsNothing);
+    });
+
+    testWidgets('restores provider visibility from shared preferences', (
+      tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({
+        'models_visible_providers': ['openai'],
+      });
+      prefs = await SharedPreferences.getInstance();
+
+      final models = [
+        const Model(
+          id: 'openai-gpt-4o-mini',
+          name: 'GPT-4o mini',
+          provider: 'openai',
+          modality: 'text',
+        ),
+        const Model(
+          id: 'hf-tinyllama',
+          name: 'TinyLlama',
+          provider: 'huggingface',
+          modality: 'text',
+        ),
+      ];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            sharedPreferencesProvider.overrideWithValue(prefs),
+            modelsProvider.overrideWith((ref) async => models),
+          ],
+          child: const MaterialApp(home: ModelsPage()),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('GPT-4o mini'), findsOneWidget);
+      expect(find.text('TinyLlama'), findsNothing);
+    });
   });
 
   group('SessionsRail', () {
     testWidgets('renders new session button', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-          ],
-          child: const MaterialApp(
-            home: Scaffold(body: SessionsRail()),
-          ),
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          child: const MaterialApp(home: Scaffold(body: SessionsRail())),
         ),
       );
 
@@ -78,12 +147,8 @@ void main() {
     testWidgets('renders without errors', (tester) async {
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            sharedPreferencesProvider.overrideWithValue(prefs),
-          ],
-          child: const MaterialApp(
-            home: SettingsPage(),
-          ),
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          child: const MaterialApp(home: SettingsPage()),
         ),
       );
 

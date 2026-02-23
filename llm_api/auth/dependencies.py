@@ -1,4 +1,3 @@
-import logging
 from typing import Any, Dict, Optional
 
 import jwt
@@ -6,9 +5,6 @@ from fastapi import Header, HTTPException, Request
 
 from llm_api.config import get_settings
 from llm_api.users import get_user_service
-
-logger = logging.getLogger(__name__)
-_dev_mode_warned = False
 
 
 def _validate_jwt(token: str, secret: str) -> Optional[Dict[str, Any]]:
@@ -47,6 +43,7 @@ async def require_api_key(
             if not getattr(request.state, "user", None):
                 request.state.user = {
                     "user_id": "dev-user",
+                    "username": "dev",
                     "email": "dev@localhost",
                     "scopes": [],
                 }
@@ -59,6 +56,7 @@ async def require_api_key(
             if not getattr(request.state, "user", None):
                 request.state.user = {
                     "user_id": "dev-user",
+                    "username": "dev",
                     "email": "dev@localhost",
                     "scopes": [],
                 }
@@ -85,6 +83,7 @@ async def require_api_key(
                     if user:
                         request.state.user = {
                             "user_id": user["id"],
+                            "username": user.get("username", user["email"]),
                             "email": user["email"],
                             "scopes": claims.get("scopes", []),
                         }
@@ -93,6 +92,7 @@ async def require_api_key(
                     # JWT valid but no sub claim — treat as service token
                     request.state.user = {
                         "user_id": claims.get("sub", "jwt-user"),
+                        "username": claims.get("username", claims.get("email", "")),
                         "email": claims.get("email", ""),
                         "scopes": claims.get("scopes", []),
                     }
@@ -105,24 +105,5 @@ async def require_api_key(
             return
 
         raise HTTPException(status_code=401, detail="Invalid or expired token")
-
-    # No valid auth provided
-    # If no auth methods are configured, allow access (development mode)
-    if not settings.api_key and not settings.jwt_secret:
-        global _dev_mode_warned
-        if not _dev_mode_warned:
-            logger.warning(
-                "No api_key or jwt_secret configured — running in OPEN ACCESS "
-                "development mode. All requests are allowed without authentication. "
-                "Set LLM_API_API_KEY or LLM_API_JWT_SECRET for production."
-            )
-            _dev_mode_warned = True
-        if not getattr(request.state, "user", None):
-            request.state.user = {
-                "user_id": "dev-user",
-                "email": "dev@localhost",
-                "scopes": [],
-            }
-        return
 
     raise HTTPException(status_code=401, detail="Missing authentication")

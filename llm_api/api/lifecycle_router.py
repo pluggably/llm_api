@@ -13,10 +13,18 @@ from llm_api.api.schemas import (
     ModelRuntimeStatus,
     QueuePositionResponse,
 )
+from llm_api.background_tasks import get_background_task_registry
 from llm_api.auth import require_api_key
 from llm_api.lifecycle import get_lifecycle_manager
 from llm_api.queue import get_queue_manager
 from llm_api.registry import get_registry
+from llm_api.runner.local_runner import (
+    _load_llama,
+    _load_hf_text_model,
+    _load_diffusion,
+    _load_shap_e,
+    clear_model_caches,
+)
 
 
 lifecycle_router = APIRouter(tags=["lifecycle"])
@@ -104,8 +112,10 @@ async def load_model(model_id: str, request: LoadModelRequest | None = None) -> 
         })
     else:
         # Start async load
-        import asyncio
-        asyncio.create_task(lifecycle.load_model(model_id))
+        get_background_task_registry().create_task(
+            lifecycle.load_model(model_id),
+            name=f"load-model:{model_id}",
+        )
         return JSONResponse({
             "model_id": model_id,
             "status": "loading",
@@ -187,3 +197,40 @@ async def cancel_request(request_id: str) -> JSONResponse:
     )
     
     return JSONResponse(jsonable_encoder(response))
+
+@lifecycle_router.get("/v1/runtime-cache", dependencies=[Depends(require_api_key)])
+async def get_runtime_cache_info() -> JSONResponse:
+    """Return LRU cache hit/miss stats for all local model caches.
+
+    ``currsize`` is the number of model objects currently held in memory.
+    A non-zero value means that many model instances (and their weights)
+    are pinned in the Python process.
+    """
+    def _info(fn) -> dict:
+        ci = fn.cache_info()
+        return {"hits": ci.hits, "misses": ci.misses, "maxsize": ci.maxsize, "currsize": ci.currsize}
+
+    return JSONResponse({
+        "llama_cpp":    _info(_load_llama),
+        "hf_text":      _info(_load_hf_text_model),
+        "diffusion":    _info(_load_diffusion),
+        "shap_e":       _info(_load_shap_e),
+    })
+
+
+@lifecycle_router.delete("/v1/runtime-cache", dependencies=[Depends(require_api_key)])
+async def clear_runtime_cache() -> JSONResponse:
+    """Clear all LRU-cached local model objects from memory.
+
+    This releases the Python references to loaded model weights so the
+    garbage collector can free the memory.  Use this after heavy inference
+    runs or before reloading the server to avoid double-loading large models.
+    """
+    before = {
+        "llama_cpp": _load_llama.cache_info().currsize,
+        "hf_text":   _load_hf_text_model.cache_info().currsize,
+        "diffusion": _load_diffusion.cache_info().currsize,
+        "shap_e":    _load_shap_e.cache_info().currsize,
+    }
+    clear_model_caches()
+    return JSONResponse({"cleared": before, "message": "All local model caches cleared"})

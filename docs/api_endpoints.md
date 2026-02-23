@@ -54,6 +54,12 @@ GET /v1/schema?model={model_id}
 X-API-Key: <token>
 ```
 
+### Set Default Model (per modality)
+```
+POST /v1/models/{model_id}/default
+X-API-Key: <token>
+```
+
 ## Model Lifecycle
 
 ### Get Model Status
@@ -101,6 +107,7 @@ Content-Type: application/json
 
 {
   "model": "model-id",
+  "provider": "openai",
   "modality": "text",
   "input": {
     "prompt": "Hello, how are you?"
@@ -113,6 +120,10 @@ Content-Type: application/json
 }
 ```
 
+Notes:
+- If `model` is omitted, you may specify `provider` to let the backend select a suitable model.
+- Responses may include selection metadata and credit/usage status when available.
+
 ### Generate (Streaming)
 ```
 POST /v1/generate
@@ -121,6 +132,7 @@ Content-Type: application/json
 
 {
   "model": "model-id",
+  "provider": "openai",
   "modality": "text",
   "input": {
     "prompt": "Hello, how are you?"

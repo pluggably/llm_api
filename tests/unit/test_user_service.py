@@ -160,3 +160,54 @@ class TestUserService:
         result = user_service.delete_provider_key("user-1", "openai")
         
         assert not result
+
+    def test_ensure_user_updates_existing_admin_flag(self, user_service, mock_db_session):
+        """ensure_user updates password and admin flag for existing users."""
+        mock_user = MagicMock()
+        mock_user.id = "user-1"
+        mock_user.email = "hassan@pluggably.local"
+        mock_user.display_name = "hassan"
+        mock_db_session.query.return_value.filter.return_value.first.return_value = (
+            mock_user
+        )
+
+        result = user_service.ensure_user(
+            email="hassan@pluggably.local",
+            password="StrongPass123!",
+            display_name="hassan",
+            is_admin=True,
+        )
+
+        assert result["email"] == "hassan@pluggably.local"
+        assert result["is_admin"] is True
+
+    def test_change_password_rejects_short_password(self, user_service, mock_db_session):
+        """change_password rejects weak passwords."""
+        result = user_service.change_password(
+            user_id="user-1",
+            current_password="CurrentPassword123!",
+            new_password="short",
+        )
+
+        assert result is False
+
+    def test_change_password_success(self, user_service, mock_db_session):
+        """change_password updates hash when current password is correct."""
+        current_password = "CurrentPassword123!"
+        password_hash, salt = _hash_password(current_password)
+
+        mock_user = MagicMock()
+        mock_user.id = "user-1"
+        mock_user.is_active = True
+        mock_user.password_hash = f"{salt}:{password_hash}"
+        mock_db_session.query.return_value.filter.return_value.first.return_value = (
+            mock_user
+        )
+
+        result = user_service.change_password(
+            user_id="user-1",
+            current_password=current_password,
+            new_password="NewPassword123!",
+        )
+
+        assert result is True
