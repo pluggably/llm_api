@@ -78,5 +78,23 @@ jobs:
             VPS_BRANCH="$(resolve_branch "$VPS_CONFIG_ROOT" "$DEPLOY_BRANCH")"
             git -C "$VPS_CONFIG_ROOT" reset --hard "origin/$VPS_BRANCH"
 
+            TRAEFIK_SRC="$VPS_CONFIG_ROOT/traefik"
+            TRAEFIK_DST="/srv/traefik"
+            if [ -d "$TRAEFIK_SRC" ]; then
+              if [ -w "$TRAEFIK_DST" ] && [ -w "$TRAEFIK_DST/dynamic" ]; then
+                mkdir -p "$TRAEFIK_DST/dynamic"
+                cp -f "$TRAEFIK_SRC/traefik.yml" "$TRAEFIK_DST/traefik.yml"
+                cp -f "$TRAEFIK_SRC/docker-compose.yml" "$TRAEFIK_DST/docker-compose.yml"
+                cp -f "$TRAEFIK_SRC/dynamic/"*.yml "$TRAEFIK_DST/dynamic/" 2>/dev/null || true
+              elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+                sudo mkdir -p "$TRAEFIK_DST/dynamic"
+                sudo cp -f "$TRAEFIK_SRC/traefik.yml" "$TRAEFIK_DST/traefik.yml"
+                sudo cp -f "$TRAEFIK_SRC/docker-compose.yml" "$TRAEFIK_DST/docker-compose.yml"
+                sudo cp -f "$TRAEFIK_SRC/dynamic/"*.yml "$TRAEFIK_DST/dynamic/" 2>/dev/null || true
+              else
+                echo "WARNING: Skipping Traefik config sync (no write permission to $TRAEFIK_DST and no passwordless sudo)."
+              fi
+            fi
+
             cd "$VPS_CONFIG_ROOT/llm_api"
             docker compose up -d --build --remove-orphans
