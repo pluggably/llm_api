@@ -675,6 +675,7 @@ class _ChatInput extends StatelessWidget {
                 final isFreeOnly = selectionMode == 'free_only';
                 final isCommercialOnly = selectionMode == 'commercial_only';
                 final filteredModels = models.where((model) {
+                  if (model.isDefault) return true;
                   if (model.availability?.access == 'locked') return false;
                   if (isFreeOnly) {
                     return !_isCommercialProvider(model.provider);

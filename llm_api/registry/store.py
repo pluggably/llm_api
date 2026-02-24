@@ -107,12 +107,10 @@ class ModelRegistry:
     _cache_time: Optional[datetime] = None
     _cache_ttl_seconds: int = 30  # Cache for 30 seconds
 
-    def load_defaults(self) -> None:
-        """Initialize the registry and ensure default models exist for each modality."""
+    def _build_default_models(self) -> list[ModelInfo]:
         settings = get_settings()
         models_dir = Path(settings.model_path)
-
-        defaults = [
+        return [
             ModelInfo(
                 id=settings.default_model,
                 name="Llama 3.1 8B Instruct",
@@ -174,6 +172,20 @@ class ModelRegistry:
                 ),
             ),
         ]
+
+    def ensure_defaults_present(self) -> None:
+        """Ensure default model rows exist without pruning user-added models."""
+        for model in self._build_default_models():
+            existing = self.get_model(model.id)
+            if existing:
+                continue
+            self.add_model(model)
+
+    def load_defaults(self) -> None:
+        """Initialize the registry and ensure default models exist for each modality."""
+        settings = get_settings()
+        models_dir = Path(settings.model_path)
+        defaults = self._build_default_models()
 
         allowed_ids = {m.id for m in defaults}
         for model in defaults:
@@ -377,6 +389,7 @@ class ModelRegistry:
 
     def list_models(self, modality: Optional[str] = None) -> List[ModelInfo]:
         """List all registered models, optionally filtered by modality."""
+        self.ensure_defaults_present()
         with get_db_session() as db:
             query = select(ModelRecord)
             if modality:

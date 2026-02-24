@@ -276,16 +276,20 @@ final filteredModelsProvider = Provider<AsyncValue<List<Model>>>((ref) {
         ? models
         : models
               .where(
-                (m) => selectedProviders.contains(
-                  canonicalModelProvider(m.provider),
-                ),
+                (m) =>
+                    m.isDefault ||
+                    selectedProviders.contains(
+                      canonicalModelProvider(m.provider),
+                    ),
               )
               .toList();
     final filtered = modality == null
         ? byProvider
         : byProvider.where((m) => m.modality == modality).toList();
     if (query.isEmpty) return filtered;
-    return filtered.where((m) => m.name.toLowerCase().contains(query)).toList();
+    return filtered
+        .where((m) => m.isDefault || m.name.toLowerCase().contains(query))
+        .toList();
   });
 });
 
