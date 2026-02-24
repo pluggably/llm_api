@@ -31,8 +31,8 @@ ENV/
 config.yaml
 
 # Data/Models
-models/
-artifacts/
+/models/
+/artifacts/
 
 # OS
 .DS_Store
