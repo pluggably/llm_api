@@ -94,3 +94,23 @@ def test_regenerate_endpoint():
     response = client.regenerate("session-123", RegenerateRequest())
     assert response.session_id == "session-123"
     assert requests[0].url.path == "/v1/sessions/session-123/regenerate"
+
+
+def test_get_version():
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.path == "/version"
+        return httpx.Response(
+            200,
+            json={"version": "sha-xyz987"},
+        )
+
+    transport = httpx.MockTransport(handler)
+    client = PluggablyClient(
+        "http://localhost:8080",
+        "test-key",
+        client=httpx.Client(transport=transport),
+    )
+
+    version = client.get_version()
+    assert version.version == "sha-xyz987"

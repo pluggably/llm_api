@@ -55,6 +55,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final attachmentMaxMb = ref.watch(attachmentMaxMbProvider);
     final layoutMode = ref.watch(layoutModeProvider);
     final layoutType = ref.watch(layoutTypeProvider);
+    final frontendVersionAsync = ref.watch(frontendVersionProvider);
+    final backendVersionAsync = ref.watch(backendVersionProvider);
 
     // Update controller if base URL changed
     if (_baseUrlController.text != baseUrl) {
@@ -236,7 +238,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             child: ListTile(
               leading: const Icon(Icons.info_outline),
               title: const Text('PlugAI'),
-              subtitle: const Text('Version 1.0.0'),
+              subtitle: Text(
+                frontendVersionAsync.when(
+                  data: (version) => 'Frontend $version',
+                  loading: () => 'Frontend loading...',
+                  error: (_, __) => 'Frontend unknown',
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -244,8 +252,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             child: ListTile(
               leading: const Icon(Icons.code),
               title: const Text('Pluggably LLM API Gateway'),
-              subtitle: const Text(
-                'Cross-platform frontend for AI model interaction',
+              subtitle: Text(
+                backendVersionAsync.when(
+                  data: (info) => 'Backend ${info.version}',
+                  loading: () => 'Backend loading...',
+                  error: (_, __) => 'Backend unavailable',
+                ),
               ),
             ),
           ),

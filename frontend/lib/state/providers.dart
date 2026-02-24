@@ -1,8 +1,11 @@
 /// State management using Riverpod.
 library;
 
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:pluggably_llm_client/sdk.dart';
@@ -172,6 +175,40 @@ final apiClientProvider = Provider<LlmApiClient>((ref) {
   ref.onDispose(() => client.dispose());
 
   return client;
+});
+
+const _defaultFrontendVersion = String.fromEnvironment(
+  'APP_VERSION',
+  defaultValue: 'dev',
+);
+
+/// Frontend build version from web-served metadata.
+final frontendVersionProvider = FutureProvider<String>((ref) async {
+  if (!kIsWeb) {
+    return _defaultFrontendVersion;
+  }
+
+  try {
+    final versionUri = Uri.base.resolve('version.json');
+    final response = await http.get(versionUri);
+    if (response.statusCode == 200) {
+      final payload = jsonDecode(response.body);
+      if (payload is Map<String, dynamic>) {
+        final value = payload['version'];
+        if (value is String && value.trim().isNotEmpty) {
+          return value;
+        }
+      }
+    }
+  } catch (_) {}
+
+  return _defaultFrontendVersion;
+});
+
+/// Backend build/version metadata.
+final backendVersionProvider = FutureProvider<VersionInfo>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  return client.getVersion();
 });
 
 // ==================== Models State ====================

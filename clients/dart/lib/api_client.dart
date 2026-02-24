@@ -773,4 +773,9 @@ class LlmApiClient {
   Future<String> getHealth() async {
     return _get('/health', (json) => json['status']?.toString() ?? 'ok');
   }
+
+  /// Version metadata endpoint.
+  Future<VersionInfo> getVersion() async {
+    return _get('/version', (json) => VersionInfo.fromJson(json));
+  }
 }

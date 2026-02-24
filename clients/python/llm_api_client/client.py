@@ -26,6 +26,7 @@ from llm_api_client.models import (
     UserLoginResponse,
     UserProfile,
     ProvidersResponse,
+    VersionInfo,
     Session,
     SessionList,
 )
@@ -361,6 +362,10 @@ class PluggablyClient:
     def get_health(self) -> Dict[str, Any]:
         response = self._request("GET", "/health")
         return response.json()
+
+    def get_version(self) -> VersionInfo:
+        response = self._request("GET", "/version")
+        return VersionInfo.model_validate(response.json())
 
     def close(self) -> None:
         self._client.close()

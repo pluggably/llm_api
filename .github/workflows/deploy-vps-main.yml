@@ -35,6 +35,20 @@ jobs:
             APP_ROOT="$APPS_ROOT/llm_api"
             VPS_CONFIG_ROOT="$APPS_ROOT/vps-config"
             DEPLOY_BRANCH="${{ github.ref_name }}"
+            DEPLOY_SHA="${{ github.sha }}"
+            DEPLOY_VERSION="${DEPLOY_SHA:0:12}"
+            DEPLOY_BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+            upsert_env() {
+              local key="$1"
+              local value="$2"
+              local file="$3"
+              if grep -q "^${key}=" "$file"; then
+                sed -i.bak "s|^${key}=.*|${key}=${value}|" "$file"
+              else
+                printf "\n%s=%s\n" "$key" "$value" >> "$file"
+              fi
+            }
 
             resolve_branch() {
               local repo="$1"
@@ -77,6 +91,22 @@ jobs:
             git -C "$VPS_CONFIG_ROOT" fetch --prune origin
             VPS_BRANCH="$(resolve_branch "$VPS_CONFIG_ROOT" "$DEPLOY_BRANCH")"
             git -C "$VPS_CONFIG_ROOT" reset --hard "origin/$VPS_BRANCH"
+
+            DEPLOY_ENV_FILE="$VPS_CONFIG_ROOT/llm_api/.env"
+            touch "$DEPLOY_ENV_FILE"
+            upsert_env "LLM_API_APP_VERSION" "$DEPLOY_VERSION" "$DEPLOY_ENV_FILE"
+            upsert_env "LLM_API_APP_COMMIT" "$DEPLOY_SHA" "$DEPLOY_ENV_FILE"
+            upsert_env "LLM_API_APP_BUILT_AT" "$DEPLOY_BUILT_AT" "$DEPLOY_ENV_FILE"
+
+            FRONTEND_VERSION_FILE="$APP_ROOT/frontend/web/version.json"
+            cat > "$FRONTEND_VERSION_FILE" <<EOF
+            {
+              "service": "plugai_frontend",
+              "version": "$DEPLOY_VERSION",
+              "commit": "$DEPLOY_SHA",
+              "built_at": "$DEPLOY_BUILT_AT"
+            }
+            EOF
 
             TRAEFIK_SRC_DYNAMIC="$VPS_CONFIG_ROOT/traefik/dynamic"
             TRAEFIK_DST_DYNAMIC="/srv/traefik/dynamic"

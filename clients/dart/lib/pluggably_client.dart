@@ -323,4 +323,8 @@ class PluggablyClient {
   Future<Map<String, dynamic>> cancelJob(String jobId) async {
     return _request('DELETE', '/v1/jobs/$jobId');
   }
+
+  Future<Map<String, dynamic>> getVersion() async {
+    return _request('GET', '/version');
+  }
 }

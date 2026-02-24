@@ -128,6 +128,10 @@ def create_app() -> FastAPI:
             return JSONResponse({"status": "ready"})
         return JSONResponse({"status": "not_ready"}, status_code=503)
 
+    @app.get("/version")
+    async def version_check():
+        return {"version": settings.app_version}
+
     @app.get("/metrics")
     async def metrics():
         if not settings.metrics_enabled:

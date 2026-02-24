@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     port: int = 8080
     log_level: str = "INFO"
     verbose_logs: bool = False
+    app_version: str = "dev"
+    app_commit: Optional[str] = None
+    app_built_at: Optional[str] = None
 
     model_path: Path = Path("./models")
     max_disk_gb: float = 100.0
@@ -212,6 +215,9 @@ def get_settings() -> Settings:
         "port": "LLM_API_PORT",
         "log_level": "LLM_API_LOG_LEVEL",
         "verbose_logs": "LLM_API_VERBOSE_LOGS",
+        "app_version": "LLM_API_APP_VERSION",
+        "app_commit": "LLM_API_APP_COMMIT",
+        "app_built_at": "LLM_API_APP_BUILT_AT",
         "model_path": "LLM_API_MODEL_PATH",
         "max_disk_gb": "LLM_API_MAX_DISK_GB",
         "shutdown_background_task_timeout_seconds": "LLM_API_SHUTDOWN_BACKGROUND_TASK_TIMEOUT_SECONDS",

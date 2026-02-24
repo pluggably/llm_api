@@ -123,6 +123,10 @@ class ProvidersResponse(BaseModel):
     providers: List[ProviderStatus]
 
 
+class VersionInfo(BaseModel):
+    version: str
+
+
 class ModelDownloadSource(BaseModel):
     type: Literal["huggingface", "url", "local"]
     id: Optional[str] = None

@@ -32,6 +32,24 @@ class Artifact extends Equatable {
   List<Object?> get props => [id, type, url, expiresAt];
 }
 
+/// Service build/version metadata.
+class VersionInfo extends Equatable {
+  final String version;
+
+  const VersionInfo({
+    required this.version,
+  });
+
+  factory VersionInfo.fromJson(Map<String, dynamic> json) {
+    return VersionInfo(
+      version: json['version'] as String? ?? 'unknown',
+    );
+  }
+
+  @override
+  List<Object?> get props => [version];
+}
+
 /// Represents a model available in the API.
 class Model extends Equatable {
   final String id;
