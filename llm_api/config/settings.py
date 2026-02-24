@@ -12,7 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Class-level defaults for model IDs.  Defined here so the validator can
 # restore them when an empty string leaks in via .env / env vars.
-_DEFAULT_MODEL = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+_DEFAULT_MODEL = "Qwen/Qwen2.5-3B-Instruct"
 _DEFAULT_IMAGE_MODEL = "stabilityai/sdxl-turbo"
 _DEFAULT_3D_MODEL = "openai/shap-e"
 
@@ -90,7 +90,7 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com/v1"
 
     local_text_model_path: Optional[Path] = None
-    local_text_model_id: Optional[str] = "meta-llama/Meta-Llama-3.1-8B-Instruct"
+    local_text_model_id: Optional[str] = "Qwen/Qwen2.5-3B-Instruct"
     local_image_model_id: str = "stabilityai/sdxl-turbo"
     local_3d_model_id: str = "openai/shap-e"
 

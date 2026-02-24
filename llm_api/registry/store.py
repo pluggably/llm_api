@@ -113,7 +113,7 @@ class ModelRegistry:
         return [
             ModelInfo(
                 id=settings.default_model,
-                name="Llama 3.1 8B Instruct",
+                name="Qwen 2.5 3B Instruct",
                 version="latest",
                 modality="text",
                 provider="local",
