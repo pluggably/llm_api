@@ -28,7 +28,10 @@ jobs:
           script: |
             set -euo pipefail
 
-            APPS_ROOT="$HOME/apps"
+            APPS_ROOT="/srv/apps"
+            if [ ! -w "$APPS_ROOT" ]; then
+              APPS_ROOT="$HOME/apps"
+            fi
             APP_ROOT="$APPS_ROOT/llm_api"
             VPS_CONFIG_ROOT="$APPS_ROOT/vps-config"
             DEPLOY_BRANCH="${{ github.ref_name }}"
