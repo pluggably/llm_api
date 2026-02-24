@@ -11,5 +11,6 @@ RUN flutter build web --release
 FROM nginx:alpine
 
 COPY --from=build /workspace/frontend/build/web /usr/share/nginx/html
+COPY frontend/nginx/default.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

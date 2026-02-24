@@ -41,3 +41,4 @@ Thumbs.db
 # Dart/Flutter
 clients/dart/.dart_tool/
 clients/dart/pubspec.lock
+.env.local

@@ -76,7 +76,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             controller: _baseUrlController,
             decoration: const InputDecoration(
               labelText: 'API Base URL',
-              hintText: 'http://localhost:8080',
+              hintText: '/api (hosted) or http://localhost:8080 (local)',
               prefixIcon: Icon(Icons.link),
             ),
             onSubmitted: (value) async {

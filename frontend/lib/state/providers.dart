@@ -1,6 +1,7 @@
 /// State management using Riverpod.
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -132,7 +133,20 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 /// Provides the API base URL from settings.
 final baseUrlProvider = StateProvider<String>((ref) {
   final prefs = ref.watch(sharedPreferencesProvider);
-  return prefs.getString('base_url') ?? 'http://localhost:8080';
+  final saved = prefs.getString('base_url');
+  if (saved != null && saved.trim().isNotEmpty) {
+    return saved;
+  }
+
+  if (kIsWeb) {
+    final host = Uri.base.host.toLowerCase();
+    if (host == 'localhost' || host == '127.0.0.1') {
+      return 'http://localhost:8080';
+    }
+    return '/api';
+  }
+
+  return 'http://localhost:8080';
 });
 
 /// Provides the auth token.
