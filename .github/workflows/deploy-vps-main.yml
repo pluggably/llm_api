@@ -92,7 +92,15 @@ jobs:
                 sudo cp -f "$TRAEFIK_SRC/docker-compose.yml" "$TRAEFIK_DST/docker-compose.yml"
                 sudo cp -f "$TRAEFIK_SRC/dynamic/"*.yml "$TRAEFIK_DST/dynamic/" 2>/dev/null || true
               else
-                echo "WARNING: Skipping Traefik config sync (no write permission to $TRAEFIK_DST and no passwordless sudo)."
+                echo "ERROR: Cannot sync Traefik config to $TRAEFIK_DST (no write permission and no passwordless sudo)."
+                exit 1
+              fi
+
+              if [ -f "$TRAEFIK_SRC/dynamic/plugai.yml" ]; then
+                if [ ! -f "$TRAEFIK_DST/dynamic/plugai.yml" ]; then
+                  echo "ERROR: Expected $TRAEFIK_DST/dynamic/plugai.yml after sync but it was not found."
+                  exit 1
+                fi
               fi
             fi
 
