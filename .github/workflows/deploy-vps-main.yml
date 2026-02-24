@@ -51,6 +51,14 @@ jobs:
 
             mkdir -p "$APPS_ROOT"
 
+            mkdir -p "$HOME/.ssh"
+            touch "$HOME/.ssh/known_hosts"
+            chmod 700 "$HOME/.ssh"
+            chmod 600 "$HOME/.ssh/known_hosts"
+            if ! ssh-keygen -F github.com >/dev/null; then
+              ssh-keyscan -H github.com >> "$HOME/.ssh/known_hosts"
+            fi
+
             if [ ! -d "$APP_ROOT/.git" ]; then
               git clone git@github.com:pluggably/llm_api.git "$APP_ROOT"
             fi
@@ -58,6 +66,9 @@ jobs:
             if [ ! -d "$VPS_CONFIG_ROOT/.git" ]; then
               git clone git@github.com:pluggably/vps-config.git "$VPS_CONFIG_ROOT"
             fi
+
+            git -C "$APP_ROOT" remote set-url origin git@github.com:pluggably/llm_api.git
+            git -C "$VPS_CONFIG_ROOT" remote set-url origin git@github.com:pluggably/vps-config.git
 
             git -C "$APP_ROOT" fetch --prune origin
             APP_BRANCH="$(resolve_branch "$APP_ROOT" "$DEPLOY_BRANCH")"
