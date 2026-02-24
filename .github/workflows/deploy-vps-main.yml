@@ -78,29 +78,22 @@ jobs:
             VPS_BRANCH="$(resolve_branch "$VPS_CONFIG_ROOT" "$DEPLOY_BRANCH")"
             git -C "$VPS_CONFIG_ROOT" reset --hard "origin/$VPS_BRANCH"
 
-            TRAEFIK_SRC="$VPS_CONFIG_ROOT/traefik"
-            TRAEFIK_DST="/srv/traefik"
-            if [ -d "$TRAEFIK_SRC" ]; then
-              if [ -w "$TRAEFIK_DST" ] && [ -w "$TRAEFIK_DST/dynamic" ]; then
-                mkdir -p "$TRAEFIK_DST/dynamic"
-                cp -f "$TRAEFIK_SRC/traefik.yml" "$TRAEFIK_DST/traefik.yml"
-                cp -f "$TRAEFIK_SRC/docker-compose.yml" "$TRAEFIK_DST/docker-compose.yml"
-                cp -f "$TRAEFIK_SRC/dynamic/"*.yml "$TRAEFIK_DST/dynamic/" 2>/dev/null || true
+            TRAEFIK_SRC_DYNAMIC="$VPS_CONFIG_ROOT/traefik/dynamic"
+            TRAEFIK_DST_DYNAMIC="/srv/traefik/dynamic"
+            if [ -d "$TRAEFIK_SRC_DYNAMIC" ]; then
+              if [ -w "$TRAEFIK_DST_DYNAMIC" ]; then
+                cp -f "$TRAEFIK_SRC_DYNAMIC/"*.yml "$TRAEFIK_DST_DYNAMIC/" 2>/dev/null || true
               elif command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-                sudo mkdir -p "$TRAEFIK_DST/dynamic"
-                sudo cp -f "$TRAEFIK_SRC/traefik.yml" "$TRAEFIK_DST/traefik.yml"
-                sudo cp -f "$TRAEFIK_SRC/docker-compose.yml" "$TRAEFIK_DST/docker-compose.yml"
-                sudo cp -f "$TRAEFIK_SRC/dynamic/"*.yml "$TRAEFIK_DST/dynamic/" 2>/dev/null || true
+                sudo mkdir -p "$TRAEFIK_DST_DYNAMIC"
+                sudo cp -f "$TRAEFIK_SRC_DYNAMIC/"*.yml "$TRAEFIK_DST_DYNAMIC/" 2>/dev/null || true
               else
-                echo "ERROR: Cannot sync Traefik config to $TRAEFIK_DST (no write permission and no passwordless sudo)."
+                echo "ERROR: Cannot sync Traefik dynamic config to $TRAEFIK_DST_DYNAMIC (no write permission and no passwordless sudo)."
                 exit 1
               fi
 
-              if [ -f "$TRAEFIK_SRC/dynamic/plugai.yml" ]; then
-                if [ ! -f "$TRAEFIK_DST/dynamic/plugai.yml" ]; then
-                  echo "ERROR: Expected $TRAEFIK_DST/dynamic/plugai.yml after sync but it was not found."
-                  exit 1
-                fi
+              if [ -f "$TRAEFIK_SRC_DYNAMIC/plugai.yml" ] && [ ! -f "$TRAEFIK_DST_DYNAMIC/plugai.yml" ]; then
+                echo "ERROR: Expected $TRAEFIK_DST_DYNAMIC/plugai.yml after sync but it was not found."
+                exit 1
               fi
             fi
 
