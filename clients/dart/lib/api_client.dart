@@ -778,4 +778,9 @@ class LlmApiClient {
   Future<VersionInfo> getVersion() async {
     return _get('/version', (json) => VersionInfo.fromJson(json));
   }
+
+  /// Backend capability/feature flags.
+  Future<FeatureFlags> getFeatureFlags() async {
+    return _get('/v1/features', (json) => FeatureFlags.fromJson(json));
+  }
 }

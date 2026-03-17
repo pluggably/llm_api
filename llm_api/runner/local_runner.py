@@ -119,6 +119,8 @@ def _generate_hf_text(
     settings: Any,
     parameters: Optional[dict[str, Any]] = None,
     hf_token: Optional[str] = None,
+    system_prompt: Optional[str] = None,
+    history: Optional[list[dict[str, Any]]] = None,
 ) -> str:
     try:
         torch = importlib.import_module("torch")
@@ -149,25 +151,41 @@ def _generate_hf_text(
         _handle_hf_access_error(exc, model_id_or_path)
 
     if hasattr(tokenizer, "apply_chat_template"):
+        messages: list[dict[str, str]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        if history:
+            for turn in history:
+                messages.append({"role": turn["role"], "content": str(turn["content"])})
+        messages.append({"role": "user", "content": prompt})
         prompt_text = tokenizer.apply_chat_template(
-            [{"role": "user", "content": prompt}],
+            messages,
             tokenize=False,
             add_generation_prompt=True,
         )
     else:
-        prompt_text = prompt
+        # Fallback: concatenate as plain text when no chat template
+        parts: list[str] = []
+        if system_prompt:
+            parts.append(f"[System]\n{system_prompt}\n")
+        if history:
+            for turn in history:
+                role_label = "User" if turn["role"] == "user" else "Assistant"
+                parts.append(f"[{role_label}]\n{turn['content']}\n")
+        parts.append(prompt)
+        prompt_text = "\n".join(parts)
 
     inputs = tokenizer(prompt_text, return_tensors="pt")
     inputs = inputs.to(device)
 
     req_max_tokens = (parameters or {}).get("max_tokens")
-    max_new_tokens = 64
+    max_new_tokens = 512
     if req_max_tokens is not None:
         try:
             max_new_tokens = int(req_max_tokens)
         except (TypeError, ValueError):
-            max_new_tokens = 64
-    max_cap = 64 if device == "cpu" else 256
+            max_new_tokens = 512
+    max_cap = 2048 if device == "cpu" else 4096
     max_new_tokens = max(1, min(max_new_tokens, max_cap))
 
     req_temperature = (parameters or {}).get("temperature")
@@ -403,18 +421,20 @@ class LocalRunner:
         model_id: Optional[str] = None,
         parameters: Optional[dict[str, Any]] = None,
         hf_token: Optional[str] = None,
+        system_prompt: Optional[str] = None,
+        history: Optional[list[dict[str, Any]]] = None,
     ) -> str:
         settings = get_settings()
 
         req_max_tokens = (parameters or {}).get("max_tokens")
-        max_tokens = 64
+        max_tokens = 512
         if req_max_tokens is not None:
             try:
                 max_tokens = int(req_max_tokens)
             except (TypeError, ValueError):
-                max_tokens = 64
+                max_tokens = 512
         device = _best_device()
-        max_cap = 64 if device == "cpu" else 256
+        max_cap = 2048 if device == "cpu" else 4096
         max_tokens = max(1, min(max_tokens, max_cap))
 
         req_temperature = (parameters or {}).get("temperature")
@@ -431,7 +451,17 @@ class LocalRunner:
             llama_kwargs: dict[str, Any] = {"max_tokens": max_tokens}
             if temperature is not None:
                 llama_kwargs["temperature"] = temperature
-            output = llama(prompt, **llama_kwargs)
+            # Build a combined prompt for llama_cpp (no chat template)
+            parts: list[str] = []
+            if system_prompt:
+                parts.append(f"[System]\n{system_prompt}\n")
+            if history:
+                for turn in history:
+                    role_label = "User" if turn["role"] == "user" else "Assistant"
+                    parts.append(f"[{role_label}]\n{turn['content']}\n")
+            parts.append(prompt)
+            effective_prompt = "\n".join(parts)
+            output = llama(effective_prompt, **llama_kwargs)
             return output["choices"][0]["text"]
 
         return _generate_hf_text(
@@ -440,6 +470,8 @@ class LocalRunner:
             settings,
             parameters=parameters,
             hf_token=hf_token,
+            system_prompt=system_prompt,
+            history=history,
         )
 
     def generate_image(

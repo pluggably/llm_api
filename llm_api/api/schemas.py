@@ -42,6 +42,7 @@ class GenerateRequest(BaseModel):
     modality: Literal["text", "image", "3d"]
     input: GenerateInput
     parameters: Optional[GenerateParameters] = None
+    system_prompt: Optional[str] = None
     stream: bool = False
     selection_mode: Optional[SelectionMode] = None
 
@@ -137,10 +138,16 @@ class ProvidersResponse(BaseModel):
     providers: List[ProviderStatus]
 
 
+class FeatureFlagsResponse(BaseModel):
+    local_models_enabled: bool
+    huggingface_hosted_3d_supported: bool = False
+
+
 class Session(BaseModel):
     id: str
     status: Literal["active", "closed"]
     title: Optional[str] = None
+    system_prompt: Optional[str] = None
     created_at: datetime
     last_used_at: Optional[datetime] = None
     message_count: int = 0
@@ -156,6 +163,11 @@ class SessionMessageResponse(BaseModel):
 
 class UpdateSessionRequest(BaseModel):
     title: Optional[str] = None
+
+
+class CreateSessionRequest(BaseModel):
+    title: Optional[str] = None
+    system_prompt: Optional[str] = None
 
 
 class SessionSummary(BaseModel):
@@ -313,6 +325,7 @@ class ModelSearchResult(BaseModel):
     name: str
     tags: List[str] = Field(default_factory=list)
     modality_hints: List[Literal["text", "image", "3d"]] = Field(default_factory=list)
+    hf_hosted_supported: Optional[bool] = None
     downloads: Optional[int] = None
     last_modified: Optional[datetime] = None
 

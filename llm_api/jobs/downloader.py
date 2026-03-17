@@ -3,10 +3,13 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
+import httpx
 
 from llm_api.api.schemas import DownloadJobStatus, ModelDownloadRequest, ModelSource
 from llm_api.background_tasks import get_background_task_registry
@@ -16,6 +19,9 @@ from llm_api.registry.store import ModelRegistry
 from llm_api.storage.manager import StorageManager
 
 logger = logging.getLogger(__name__)
+
+_HF_ROUTER_MODELS_CACHE: dict[int, tuple[float, set[str]]] = {}
+_HF_ROUTER_MODELS_TTL_SECONDS = 120.0
 
 
 def _get_huggingface_hub():
@@ -36,7 +42,45 @@ class DownloadService:
     jobs: JobStore
     _running_tasks: dict = field(default_factory=dict)
 
-    def start_download(self, request: ModelDownloadRequest) -> DownloadJobStatus:
+    def _get_hf_router_supported_model_ids(self, hf_token: str | None) -> set[str] | None:
+        if not hf_token:
+            return None
+
+        token_key = hash(hf_token)
+        now = time.monotonic()
+        cached = _HF_ROUTER_MODELS_CACHE.get(token_key)
+        if cached and now - cached[0] < _HF_ROUTER_MODELS_TTL_SECONDS:
+            return cached[1]
+
+        try:
+            with httpx.Client(timeout=10) as client:
+                response = client.get(
+                    "https://router.huggingface.co/v1/models",
+                    headers={"Authorization": f"Bearer {hf_token}"},
+                )
+            response.raise_for_status()
+            payload = response.json()
+        except Exception:
+            return None
+
+        rows = payload.get("data") if isinstance(payload, dict) else payload
+        if not isinstance(rows, list):
+            return None
+
+        model_ids = {
+            row.get("id")
+            for row in rows
+            if isinstance(row, dict) and isinstance(row.get("id"), str)
+        }
+        _HF_ROUTER_MODELS_CACHE[token_key] = (now, model_ids)
+        return model_ids
+
+    def start_download(
+        self,
+        request: ModelDownloadRequest,
+        *,
+        hf_token: str | None = None,
+    ) -> DownloadJobStatus:
         """Start a model download job."""
         settings = get_settings()
         model = request.model
@@ -75,7 +119,62 @@ class DownloadService:
             if request.options is not None and request.options.install_local is not None:
                 install_local = bool(request.options.install_local)
 
+            if install_local and not settings.enable_local_models:
+                failed = self.jobs.update_job(
+                    job.job_id,
+                    status="failed",
+                    progress_pct=0,
+                    error=(
+                        "Local model hosting is disabled "
+                        "(LLM_API_ENABLE_LOCAL_MODELS=false). "
+                        "Use install_local=false for hosted registration."
+                    ),
+                )
+                self.registry.update_model_status(model.id, "failed")
+                return failed or job
+
             if not install_local:
+                if model.modality == "3d":
+                    failed = self.jobs.update_job(
+                        job.job_id,
+                        status="failed",
+                        progress_pct=0,
+                        error=(
+                            "Hosted 3D generation is not supported by the Hugging Face adapter. "
+                            "Use local install for this model."
+                        ),
+                    )
+                    self.registry.update_model_status(model.id, "failed")
+                    return failed or job
+
+                effective_hf_token = hf_token or settings.hf_token
+                if not effective_hf_token:
+                    failed = self.jobs.update_job(
+                        job.job_id,
+                        status="failed",
+                        progress_pct=0,
+                        error=(
+                            "A Hugging Face token is required for hosted model registration. "
+                            "Add an HF key in profile or set LLM_API_HF_TOKEN."
+                        ),
+                    )
+                    self.registry.update_model_status(model.id, "failed")
+                    return failed or job
+
+                supported_ids = self._get_hf_router_supported_model_ids(effective_hf_token)
+                if supported_ids is not None and repo_id not in supported_ids:
+                    failed = self.jobs.update_job(
+                        job.job_id,
+                        status="failed",
+                        progress_pct=0,
+                        error=(
+                            f"Model '{repo_id}' is not available for hosted Hugging Face inference "
+                            "with your enabled providers/token. Install locally instead."
+                        ),
+                    )
+                    self.registry.update_model_status(model.id, "failed")
+                    return failed or job
+
                 model.provider = "huggingface"
                 model.status = "available"
                 model.local_path = None
@@ -101,6 +200,16 @@ class DownloadService:
             return job
 
         elif source.type == "url":
+            if not settings.enable_local_models:
+                failed = self.jobs.update_job(
+                    job.job_id,
+                    status="failed",
+                    progress_pct=0,
+                    error="Local model hosting is disabled (LLM_API_ENABLE_LOCAL_MODELS=false).",
+                )
+                self.registry.update_model_status(model.id, "failed")
+                return failed or job
+
             url = source.uri
             if not url:
                 failed = self.jobs.update_job(
@@ -121,6 +230,16 @@ class DownloadService:
             return job
 
         elif source.type == "local":
+            if not settings.enable_local_models:
+                failed = self.jobs.update_job(
+                    job.job_id,
+                    status="failed",
+                    progress_pct=0,
+                    error="Local model hosting is disabled (LLM_API_ENABLE_LOCAL_MODELS=false).",
+                )
+                self.registry.update_model_status(model.id, "failed")
+                return failed or job
+
             # Local file - just register it
             local_path = source.uri
             if local_path:

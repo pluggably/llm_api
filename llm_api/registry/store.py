@@ -110,19 +110,25 @@ class ModelRegistry:
     def _build_default_models(self) -> list[ModelInfo]:
         settings = get_settings()
         models_dir = Path(settings.model_path)
-        return [
+        local_enabled = settings.enable_local_models
+
+        defaults: list[ModelInfo] = [
             ModelInfo(
                 id=settings.default_model,
                 name="Qwen 2.5 3B Instruct",
                 version="latest",
                 modality="text",
-                provider="local",
+                provider="local" if local_enabled else "huggingface",
                 status="available",
                 source=ModelSource(type="huggingface", uri=settings.default_model),
-                local_path=_resolve_local_path(
-                    models_dir,
-                    f"hf/{settings.default_model.replace('/', '__')}",
-                    require_config=True,
+                local_path=(
+                    _resolve_local_path(
+                        models_dir,
+                        f"hf/{settings.default_model.replace('/', '__')}",
+                        require_config=True,
+                    )
+                    if local_enabled
+                    else None
                 ),
                 capabilities=ModelCapabilities(
                     max_context_tokens=8192,
@@ -135,10 +141,14 @@ class ModelRegistry:
                 name="SDXL Turbo",
                 version="latest",
                 modality="image",
-                provider="local",
+                provider="local" if local_enabled else "huggingface",
                 status="available",
                 source=ModelSource(type="huggingface", uri=settings.default_image_model),
-                local_path=_resolve_local_path(models_dir, "sd_xl_turbo_1.0.safetensors"),
+                local_path=(
+                    _resolve_local_path(models_dir, "sd_xl_turbo_1.0.safetensors")
+                    if local_enabled
+                    else None
+                ),
                 capabilities=ModelCapabilities(
                     output_formats=["image"],
                     hardware_requirements=["CUDA", "Metal"],
@@ -149,36 +159,83 @@ class ModelRegistry:
                 name="Stable Diffusion XL",
                 version="latest",
                 modality="image",
-                provider="local",
+                provider="local" if local_enabled else "huggingface",
                 status="available",
                 source=ModelSource(type="huggingface", uri="stabilityai/stable-diffusion-xl-base-1.0"),
-                local_path=_resolve_local_path(models_dir, "sd_xl_base_1.0.safetensors"),
+                local_path=(
+                    _resolve_local_path(models_dir, "sd_xl_base_1.0.safetensors")
+                    if local_enabled
+                    else None
+                ),
                 capabilities=ModelCapabilities(
                     output_formats=["image"],
                     hardware_requirements=["CUDA", "Metal"],
                 ),
             ),
-            ModelInfo(
-                id=settings.default_3d_model,
-                name="Shap-E",
-                version="latest",
-                modality="3d",
-                provider="local",
-                status="available",
-                source=ModelSource(type="huggingface", uri=settings.default_3d_model),
-                capabilities=ModelCapabilities(
-                    output_formats=["mesh"],
-                    hardware_requirements=["CPU", "Metal", "CUDA"],
-                ),
-            ),
         ]
+
+        # Hosted 3D via HF is not implemented in the adapter yet, so keep 3D
+        # defaults only when local hosting is enabled.
+        if local_enabled:
+            defaults.append(
+                ModelInfo(
+                    id=settings.default_3d_model,
+                    name="Shap-E",
+                    version="latest",
+                    modality="3d",
+                    provider="local",
+                    status="available",
+                    source=ModelSource(type="huggingface", uri=settings.default_3d_model),
+                    capabilities=ModelCapabilities(
+                        output_formats=["mesh"],
+                        hardware_requirements=["CPU", "Metal", "CUDA"],
+                    ),
+                )
+            )
+
+        return defaults
+
+    def _merge_default_with_existing(
+        self,
+        model: ModelInfo,
+        existing: Optional[ModelInfo],
+        models_dir: Path,
+    ) -> ModelInfo:
+        if not existing:
+            return model
+
+        if model.provider == "local":
+            if model.modality == "text" and model.source and model.source.type == "huggingface":
+                existing_local = (
+                    _resolve_local_path(models_dir, existing.local_path, require_config=True)
+                    if existing.local_path
+                    else None
+                )
+            else:
+                existing_local = existing.local_path
+
+            model.local_path = existing_local or model.local_path
+            model.status = existing.status
+            model.size_bytes = existing.size_bytes or model.size_bytes
+            model.source = existing.source or model.source
+            return model
+
+        # Hosted defaults should always remain hosted.
+        model.provider = "huggingface"
+        model.status = "available"
+        model.local_path = None
+        model.size_bytes = None
+        if existing.source and existing.source.type == "huggingface":
+            model.source = existing.source
+        return model
 
     def ensure_defaults_present(self) -> None:
         """Ensure default model rows exist without pruning user-added models."""
+        settings = get_settings()
+        models_dir = Path(settings.model_path)
         for model in self._build_default_models():
             existing = self.get_model(model.id)
-            if existing:
-                continue
+            model = self._merge_default_with_existing(model, existing, models_dir)
             self.add_model(model)
 
     def load_defaults(self) -> None:
@@ -190,20 +247,7 @@ class ModelRegistry:
         allowed_ids = {m.id for m in defaults}
         for model in defaults:
             existing = self.get_model(model.id)
-            if existing:
-                if model.modality == "text" and model.source and model.source.type == "huggingface":
-                    existing_local = (
-                        _resolve_local_path(models_dir, existing.local_path, require_config=True)
-                        if existing.local_path
-                        else None
-                    )
-                else:
-                    existing_local = existing.local_path
-
-                model.local_path = existing_local or model.local_path
-                model.status = existing.status
-                model.size_bytes = existing.size_bytes or model.size_bytes
-                model.source = existing.source or model.source
+            model = self._merge_default_with_existing(model, existing, models_dir)
             self.add_model(model)
 
         self._prune_non_default_local_models(allowed_ids)
@@ -261,6 +305,8 @@ class ModelRegistry:
     def _scan_local_models(self) -> None:
         """Scan the models directory for downloaded model files and register them."""
         settings = get_settings()
+        if not settings.enable_local_models:
+            return
         models_dir = Path(settings.model_path)
         if not models_dir.exists():
             return
@@ -359,7 +405,7 @@ class ModelRegistry:
             defaults_map["text"] = settings.default_model
         if "image" not in defaults_map and settings.default_image_model:
             defaults_map["image"] = settings.default_image_model
-        if "3d" not in defaults_map and settings.default_3d_model:
+        if settings.enable_local_models and "3d" not in defaults_map and settings.default_3d_model:
             defaults_map["3d"] = settings.default_3d_model
 
         return set(defaults_map.values())
@@ -374,6 +420,8 @@ class ModelRegistry:
         if modality == "image":
             return settings.default_image_model
         if modality == "3d":
+            if not settings.enable_local_models:
+                return None
             return settings.default_3d_model
         return settings.default_model
 

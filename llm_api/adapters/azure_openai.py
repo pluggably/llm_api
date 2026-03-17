@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 
 from llm_api.adapters.base import Adapter, ProviderError
@@ -24,19 +26,37 @@ class AzureOpenAIAdapter(Adapter):
         if not self.api_key or not self.endpoint:
             raise ProviderError(401, "Missing Azure OpenAI API key or endpoint")
 
-    def generate_text(self, prompt: str) -> str:
+    def generate_text(
+        self,
+        prompt: str,
+        *,
+        system_prompt: str | None = None,
+        history: list[dict[str, Any]] | None = None,
+        parameters: dict[str, Any] | None = None,
+    ) -> str:
         self._ensure_config()
         assert self.endpoint is not None
         assert self.api_key is not None
+        from llm_api.adapters.openai import _build_openai_messages
+
         url = f"{self.endpoint}/openai/deployments/{self.deployment}/chat/completions"
-        params = {"api-version": self.api_version}
+        api_params = {"api-version": self.api_version}
+        
+        # Extract parameters with defaults
+        req_params = parameters or {}
+        temperature = req_params.get("temperature", 0.7)
+        max_tokens = req_params.get("max_tokens", 4096)
+        
         payload = {
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7,
+            "messages": _build_openai_messages(
+                prompt, system_prompt=system_prompt, history=history
+            ),
+            "temperature": temperature,
+            "max_tokens": max_tokens,
         }
         headers = {"api-key": self.api_key}
         with httpx.Client(timeout=30) as client:
-            response = client.post(url, params=params, json=payload, headers=headers)
+            response = client.post(url, params=api_params, json=payload, headers=headers)
         if response.status_code >= 400:
             raise ProviderError(response.status_code, response.text)
         data = response.json()

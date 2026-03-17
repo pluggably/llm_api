@@ -98,9 +98,13 @@ def init_db() -> None:
 
     if is_sqlite:
         _ensure_session_title_column(_engine)
+        _ensure_session_system_prompt_column(_engine)
         _ensure_model_image_columns(_engine)
         _ensure_provider_keys_columns(_engine)
         _ensure_default_models_table(_engine)
+    else:
+        # PostgreSQL: create_all() won't add columns to existing tables
+        _ensure_pg_column(_engine, "sessions", "system_prompt", "TEXT")
 
 
 def _ensure_session_title_column(engine: Engine) -> None:
@@ -114,6 +118,30 @@ def _ensure_session_title_column(engine: Engine) -> None:
                 conn.commit()
     except Exception:
         # Best-effort migration for SQLite; ignore if not applicable
+        pass
+
+
+def _ensure_session_system_prompt_column(engine: Engine) -> None:
+    """Ensure sessions table has a system_prompt column."""
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(sessions)"))
+            columns = {row[1] for row in result}
+            if "system_prompt" not in columns:
+                conn.execute(text("ALTER TABLE sessions ADD COLUMN system_prompt TEXT"))
+                conn.commit()
+    except Exception:
+        pass
+
+
+def _ensure_pg_column(engine: Engine, table: str, column: str, col_type: str) -> None:
+    """Add a column to a PostgreSQL table if it does not already exist."""
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {col_type}"
+            ))
+    except Exception:
         pass
 
 

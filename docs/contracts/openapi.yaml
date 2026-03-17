@@ -124,6 +124,17 @@ paths:
       tags: [Sessions]
       security:
         - apiKey: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                system_prompt:
+                  type: string
       responses:
         '201':
           description: Session created
@@ -186,6 +197,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
+    put:
+      summary: Update session metadata (e.g. title)
+      operationId: updateSession
+      tags: [Sessions]
+      security:
+        - apiKey: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+      responses:
+        '200':
+          description: Updated session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '404':
+          description: Session not found
 
   /v1/sessions/{sessionId}/reset:
     post:
@@ -235,20 +276,82 @@ paths:
               schema:
                 $ref: '#/components/schemas/GenerateResponse'
 
+  /v1/sessions/{sessionId}/regenerate:
+    post:
+      summary: Re-generate the last assistant response in a session
+      operationId: regenerateWithSession
+      tags: [Sessions]
+      security:
+        - apiKey: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                model:
+                  type: string
+                parameters:
+                  type: object
+                stream:
+                  type: boolean
+                  default: false
+                selection_mode:
+                  type: string
+                  enum: [auto, free_only, commercial_only, model]
+      responses:
+        '200':
+          description: Re-generated response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerateResponse'
+        '400':
+          description: No messages to regenerate or session closed
+        '404':
+          description: Session not found
+
   /v1/providers:
     get:
-      summary: List supported providers and configuration status
+      summary: List supported providers and their configuration/credential status for the current user
       operationId: listProviders
       tags: [Providers]
       security:
         - apiKey: []
       responses:
         '200':
-          description: Provider status
+          description: Provider status list
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProvidersResponse'
+
+  /v1/features:
+    get:
+      summary: Get backend feature flags
+      operationId: getFeatureFlags
+      tags: [Operations]
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Feature flags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  local_models_enabled:
+                    type: boolean
+                  huggingface_hosted_3d_supported:
+                    type: boolean
 
   /v1/models/download:
     post:
@@ -270,6 +373,93 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DownloadJobStatus'
+
+  /v1/models/search:
+    get:
+      summary: Search for models on Hugging Face
+      operationId: searchModels
+      tags: [Models]
+      security:
+        - apiKey: []
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: source
+          in: query
+          schema:
+            type: string
+            default: huggingface
+        - name: modality
+          in: query
+          schema:
+            type: string
+            enum: [text, image, 3d]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                        tags:
+                          type: array
+                          items:
+                            type: string
+                        modality_hints:
+                          type: array
+                          items:
+                            type: string
+                        hf_hosted_supported:
+                          type: boolean
+                          nullable: true
+                        downloads:
+                          type: integer
+                          nullable: true
+                  next_cursor:
+                    type: string
+                    nullable: true
+
+  /v1/jobs:
+    get:
+      summary: List all download jobs
+      operationId: listJobs
+      tags: [Jobs]
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Job list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DownloadJobStatus'
 
   /v1/jobs/{jobId}:
     get:
@@ -313,7 +503,7 @@ paths:
 
   /v1/artifacts/{artifactId}:
     get:
-      summary: Get artifact content
+      summary: Get artifact content as raw bytes (image/png, image/jpeg, image/webp, etc.)
       operationId: getArtifact
       tags: [Artifacts]
       parameters:
@@ -326,14 +516,24 @@ paths:
         '200':
           description: Artifact content
           content:
-            application/json:
+            image/png:
               schema:
-                type: object
-                properties:
-                  artifact_id:
-                    type: string
-                  content_base64:
-                    type: string
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Artifact not found
 
   /health:
     get:
@@ -363,6 +563,520 @@ paths:
         '503':
           description: Not ready
 
+  # ── Model Lifecycle ──────────────────────────────────────────────────────────
+
+  /v1/models/{modelId}/status:
+    get:
+      summary: Get model runtime status (unloaded/loading/loaded/busy)
+      operationId: getModelRuntimeStatus
+      tags: [Lifecycle]
+      security:
+        - apiKey: []
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Model runtime status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  model_id:
+                    type: string
+                  runtime_status:
+                    type: string
+                    enum: [unloaded, loading, loaded, busy]
+                  queue_depth:
+                    type: integer
+        '404':
+          description: Model not found
+
+  /v1/models/{modelId}/load:
+    post:
+      summary: Pre-load a model into memory
+      operationId: loadModel
+      tags: [Lifecycle]
+      security:
+        - apiKey: []
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                wait:
+                  type: boolean
+                  default: false
+                use_fallback:
+                  type: boolean
+                  default: false
+                fallback_model_id:
+                  type: string
+      responses:
+        '200':
+          description: Model loaded or already loaded
+        '202':
+          description: Load started asynchronously
+        '404':
+          description: Model not found
+
+  /v1/models/{modelId}/unload:
+    post:
+      summary: Unload a model from memory
+      operationId: unloadModel
+      tags: [Lifecycle]
+      security:
+        - apiKey: []
+      parameters:
+        - name: modelId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: force
+          in: query
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Model unloaded
+        '400':
+          description: Cannot unload (pinned or busy)
+
+  /v1/models/loaded:
+    get:
+      summary: List currently loaded models with memory stats
+      operationId: listLoadedModels
+      tags: [Lifecycle]
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Loaded model list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  models:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        model_id:
+                          type: string
+                        loaded_at:
+                          type: string
+                          format: date-time
+                        last_used_at:
+                          type: string
+                          format: date-time
+                        is_pinned:
+                          type: boolean
+                        memory_bytes:
+                          type: integer
+                        is_busy:
+                          type: boolean
+
+  # ── Request Queue ────────────────────────────────────────────────────────────
+
+  /v1/requests/{requestId}/status:
+    get:
+      summary: Get status and queue position of a request
+      operationId: getRequestStatus
+      tags: [Lifecycle]
+      security:
+        - apiKey: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: string
+                  status:
+                    type: string
+                    enum: [pending, queued, running, completed, cancelled, failed]
+                  queue_position:
+                    type: integer
+                    nullable: true
+        '404':
+          description: Request not found
+
+  /v1/requests/{requestId}/cancel:
+    post:
+      summary: Cancel a queued or in-flight request
+      operationId: cancelRequest
+      tags: [Lifecycle]
+      security:
+        - apiKey: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cancellation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  request_id:
+                    type: string
+                  cancelled:
+                    type: boolean
+                  status:
+                    type: string
+        '404':
+          description: Request not found
+
+  # ── Runtime Cache ────────────────────────────────────────────────────────────
+
+  /v1/runtime-cache:
+    get:
+      summary: Get LRU cache statistics for local model caches
+      operationId: getRuntimeCache
+      tags: [Lifecycle]
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Cache statistics per model type
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: object
+                  properties:
+                    hits:
+                      type: integer
+                    misses:
+                      type: integer
+                    maxsize:
+                      type: integer
+                    currsize:
+                      type: integer
+    delete:
+      summary: Clear all LRU-cached local model objects from memory
+      operationId: clearRuntimeCache
+      tags: [Lifecycle]
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Cache cleared
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cleared:
+                    type: object
+                  message:
+                    type: string
+
+  # ── User / Auth ──────────────────────────────────────────────────────────────
+
+  /v1/users/register:
+    post:
+      summary: Register a new user account
+      operationId: registerUser
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+                invite_token:
+                  type: string
+                display_name:
+                  type: string
+      responses:
+        '201':
+          description: User registered
+        '400':
+          description: Registration failed (invalid invite token or duplicate username)
+
+  /v1/users/login:
+    post:
+      summary: Authenticate and obtain an API token
+      operationId: loginUser
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: Use as X-API-Key on subsequent requests
+                  user:
+                    type: object
+        '401':
+          description: Invalid credentials
+
+  /v1/users/me:
+    get:
+      summary: Get current user profile
+      operationId: getProfile
+      tags: [Auth]
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+    patch:
+      summary: Update current user profile
+      operationId: updateProfile
+      tags: [Auth]
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                display_name:
+                  type: string
+                preferred_model:
+                  type: string
+                preferences:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+
+  /v1/users/change-password:
+    post:
+      summary: Change current user password
+      operationId: changePassword
+      tags: [Auth]
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                  format: password
+                new_password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Password changed
+        '400':
+          description: Invalid current password
+
+  /v1/users/tokens:
+    get:
+      summary: List API tokens for the current user
+      operationId: listTokens
+      tags: [Auth]
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Token list
+    post:
+      summary: Create a new API token
+      operationId: createToken
+      tags: [Auth]
+      security:
+        - apiKey: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                scopes:
+                  type: array
+                  items:
+                    type: string
+                expires_days:
+                  type: integer
+      responses:
+        '201':
+          description: Token created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: Shown only once
+                  info:
+                    type: object
+
+  /v1/users/tokens/{tokenId}:
+    delete:
+      summary: Revoke an API token
+      operationId: revokeToken
+      tags: [Auth]
+      security:
+        - apiKey: []
+      parameters:
+        - name: tokenId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Token revoked
+        '404':
+          description: Token not found
+
+  /v1/users/provider-keys:
+    get:
+      summary: List provider API keys for the current user
+      operationId: listProviderKeys
+      tags: [Auth]
+      security:
+        - apiKey: []
+      responses:
+        '200':
+          description: Provider key list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProviderKeyInfo'
+    post:
+      summary: Add or update a provider API key
+      operationId: setProviderKey
+      tags: [Auth]
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProviderKeyRequest'
+      responses:
+        '201':
+          description: Key saved
+        '400':
+          description: Missing required credential fields
+
+  /v1/users/provider-keys/{provider}:
+    delete:
+      summary: Delete a provider API key
+      operationId: deleteProviderKey
+      tags: [Auth]
+      security:
+        - apiKey: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Key deleted
+        '404':
+          description: Provider key not found
+
+  /v1/users/invites:
+    post:
+      summary: Create an invite token (admin only)
+      operationId: createInvite
+      tags: [Auth]
+      security:
+        - apiKey: []
+      responses:
+        '201':
+          description: Invite token created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invite_token:
+                    type: string
+        '403':
+          description: Admin privileges required
+
 components:
   securitySchemes:
     apiKey:
@@ -377,13 +1091,13 @@ components:
       properties:
         model:
           type: string
-          description: Model ID (optional; uses default if omitted)
+          description: Model ID (optional; uses default if omitted). Supports provider:model format (e.g. "groq:llama-3.3-70b-versatile") or auto-detection (e.g. "gpt-4" → openai, "claude-3" → anthropic).
         provider:
           type: string
-          description: Provider/vendor preference (optional; used when model is omitted)
+          description: Provider preference (optional; used with or without model). Supported values - openai, anthropic, google, azure, xai, deepseek, groq, huggingface, local.
         session_id:
           type: string
-          description: Optional session ID to reuse context
+          description: Optional session ID to reuse conversation context
         state_tokens:
           type: object
           additionalProperties: true
@@ -412,9 +1126,17 @@ components:
               type: integer
             format:
               type: string
+        system_prompt:
+          type: string
+          description: System/instruction prompt. Overrides any session-level system prompt.
+        selection_mode:
+          type: string
+          enum: [auto, free_only, commercial_only, model]
+          description: Controls how the backend selects a model. "auto" uses provider/model hints; "free_only" restricts to local/HF-free; "commercial_only" requires a configured provider key; "model" requires an explicit model ID.
         stream:
           type: boolean
           default: false
+          description: Stream response as Server-Sent Events (SSE). Each event is a JSON object; the final event is "[DONE]".
 
     GenerateResponse:
       type: object
@@ -450,7 +1172,7 @@ components:
               type: string
             status:
               type: string
-              enum: [available, exhausted, unknown]
+              enum: [available, exhausted, rate_limited, unknown]
             remaining:
               type: number
               nullable: true
@@ -592,7 +1314,7 @@ components:
               properties:
                 status:
                   type: string
-                  enum: [available, exhausted, unknown]
+                  enum: [available, exhausted, rate_limited, unknown]
                 remaining:
                   type: number
                   nullable: true
@@ -660,12 +1382,38 @@ components:
         status:
           type: string
           enum: [active, closed]
+        title:
+          type: string
+          nullable: true
+        system_prompt:
+          type: string
+          nullable: true
         created_at:
           type: string
           format: date-time
         last_used_at:
           type: string
           format: date-time
+          nullable: true
+        message_count:
+          type: integer
+          default: 0
+        messages:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              role:
+                type: string
+                enum: [user, assistant]
+              content:
+                type: string
+              created_at:
+                type: string
+                format: date-time
 
     SessionList:
       type: object
@@ -674,6 +1422,67 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Session'
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+          nullable: true
+        preferred_model:
+          type: string
+          nullable: true
+        preferences:
+          type: object
+          additionalProperties: true
+
+    ProviderKeyRequest:
+      type: object
+      required: [provider]
+      properties:
+        provider:
+          type: string
+          description: Provider identifier. Supported values - openai, anthropic, google, azure, xai, deepseek, groq, huggingface.
+        credential_type:
+          type: string
+          enum: [api_key, endpoint_key, oauth_token, service_account]
+          default: api_key
+        api_key:
+          type: string
+          format: password
+          description: Required for credential_type=api_key or endpoint_key
+        endpoint:
+          type: string
+          description: Required for credential_type=endpoint_key (e.g. Azure OpenAI deployment URL)
+        oauth_token:
+          type: string
+          description: Required for credential_type=oauth_token
+        service_account_json:
+          type: string
+          description: Required for credential_type=service_account (Google service account JSON)
+
+    ProviderKeyInfo:
+      type: object
+      properties:
+        id:
+          type: string
+        provider:
+          type: string
+        credential_type:
+          type: string
+        masked_key:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
 
   responses:
     ValidationError:

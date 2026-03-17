@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Dict, List, Optional
+
 import httpx
 
 from llm_api.adapters.base import Adapter, ProviderError
@@ -22,16 +24,38 @@ class AnthropicAdapter(Adapter):
         if not self.api_key:
             raise ProviderError(401, "Missing Anthropic API key")
 
-    def generate_text(self, prompt: str) -> str:
+    def generate_text(
+        self,
+        prompt: str,
+        *,
+        system_prompt: Optional[str] = None,
+        history: Optional[List[Dict[str, Any]]] = None,
+        parameters: Optional[Dict[str, Any]] = None,
+    ) -> str:
         if self.simulate_error:
             raise self.simulate_error
         self._ensure_key()
         url = "https://api.anthropic.com/v1/messages"
-        payload = {
+        messages: list[dict[str, str]] = []
+        if history:
+            for turn in history:
+                messages.append({"role": turn["role"], "content": str(turn["content"])})
+        messages.append({"role": "user", "content": prompt})
+        
+        # Extract parameters with defaults
+        params = parameters or {}
+        max_tokens = params.get("max_tokens", 4096)
+        temperature = params.get("temperature", 0.7)
+        
+        payload: dict[str, Any] = {
             "model": self.model_id,
-            "max_tokens": 1024,
-            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": max_tokens,
+            "messages": messages,
         }
+        if temperature is not None:
+            payload["temperature"] = temperature
+        if system_prompt:
+            payload["system"] = system_prompt
         headers = {
             "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",

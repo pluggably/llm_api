@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -21,7 +21,24 @@ class StandardError(Exception):
 class Adapter:
     name: str = "base"
 
-    def generate_text(self, prompt: str) -> str:
+    def generate_text(
+        self,
+        prompt: str,
+        *,
+        system_prompt: Optional[str] = None,
+        history: Optional[List[Dict[str, Any]]] = None,
+        parameters: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Generate text from a prompt.
+
+        Args:
+            prompt: The user's current message.
+            system_prompt: Optional system-level instructions prepended to the
+                conversation (e.g. persona, output-format rules).
+            history: Optional list of prior conversation turns, each a dict
+                with ``role`` (``"user"`` | ``"assistant"``) and ``content``.
+            parameters: Optional generation parameters (temperature, max_tokens, etc.).
+        """
         raise NotImplementedError
 
     def generate_image(self, prompt: str) -> bytes:

@@ -163,6 +163,7 @@ _ANTHROPIC_MODELS: List[ModelInfo] = [
 _OPENAI_COMPAT_BASE_URLS: Dict[str, str] = {
     "xai": "https://api.x.ai",
     "deepseek": "https://api.deepseek.com",
+    "groq": "https://api.groq.com/openai",
 }
 
 _OPENAI_INCLUDE = re.compile(r"^(gpt-|o1-|o3-|o4-|chatgpt-|dall-e-)", re.IGNORECASE)
@@ -274,6 +275,27 @@ def _fetch_deepseek_models(api_key: str) -> List[ModelInfo]:
     return models
 
 
+_GROQ_EXCLUDE = re.compile(r"(whisper|tts|transcription|translation)", re.IGNORECASE)
+
+
+def _fetch_groq_models(api_key: str) -> List[ModelInfo]:
+    models = _fetch_openai_compat_raw(api_key, provider="groq")
+    results = [
+        m for m in models
+        if not _GROQ_EXCLUDE.search(m.id)
+    ]
+    if not results:
+        return [
+            ModelInfo(id="llama-3.3-70b-versatile", name="Llama 3.3 70B Versatile", version="latest", modality="text", provider="groq", status="available", is_default=False),
+            ModelInfo(id="llama-3.1-8b-instant", name="Llama 3.1 8B Instant", version="latest", modality="text", provider="groq", status="available", is_default=False),
+            ModelInfo(id="mixtral-8x7b-32768", name="Mixtral 8x7B", version="latest", modality="text", provider="groq", status="available", is_default=False),
+            ModelInfo(id="gemma2-9b-it", name="Gemma 2 9B IT", version="latest", modality="text", provider="groq", status="available", is_default=False),
+        ]
+    for m in results:
+        m.name = m.id.replace("-", " ").title()
+    return results
+
+
 # ---------------------------------------------------------------------------
 # Google Generative AI discovery
 # ---------------------------------------------------------------------------
@@ -353,6 +375,8 @@ def _discover_models(provider: str, credentials: Dict) -> List[ModelInfo]:
         return _fetch_xai_models(api_key)
     if provider == "deepseek":
         return _fetch_deepseek_models(api_key)
+    if provider == "groq":
+        return _fetch_groq_models(api_key)
     return []
 
 
@@ -385,6 +409,12 @@ def _provider_model_catalog() -> Dict[str, List[ModelInfo]]:
         "deepseek": [
             ModelInfo(id="deepseek-chat", name="DeepSeek Chat", version="latest", modality="text", provider="deepseek", status="available", is_default=False),
             ModelInfo(id="deepseek-reasoner", name="DeepSeek Reasoner", version="latest", modality="text", provider="deepseek", status="available", is_default=False),
+        ],
+        "groq": [
+            ModelInfo(id="llama-3.3-70b-versatile", name="Llama 3.3 70B Versatile", version="latest", modality="text", provider="groq", status="available", is_default=False),
+            ModelInfo(id="llama-3.1-8b-instant", name="Llama 3.1 8B Instant", version="latest", modality="text", provider="groq", status="available", is_default=False),
+            ModelInfo(id="mixtral-8x7b-32768", name="Mixtral 8x7B", version="latest", modality="text", provider="groq", status="available", is_default=False),
+            ModelInfo(id="gemma2-9b-it", name="Gemma 2 9B IT", version="latest", modality="text", provider="groq", status="available", is_default=False),
         ],
     }
 

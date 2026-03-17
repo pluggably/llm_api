@@ -10,6 +10,7 @@ from .anthropic import AnthropicAdapter
 from .google import GoogleAdapter
 from .azure_openai import AzureOpenAIAdapter
 from .xai import XAIAdapter
+from .groq import GroqAdapter
 from .huggingface import HuggingFaceAdapter
 
 __all__ = [
@@ -26,5 +27,6 @@ __all__ = [
     "GoogleAdapter",
     "AzureOpenAIAdapter",
     "XAIAdapter",
+    "GroqAdapter",
     "HuggingFaceAdapter",
 ]

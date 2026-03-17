@@ -4,6 +4,7 @@ import asyncio
 import concurrent.futures
 import json
 import logging
+import time
 import uuid
 from typing import AsyncGenerator, Optional
 
@@ -17,7 +18,9 @@ from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from llm_api.api.schemas import (
     AvailabilityInfo,
+    CreateSessionRequest,
     CreditsStatus,
+    FeatureFlagsResponse,
     GenerateInput,
     GenerateRequest,
     GenerateResponse,
@@ -66,6 +69,42 @@ from llm_api.integrations.provider_discovery import (
 
 api_router = APIRouter()
 
+_HF_ROUTER_MODELS_CACHE: dict[int, tuple[float, set[str]]] = {}
+_HF_ROUTER_MODELS_TTL_SECONDS = 120.0
+
+
+async def _get_hf_router_supported_model_ids(hf_token: str | None) -> set[str] | None:
+    """Return model IDs available to the token on HF Router, with short TTL cache."""
+    if not hf_token:
+        return None
+
+    token_key = hash(hf_token)
+    now = time.monotonic()
+    cached = _HF_ROUTER_MODELS_CACHE.get(token_key)
+    if cached and now - cached[0] < _HF_ROUTER_MODELS_TTL_SECONDS:
+        return cached[1]
+
+    headers = {"Authorization": f"Bearer {hf_token}"}
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get("https://router.huggingface.co/v1/models", headers=headers)
+        response.raise_for_status()
+        payload = response.json()
+    except Exception:
+        return None
+
+    rows = payload.get("data") if isinstance(payload, dict) else payload
+    if not isinstance(rows, list):
+        return None
+
+    model_ids = {
+        row.get("id")
+        for row in rows
+        if isinstance(row, dict) and isinstance(row.get("id"), str)
+    }
+    _HF_ROUTER_MODELS_CACHE[token_key] = (now, model_ids)
+    return model_ids
+
 
 def _build_usage(prompt: str | None, output_text: str | None) -> Usage:
     prompt_tokens = len((prompt or "").split())
@@ -75,6 +114,40 @@ def _build_usage(prompt: str | None, output_text: str | None) -> Usage:
         completion_tokens=completion_tokens,
         total_tokens=prompt_tokens + completion_tokens,
     )
+
+
+def _build_conversation_context(
+    request: GenerateRequest,
+    session: "SessionRecord | None",
+) -> tuple[str | None, list[dict[str, str]]]:
+    """Derive the effective system prompt and conversation history.
+
+    Returns ``(system_prompt, history)`` where *history* is a list of
+    ``{"role": "user"|"assistant", "content": "..."}`` dicts built from the
+    session's stored messages.
+
+    Priority for system_prompt:
+        1. ``request.system_prompt`` (per-request override)
+        2. ``session.system_prompt`` (session-level default)
+    """
+    from llm_api.sessions.store import SessionRecord as _SR  # noqa: local import to avoid circular
+
+    system_prompt = request.system_prompt
+    history: list[dict[str, str]] = []
+
+    if session is not None:
+        if not system_prompt and session.system_prompt:
+            system_prompt = session.system_prompt
+        # Build conversation history from session messages
+        for msg in session.messages:
+            user_content = msg.input.get("prompt") if msg.input else None
+            if user_content:
+                history.append({"role": "user", "content": str(user_content)})
+            assistant_content = msg.output.get("text") if msg.output else None
+            if assistant_content:
+                history.append({"role": "assistant", "content": str(assistant_content)})
+
+    return system_prompt, history
 
 
 def _artifact_inline_threshold_bytes() -> int:
@@ -119,7 +192,7 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
     user_id = user.get("user_id") if isinstance(user, dict) else None
     provider_credentials: dict[str, dict[str, str]] = {}
     if user_id:
-        for provider in ["openai", "anthropic", "google", "azure", "xai", "deepseek", "huggingface"]:
+        for provider in ["openai", "anthropic", "google", "azure", "xai", "deepseek", "groq", "huggingface"]:
             creds = user_service.get_provider_credentials(user_id, provider)
             if creds:
                 provider_credentials[provider] = creds
@@ -175,6 +248,9 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
     effective_state_tokens = request.state_tokens
     if session and effective_state_tokens is None:
         effective_state_tokens = session.state_tokens
+
+    # Build system prompt & conversation history from session
+    effective_system_prompt, conversation_history = _build_conversation_context(request, session)
 
     try:
         request_parameters = (
@@ -258,7 +334,13 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                     # connection may time out or the client may stall forever)
                     _loop = asyncio.get_running_loop()
                     _gen_future = _loop.run_in_executor(
-                        None, selection.adapter.generate_text, request.input.prompt or ""
+                        None,
+                        lambda: selection.adapter.generate_text(
+                            request.input.prompt or "",
+                            system_prompt=effective_system_prompt,
+                            history=conversation_history or None,
+                            parameters=request_parameters,
+                        ),
                     )
                     _deadline = _loop.time() + TEXT_GENERATION_TIMEOUT_SECONDS
                     while True:
@@ -331,8 +413,12 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                                 )
                                 fallback_output = await asyncio.wait_for(
                                     asyncio.to_thread(
-                                        fb.adapter.generate_text,
-                                        request.input.prompt or "",
+                                        lambda: fb.adapter.generate_text(
+                                            request.input.prompt or "",
+                                            system_prompt=effective_system_prompt,
+                                            history=conversation_history or None,
+                                            parameters=request_parameters,
+                                        ),
                                     ),
                                     timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
                                 )
@@ -360,8 +446,12 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                                 )
                                 fallback_output = await asyncio.wait_for(
                                     asyncio.to_thread(
-                                        local_fb.adapter.generate_text,
-                                        request.input.prompt or "",
+                                        lambda: local_fb.adapter.generate_text(
+                                            request.input.prompt or "",
+                                            system_prompt=effective_system_prompt,
+                                            history=conversation_history or None,
+                                            parameters=request_parameters,
+                                        ),
                                     ),
                                     timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
                                 )
@@ -565,8 +655,12 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
             try:
                 output_text = await asyncio.wait_for(
                     asyncio.to_thread(
-                        selection.adapter.generate_text,
-                        request.input.prompt or "",
+                        lambda: selection.adapter.generate_text(
+                            request.input.prompt or "",
+                            system_prompt=effective_system_prompt,
+                            history=conversation_history or None,
+                            parameters=request_parameters,
+                        ),
                     ),
                     timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
                 )
@@ -621,8 +715,12 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                             )
                             output_text = await asyncio.wait_for(
                                 asyncio.to_thread(
-                                    tier_fb.adapter.generate_text,
-                                    request.input.prompt or "",
+                                    lambda: tier_fb.adapter.generate_text(
+                                        request.input.prompt or "",
+                                        system_prompt=effective_system_prompt,
+                                        history=conversation_history or None,
+                                        parameters=request_parameters,
+                                    ),
                                 ),
                                 timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
                             )
@@ -650,8 +748,12 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                             )
                             output_text = await asyncio.wait_for(
                                 asyncio.to_thread(
-                                    local_fb.adapter.generate_text,
-                                    request.input.prompt or "",
+                                    lambda: local_fb.adapter.generate_text(
+                                        request.input.prompt or "",
+                                        system_prompt=effective_system_prompt,
+                                        history=conversation_history or None,
+                                        parameters=request_parameters,
+                                    ),
                                 ),
                                 timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
                             )
@@ -750,9 +852,12 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
 
 
 @api_router.post("/v1/sessions", dependencies=[Depends(require_api_key)])
-async def create_session(request: UpdateSessionRequest | None = None) -> JSONResponse:
+async def create_session(request: CreateSessionRequest | None = None) -> JSONResponse:
     session_store = get_session_store()
-    session = session_store.create_session(title=request.title if request else None)
+    session = session_store.create_session(
+        title=request.title if request else None,
+        system_prompt=request.system_prompt if request else None,
+    )
     return JSONResponse(jsonable_encoder(session.to_public()), status_code=201)
 
 
@@ -882,13 +987,16 @@ async def list_models(
 ) -> JSONResponse:
     registry = get_registry()
     user_service = get_user_service()
+    settings = get_settings()
 
     models = registry.list_models(modality=modality)
+    if not settings.enable_local_models:
+        models = [m for m in models if (m.provider or "").lower() != "local"]
     models_by_id = {model.id: model for model in models}
 
     user = getattr(http_request.state, "user", None)
     user_id = user.get("user_id") if isinstance(user, dict) else None
-    for provider in ["openai", "anthropic", "google", "azure", "xai", "deepseek"]:
+    for provider in ["openai", "anthropic", "google", "azure", "xai", "deepseek", "groq", "huggingface"]:
         creds = user_service.get_provider_credentials(user_id, provider) if user_id else None
         if creds:
             availability = get_provider_availability(user_id, provider, creds)
@@ -921,6 +1029,7 @@ async def list_models(
 
 @api_router.get("/v1/models/search", dependencies=[Depends(require_api_key)])
 async def search_models(
+    http_request: Request,
     query: str,
     source: str = "huggingface",
     modality: str | None = None,
@@ -941,6 +1050,18 @@ async def search_models(
         response.raise_for_status()
         data = response.json()
 
+    settings = get_settings()
+    user_service = get_user_service()
+    user = getattr(http_request.state, "user", None)
+    user_id = user.get("user_id") if isinstance(user, dict) else None
+    user_hf_creds = (
+        user_service.get_provider_credentials(user_id, "huggingface")
+        if user_id
+        else None
+    )
+    hf_token = (user_hf_creds or {}).get("api_key") or settings.hf_token
+    hf_router_supported_ids = await _get_hf_router_supported_model_ids(hf_token)
+
     results = []
     for item in data:
         pipeline_tag = item.get("pipeline_tag")
@@ -955,12 +1076,22 @@ async def search_models(
         if modality and modality_hint and modality_hint != modality:
             continue
 
+        model_id = item.get("modelId") or item.get("id")
+        if not isinstance(model_id, str) or not model_id:
+            continue
+        hf_hosted_supported: bool | None = None
+        if modality_hint == "3d":
+            hf_hosted_supported = False
+        elif hf_router_supported_ids is not None:
+            hf_hosted_supported = model_id in hf_router_supported_ids
+
         results.append(
             ModelSearchResult(
-                id=item.get("modelId") or item.get("id"),
-                name=item.get("modelId") or item.get("id"),
+                id=model_id,
+                name=model_id,
                 tags=item.get("tags") or [],
                 modality_hints=[modality_hint] if modality_hint else [],
+                hf_hosted_supported=hf_hosted_supported,
                 downloads=item.get("downloads"),
                 last_modified=item.get("lastModified"),
             ),
@@ -977,6 +1108,7 @@ async def search_models(
 
 @api_router.get("/v1/providers", dependencies=[Depends(require_api_key)])
 async def list_providers(http_request: Request) -> JSONResponse:
+    settings = get_settings()
     user_service = get_user_service()
     user = getattr(http_request.state, "user", None)
     user_id = user.get("user_id") if isinstance(user, dict) else None
@@ -992,19 +1124,47 @@ async def list_providers(http_request: Request) -> JSONResponse:
         ProviderStatus(name="google", configured=_has_creds("google"), supported_modalities=["text"]),
         ProviderStatus(name="azure", configured=_has_creds("azure"), supported_modalities=["text"]),
         ProviderStatus(name="xai", configured=_has_creds("xai"), supported_modalities=["text"]),
+        ProviderStatus(name="deepseek", configured=_has_creds("deepseek"), supported_modalities=["text"]),
+        ProviderStatus(name="groq", configured=_has_creds("groq"), supported_modalities=["text"]),
         ProviderStatus(name="huggingface", configured=_has_creds("huggingface"), supported_modalities=["text", "image"]),
-        ProviderStatus(name="local", configured=True, supported_modalities=["text", "image", "3d"]),
     ]
+    if settings.enable_local_models:
+        providers.append(
+            ProviderStatus(name="local", configured=True, supported_modalities=["text", "image", "3d"])
+        )
     return JSONResponse(jsonable_encoder(ProvidersResponse(providers=providers)))
 
 
+@api_router.get("/v1/features", dependencies=[Depends(require_api_key)])
+async def get_feature_flags() -> JSONResponse:
+    """Expose backend capability flags for frontend behavior toggles."""
+    settings = get_settings()
+    payload = FeatureFlagsResponse(
+        local_models_enabled=settings.enable_local_models,
+        # HF hosted 3D adapter support is not implemented yet.
+        huggingface_hosted_3d_supported=False,
+    )
+    return JSONResponse(jsonable_encoder(payload))
+
+
 @api_router.post("/v1/models/download", dependencies=[Depends(require_api_key)])
-async def download_model(payload: ModelDownloadRequest) -> JSONResponse:
+async def download_model(payload: ModelDownloadRequest, http_request: Request) -> JSONResponse:
     registry = get_registry()
     job_store = get_job_store()
     downloader = DownloadService(registry=registry, jobs=job_store)
 
-    job = downloader.start_download(payload)
+    settings = get_settings()
+    user_service = get_user_service()
+    user = getattr(http_request.state, "user", None)
+    user_id = user.get("user_id") if isinstance(user, dict) else None
+    user_hf_creds = (
+        user_service.get_provider_credentials(user_id, "huggingface")
+        if user_id
+        else None
+    )
+    hf_token = (user_hf_creds or {}).get("api_key") or settings.hf_token
+
+    job = downloader.start_download(payload, hf_token=hf_token)
     return JSONResponse(jsonable_encoder(job), status_code=202)
 
 

@@ -99,6 +99,9 @@ X-API-Key: <token>
 
 ## Generation
 
+Supported providers: `openai`, `anthropic`, `google`, `azure`, `xai`, `deepseek`, `groq`, `huggingface`, `local`.
+Models can be specified by name (auto-detected) or as `provider:model` (e.g. `groq:llama-3.3-70b-versatile`).
+
 ### Generate (Non-Streaming)
 ```
 POST /v1/generate
@@ -106,7 +109,7 @@ X-API-Key: <token>
 Content-Type: application/json
 
 {
-  "model": "model-id",
+  "model": "gpt-4o",
   "provider": "openai",
   "modality": "text",
   "input": {
@@ -114,15 +117,32 @@ Content-Type: application/json
   },
   "parameters": {
     "temperature": 0.7,
-    "max_tokens": 100
+    "max_tokens": 1024
   },
+  "system_prompt": "You are a helpful assistant.",
   "session_id": "optional-session-id"
 }
 ```
 
 Notes:
-- If `model` is omitted, you may specify `provider` to let the backend select a suitable model.
-- Responses may include selection metadata and credit/usage status when available.
+- If `model` is omitted, specify `provider` to let the backend select a suitable model.
+- `selection_mode` controls routing: `auto` (default), `free_only`, `commercial_only`, `model`.
+- Responses include `selection` metadata (which model/provider was used and whether a fallback occurred) and optionally `credits_status`.
+
+### Provider Examples
+```json
+// Groq (fast inference)
+{ "provider": "groq", "modality": "text", "input": { "prompt": "..." } }
+
+// DeepSeek
+{ "provider": "deepseek", "modality": "text", "input": { "prompt": "..." } }
+
+// xAI Grok
+{ "provider": "xai", "modality": "text", "input": { "prompt": "..." } }
+
+// Azure OpenAI (requires endpoint_key credential)
+{ "provider": "azure", "modality": "text", "input": { "prompt": "..." } }
+```
 
 ### Generate (Streaming)
 ```
@@ -131,17 +151,18 @@ X-API-Key: <token>
 Content-Type: application/json
 
 {
-  "model": "model-id",
-  "provider": "openai",
+  "provider": "groq",
   "modality": "text",
   "input": {
-    "prompt": "Hello, how are you?"
+    "prompt": "Tell me a story"
   },
-  "stream": true,
-  "session_id": "optional-session-id"
+  "stream": true
 }
 
 Response: Server-Sent Events (SSE)
+// First event: {"event": "model_selected", "model": "...", "provider": "groq", ...}
+// Text chunks: {"text": "...", "done": false}
+// Final: data: [DONE]
 ```
 
 ## Sessions
@@ -150,6 +171,12 @@ Response: Server-Sent Events (SSE)
 ```
 POST /v1/sessions
 X-API-Key: <token>
+Content-Type: application/json
+
+{
+  "title": "Optional title",
+  "system_prompt": "Optional system prompt for all messages in this session"
+}
 ```
 
 ### List Sessions
@@ -175,16 +202,37 @@ Content-Type: application/json
 }
 ```
 
-### Delete Session
+### Delete (Close) Session
 ```
 DELETE /v1/sessions/{session_id}
 X-API-Key: <token>
 ```
 
-### Reset Session
+### Reset Session Context
 ```
 POST /v1/sessions/{session_id}/reset
 X-API-Key: <token>
+```
+
+### Generate With Session
+```
+POST /v1/sessions/{session_id}/generate
+X-API-Key: <token>
+Content-Type: application/json
+
+{ "modality": "text", "input": { "prompt": "Continue the story..." } }
+```
+
+### Regenerate Last Response
+```
+POST /v1/sessions/{session_id}/regenerate
+X-API-Key: <token>
+Content-Type: application/json
+
+{
+  "model": "optional-override-model",
+  "stream": false
+}
 ```
 
 ## Requests
@@ -244,11 +292,30 @@ POST /v1/users/provider-keys
 X-API-Key: <token>
 Content-Type: application/json
 
+// Simple API key (OpenAI, Anthropic, Google, xAI, DeepSeek, Groq, HuggingFace)
 {
-  "provider": "openai",
-  "api_key": "sk-..."
+  "provider": "groq",
+  "credential_type": "api_key",
+  "api_key": "gsk_..."
+}
+
+// Azure OpenAI (requires endpoint)
+{
+  "provider": "azure",
+  "credential_type": "endpoint_key",
+  "api_key": "<azure-key>",
+  "endpoint": "https://<resource>.openai.azure.com/"
+}
+
+// Google service account
+{
+  "provider": "google",
+  "credential_type": "service_account",
+  "service_account_json": "{...}"
 }
 ```
+
+Supported providers: `openai`, `anthropic`, `google`, `azure`, `xai`, `deepseek`, `groq`, `huggingface`.
 
 ### Delete Provider Key
 ```
@@ -280,8 +347,30 @@ Content-Type: application/json
 ### List Providers
 ```
 GET /v1/providers
-Authorization: Bearer <token>
+X-API-Key: <token>
 ```
+
+Returns each provider's name, whether credentials are configured for the current user, and supported modalities.
+
+## Features
+
+### Get Feature Flags
+```
+GET /v1/features
+X-API-Key: <token>
+```
+
+Returns backend capability flags used by the frontend (e.g. `local_models_enabled`, `huggingface_hosted_3d_supported`).
+
+## Model Search
+
+### Search Hugging Face Models
+```
+GET /v1/models/search?query=llama&source=huggingface&limit=20
+X-API-Key: <token>
+```
+
+Parameters: `query` (required), `source` (default: huggingface), `modality` (text/image/3d), `limit`, `cursor`.
 
 ## Health & Metrics
 

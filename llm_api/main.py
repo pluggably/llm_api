@@ -53,8 +53,9 @@ def create_app() -> FastAPI:
         if settings.default_model:
             lifecycle.default_model_id = settings.default_model
         
-        # Pin default image model (sdxl-turbo) for immediate availability
-        if settings.default_image_model:
+        # Pin default image model (sdxl-turbo) for immediate availability.
+        # Skip pinning entirely when local hosting is disabled.
+        if settings.enable_local_models and settings.default_image_model:
             lifecycle.pin_model(settings.default_image_model)
         
         # Start idle monitor

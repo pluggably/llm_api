@@ -32,17 +32,28 @@ class LocalAdapter(Adapter):
         from llm_api.runner.local_runner import LocalRunner
         self.runner: LocalRunnerType = LocalRunner()
 
-    def generate_text(self, prompt: str) -> str:
+    def generate_text(
+        self,
+        prompt: str,
+        *,
+        system_prompt: Optional[str] = None,
+        history: Optional[list[Dict[str, Any]]] = None,
+        parameters: Optional[Dict[str, Any]] = None,
+    ) -> str:
         if self.simulate_error:
             raise self.simulate_error
-        if self.parameters:
+        # Merge instance parameters with request parameters (request takes precedence)
+        merged_params = {**self.parameters, **(parameters or {})}
+        if merged_params:
             try:
                 return self.runner.generate_text(
                     prompt,
                     model_path=self.model_path,
                     model_id=self.model_id,
-                    parameters=self.parameters,
+                    parameters=merged_params,
                     hf_token=self.hf_token,
+                    system_prompt=system_prompt,
+                    history=history,
                 )
             except TypeError:
                 pass
@@ -51,6 +62,8 @@ class LocalAdapter(Adapter):
             model_path=self.model_path,
             model_id=self.model_id,
             hf_token=self.hf_token,
+            system_prompt=system_prompt,
+            history=history,
         )
 
     def generate_image(self, prompt: str) -> bytes:

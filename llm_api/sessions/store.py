@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from sqlalchemy import delete, func, select
 
@@ -12,6 +12,12 @@ from llm_api.config import get_settings
 from llm_api.db.database import get_db_session
 from llm_api.db.models import SessionMessageRecord as DbSessionMessageRecord
 from llm_api.db.models import SessionRecord as DbSessionRecord
+
+
+def _coerce_status(value: str) -> Literal["active", "closed"]:
+    if value == "closed":
+        return "closed"
+    return "active"
 
 
 @dataclass
@@ -27,9 +33,10 @@ class SessionMessage:
 @dataclass
 class SessionRecord:
     id: str
-    status: str
+    status: Literal["active", "closed"]
     created_at: datetime
     title: Optional[str] = None
+    system_prompt: Optional[str] = None
     last_used_at: Optional[datetime] = None
     messages: List[SessionMessage] = field(default_factory=list)
     state_tokens: Optional[Dict[str, Any]] = None
@@ -55,6 +62,7 @@ class SessionRecord:
             id=self.id,
             status=self.status,
             title=self.title,
+            system_prompt=self.system_prompt,
             created_at=self.created_at,
             last_used_at=self.last_used_at,
             message_count=self.message_count,
@@ -111,7 +119,7 @@ class SessionStore:
             for record in records:
                 db.delete(record)
 
-    def create_session(self, title: Optional[str] = None) -> SessionRecord:
+    def create_session(self, title: Optional[str] = None, system_prompt: Optional[str] = None) -> SessionRecord:
         now = datetime.now(timezone.utc)
         session_id = str(uuid.uuid4())
         record = DbSessionRecord(
@@ -120,6 +128,7 @@ class SessionStore:
             created_at=now,
             last_used_at=now,
             title=title,
+            system_prompt=system_prompt,
         )
         with get_db_session() as db:
             db.add(record)
@@ -129,6 +138,7 @@ class SessionStore:
                 created_at=now,
                 last_used_at=now,
                 title=title,
+                system_prompt=system_prompt,
             )
 
     def list_sessions(self) -> List[SessionSummary]:
@@ -174,10 +184,11 @@ class SessionStore:
 
             return SessionRecord(
                 id=record.id,
-                status=record.status,
+                status=_coerce_status(record.status),
                 created_at=record.created_at,
                 last_used_at=record.last_used_at,
                 title=record.title,
+                system_prompt=record.system_prompt,
                 state_tokens=record.state_tokens,
                 message_count=len(messages),
                 messages=[
@@ -208,10 +219,11 @@ class SessionStore:
             db.add(record)
             return SessionRecord(
                 id=record.id,
-                status=record.status,
+                status=_coerce_status(record.status),
                 created_at=record.created_at,
                 last_used_at=record.last_used_at,
                 title=record.title,
+                system_prompt=record.system_prompt,
                 state_tokens=None,
                 messages=[],
             )
@@ -227,10 +239,11 @@ class SessionStore:
             db.add(record)
             return SessionRecord(
                 id=record.id,
-                status=record.status,
+                status=_coerce_status(record.status),
                 created_at=record.created_at,
                 last_used_at=record.last_used_at,
                 title=record.title,
+                system_prompt=record.system_prompt,
                 state_tokens=record.state_tokens,
                 messages=[],
             )
@@ -245,10 +258,11 @@ class SessionStore:
             db.add(record)
             return SessionRecord(
                 id=record.id,
-                status=record.status,
+                status=_coerce_status(record.status),
                 created_at=record.created_at,
                 last_used_at=record.last_used_at,
                 title=record.title,
+                system_prompt=record.system_prompt,
                 state_tokens=record.state_tokens,
                 messages=[],
             )
@@ -295,10 +309,11 @@ class SessionStore:
             db.add(record)
             return SessionRecord(
                 id=record.id,
-                status=record.status,
+                status=_coerce_status(record.status),
                 created_at=record.created_at,
                 last_used_at=record.last_used_at,
                 title=record.title,
+                system_prompt=record.system_prompt,
                 state_tokens=record.state_tokens,
                 message_count=next_seq,
                 messages=[],

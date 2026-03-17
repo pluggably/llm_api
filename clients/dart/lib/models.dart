@@ -50,6 +50,28 @@ class VersionInfo extends Equatable {
   List<Object?> get props => [version];
 }
 
+/// Backend feature flags used to drive frontend behavior.
+class FeatureFlags extends Equatable {
+  final bool localModelsEnabled;
+  final bool huggingfaceHosted3dSupported;
+
+  const FeatureFlags({
+    required this.localModelsEnabled,
+    required this.huggingfaceHosted3dSupported,
+  });
+
+  factory FeatureFlags.fromJson(Map<String, dynamic> json) {
+    return FeatureFlags(
+      localModelsEnabled: json['local_models_enabled'] as bool? ?? true,
+      huggingfaceHosted3dSupported:
+          json['huggingface_hosted_3d_supported'] as bool? ?? false,
+    );
+  }
+
+  @override
+  List<Object?> get props => [localModelsEnabled, huggingfaceHosted3dSupported];
+}
+
 /// Represents a model available in the API.
 class Model extends Equatable {
   final String id;
@@ -260,6 +282,7 @@ class ModelSearchResult extends Equatable {
   final String name;
   final List<String> tags;
   final List<String> modalityHints;
+  final bool? hfHostedSupported;
   final int? downloads;
   final DateTime? lastModified;
 
@@ -268,6 +291,7 @@ class ModelSearchResult extends Equatable {
     required this.name,
     this.tags = const [],
     this.modalityHints = const [],
+    this.hfHostedSupported,
     this.downloads,
     this.lastModified,
   });
@@ -279,6 +303,7 @@ class ModelSearchResult extends Equatable {
       tags: (json['tags'] as List?)?.cast<String>() ?? const [],
       modalityHints:
           (json['modality_hints'] as List?)?.cast<String>() ?? const [],
+      hfHostedSupported: json['hf_hosted_supported'] as bool?,
       downloads: json['downloads'] as int?,
       lastModified: json['last_modified'] != null
           ? DateTime.tryParse(json['last_modified'] as String)
@@ -298,8 +323,15 @@ class ModelSearchResult extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [id, name, tags, modalityHints, downloads, lastModified];
+  List<Object?> get props => [
+        id,
+        name,
+        tags,
+        modalityHints,
+        hfHostedSupported,
+        downloads,
+        lastModified
+      ];
 }
 
 /// Paginated model search response.

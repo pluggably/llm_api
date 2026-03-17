@@ -22,7 +22,7 @@ from llm_api.adapters.google import GoogleAdapter
 from llm_api.adapters.azure_openai import AzureOpenAIAdapter
 from llm_api.adapters.xai import XAIAdapter
 from llm_api.api.schemas import CreditsStatus, ModelInfo, SelectionInfo
-from llm_api.config import Settings
+from llm_api.config import Settings, get_settings
 from llm_api.registry.store import ModelRegistry
 
 
@@ -46,7 +46,7 @@ class BackendSelection:
     credits_status: Optional[CreditsStatus] = None
 
 
-COMMERCIAL_PROVIDERS = {"openai", "anthropic", "google", "azure", "xai", "deepseek", "huggingface"}
+COMMERCIAL_PROVIDERS = {"openai", "anthropic", "google", "azure", "xai", "deepseek", "groq", "huggingface"}
 
 # Cheapest/free-tier fallback models per provider (ordered cheapest-first).
 # On a 429 rate-limit the server tries each in order before falling back to local.
@@ -96,6 +96,12 @@ def _infer_modality_from_prompt(
 
 
 def _matches_selection_mode(provider: Optional[str], selection_mode: str) -> bool:
+    # When local hosting is disabled, treat local/unknown providers as unavailable
+    # for selection so request routing stays on hosted/commercial providers only.
+    local_disabled = not get_settings().enable_local_models
+    if local_disabled and (provider is None or provider == "local"):
+        return False
+
     if selection_mode == "free_only":
         return provider not in COMMERCIAL_PROVIDERS
     if selection_mode == "commercial_only":
@@ -163,6 +169,11 @@ PROVIDER_MODEL_PATTERNS = {
     "deepseek": [
         r"^deepseek-.*",
     ],
+    "groq": [
+        r"^llama-.*",
+        r"^mixtral-.*",
+        r"^gemma2-.*",
+    ],
 }
 
 
@@ -193,7 +204,12 @@ def _adapter_for_provider(
     provider_credentials: Optional[Dict[str, Dict[str, Any]]] = None,
 ) -> Adapter:
     """Create an adapter for the given provider and modality."""
-    supported = {"openai", "anthropic", "google", "azure", "xai", "deepseek", "huggingface", "local"}
+    if provider == "local" and not settings.enable_local_models:
+        raise ProviderNotSupportedError(
+            "Local model hosting is disabled by configuration (LLM_API_ENABLE_LOCAL_MODELS=false)."
+        )
+
+    supported = {"openai", "anthropic", "google", "azure", "xai", "deepseek", "groq", "huggingface", "local"}
     if provider not in supported:
         raise ProviderNotSupportedError(f"Unsupported provider: {provider}")
 
@@ -277,6 +293,20 @@ def _adapter_for_provider(
             model_id=model_id,
             api_key=api_key,
             base_url=settings.deepseek_base_url,
+        )
+    if provider == "groq":
+        from llm_api.adapters.groq import GroqAdapter
+        user_key = (provider_credentials or {}).get("groq", {}).get("api_key")
+        api_key = user_key or settings.groq_api_key
+        if not api_key:
+            raise ProviderNotConfiguredError(
+                "Groq API key not configured. Set LLM_API_GROQ_API_KEY environment variable."
+            )
+        logger.debug("groq adapter: using %s key", "user" if user_key else "settings")
+        return GroqAdapter(
+            model_id=model_id,
+            api_key=api_key,
+            base_url=settings.groq_base_url,
         )
     if provider == "huggingface":
         user_key = (provider_credentials or {}).get("huggingface", {}).get("api_key")

@@ -15,6 +15,7 @@ from llm_api.api.schemas import (
 )
 from llm_api.background_tasks import get_background_task_registry
 from llm_api.auth import require_api_key
+from llm_api.config import get_settings
 from llm_api.lifecycle import get_lifecycle_manager
 from llm_api.queue import get_queue_manager
 from llm_api.registry import get_registry
@@ -41,7 +42,7 @@ async def get_model_runtime_status(model_id: str) -> JSONResponse:
     model = registry.get_model(model_id)
     if not model:
         raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found")
-    
+
     runtime_status = lifecycle.get_status(model_id)
     queue_info = queue.get_queue_info(model_id)
     
@@ -67,6 +68,13 @@ async def load_model(model_id: str, request: LoadModelRequest | None = None) -> 
     model = registry.get_model(model_id)
     if not model:
         raise HTTPException(status_code=404, detail=f"Model '{model_id}' not found")
+
+    settings = get_settings()
+    if not settings.enable_local_models and (model.provider or "").lower() == "local":
+        raise HTTPException(
+            status_code=400,
+            detail="Local model hosting is disabled (LLM_API_ENABLE_LOCAL_MODELS=false).",
+        )
     
     # Check if already loaded or loading
     status = lifecycle.get_status(model_id)

@@ -89,6 +89,13 @@ class Settings(BaseSettings):
     deepseek_api_key: Optional[str] = None
     deepseek_base_url: str = "https://api.deepseek.com/v1"
 
+    groq_api_key: Optional[str] = None
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+
+    # Feature flag for local model hosting/runtime.
+    # When False, local model loading/inference/downloads are blocked.
+    enable_local_models: bool = True
+
     local_text_model_path: Optional[Path] = None
     local_text_model_id: Optional[str] = "Qwen/Qwen2.5-3B-Instruct"
     local_image_model_id: str = "stabilityai/sdxl-turbo"
@@ -144,6 +151,7 @@ def _flatten_yaml(data: Dict[str, Any]) -> Dict[str, Any]:
     azure = providers.get("azure", {})
     xai = providers.get("xai", {})
     deepseek = providers.get("deepseek", {})
+    groq = providers.get("groq", {})
     persistence = data.get("persistence", {})
     local = data.get("local", {})
 
@@ -173,6 +181,9 @@ def _flatten_yaml(data: Dict[str, Any]) -> Dict[str, Any]:
         "xai_base_url": xai.get("base_url"),
         "deepseek_api_key": deepseek.get("api_key"),
         "deepseek_base_url": deepseek.get("base_url"),
+        "groq_api_key": groq.get("api_key"),
+        "groq_base_url": groq.get("base_url"),
+        "enable_local_models": local.get("enable_local_models"),
         "persist_state": persistence.get("enabled"),
         "database_url": persistence.get("database_url"),
         "database_schema": persistence.get("database_schema"),
@@ -245,6 +256,9 @@ def get_settings() -> Settings:
         "xai_base_url": "LLM_API_XAI_BASE_URL",
         "deepseek_api_key": "LLM_API_DEEPSEEK_API_KEY",
         "deepseek_base_url": "LLM_API_DEEPSEEK_BASE_URL",
+        "groq_api_key": "LLM_API_GROQ_API_KEY",
+        "groq_base_url": "LLM_API_GROQ_BASE_URL",
+        "enable_local_models": "LLM_API_ENABLE_LOCAL_MODELS",
         "persist_state": "LLM_API_PERSIST_STATE",
         "database_url": "LLM_API_DATABASE_URL",
         "database_schema": "LLM_API_DATABASE_SCHEMA",

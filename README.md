@@ -355,6 +355,17 @@ See [docs/ops/provider_keys.md](docs/ops/provider_keys.md) for detailed setup in
 
 For running models locally without commercial APIs:
 
+- Set `LLM_API_ENABLE_LOCAL_MODELS=false` to disable all local model hosting/runtime and use hosted/commercial providers only.
+
+To migrate an existing node from local models to hosted defaults (cleanup local files + registry rows):
+
+```bash
+python scripts/migrate_to_hosted_defaults.py --dry-run
+python scripts/migrate_to_hosted_defaults.py --apply
+```
+
+The migration script sets hosted defaults for text/image and clears the 3D default when hosted 3D is unavailable.
+
 | Modality | Runtime | Setup |
 |----------|---------|-------|
 | Text | llama.cpp | Install `llama-cpp-python`, set `LLM_API_LOCAL_TEXT_MODEL_PATH` |

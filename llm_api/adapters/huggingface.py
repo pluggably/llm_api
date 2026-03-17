@@ -24,8 +24,12 @@ class HuggingFaceAdapter(Adapter):
         self.timeout_seconds = timeout_seconds
 
     @property
-    def _url(self) -> str:
-        return f"https://api-inference.huggingface.co/models/{self.model_id}"
+    def _hf_inference_url(self) -> str:
+        return f"https://router.huggingface.co/hf-inference/models/{self.model_id}"
+
+    @property
+    def _chat_completions_url(self) -> str:
+        return "https://router.huggingface.co/v1/chat/completions"
 
     def _headers(self) -> Dict[str, str]:
         headers = {"Accept": "application/json"}
@@ -45,26 +49,55 @@ class HuggingFaceAdapter(Adapter):
             pass
         raise ProviderError(response.status_code, message)
 
-    def generate_text(self, prompt: str) -> str:
-        payload: Dict[str, Any] = {"inputs": prompt}
+    def generate_text(
+        self,
+        prompt: str,
+        *,
+        system_prompt: str | None = None,
+        history: list[dict[str, Any]] | None = None,
+        parameters: dict[str, Any] | None = None,
+    ) -> str:
+        messages: list[dict[str, str]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        if history:
+            for turn in history:
+                messages.append({"role": turn["role"], "content": str(turn["content"])})
+        messages.append({"role": "user", "content": prompt})
+
+        # Use HF router OpenAI-compatible chat completions endpoint for text.
+        req_params = parameters or {}
+        payload: Dict[str, Any] = {
+            "model": self.model_id,
+            "messages": messages,
+            "stream": False,
+        }
+        if "temperature" in req_params:
+            payload["temperature"] = req_params["temperature"]
+        if "max_tokens" in req_params:
+            payload["max_tokens"] = req_params["max_tokens"]
+
         with httpx.Client(timeout=self.timeout_seconds) as client:
-            response = client.post(self._url, json=payload, headers=self._headers())
+            response = client.post(
+                self._chat_completions_url,
+                json=payload,
+                headers=self._headers(),
+            )
         self._raise_for_response(response)
 
         data = response.json()
-        if isinstance(data, list) and data:
-            first = data[0]
-            if isinstance(first, dict):
-                if "generated_text" in first:
-                    return str(first["generated_text"])
-                if "summary_text" in first:
-                    return str(first["summary_text"])
-                if "translation_text" in first:
-                    return str(first["translation_text"])
         if isinstance(data, dict):
-            if "generated_text" in data:
+            choices = data.get("choices")
+            if isinstance(choices, list) and choices:
+                first = choices[0]
+                if isinstance(first, dict):
+                    message = first.get("message")
+                    if isinstance(message, dict) and message.get("content") is not None:
+                        return str(message["content"])
+            # Fallback for non-chat text responses.
+            if data.get("generated_text") is not None:
                 return str(data["generated_text"])
-            if "text" in data:
+            if data.get("text") is not None:
                 return str(data["text"])
         raise ProviderError(500, "Unexpected Hugging Face text response format")
 
@@ -73,7 +106,7 @@ class HuggingFaceAdapter(Adapter):
         headers = self._headers()
         headers["Accept"] = "image/png"
         with httpx.Client(timeout=self.timeout_seconds) as client:
-            response = client.post(self._url, json=payload, headers=headers)
+            response = client.post(self._hf_inference_url, json=payload, headers=headers)
         self._raise_for_response(response)
 
         content_type = response.headers.get("content-type", "")

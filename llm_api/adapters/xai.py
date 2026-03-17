@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 
 from llm_api.adapters.base import Adapter, ProviderError
@@ -17,13 +19,31 @@ class XAIAdapter(Adapter):
         if not self.api_key:
             raise ProviderError(401, "Missing xAI API key")
 
-    def generate_text(self, prompt: str) -> str:
+    def generate_text(
+        self,
+        prompt: str,
+        *,
+        system_prompt: str | None = None,
+        history: list[dict[str, Any]] | None = None,
+        parameters: dict[str, Any] | None = None,
+    ) -> str:
         self._ensure_key()
+        from llm_api.adapters.openai import _build_openai_messages
+
         url = f"{self.base_url}/chat/completions"
+        
+        # Extract parameters with defaults
+        params = parameters or {}
+        temperature = params.get("temperature", 0.7)
+        max_tokens = params.get("max_tokens", 4096)
+        
         payload = {
             "model": self.model_id,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7,
+            "messages": _build_openai_messages(
+                prompt, system_prompt=system_prompt, history=history
+            ),
+            "temperature": temperature,
+            "max_tokens": max_tokens,
         }
         headers = {"Authorization": f"Bearer {self.api_key}"}
         with httpx.Client(timeout=30) as client:

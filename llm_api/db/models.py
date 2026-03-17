@@ -177,6 +177,7 @@ class SessionRecord(Base):
     user_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("users.id"))
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")  # active, closed
     title: Mapped[Optional[str]] = mapped_column(String(255))
+    system_prompt: Mapped[Optional[str]] = mapped_column(Text)
     
     # State tokens for iterative workflows
     state_tokens: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSON)

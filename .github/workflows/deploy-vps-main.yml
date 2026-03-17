@@ -97,6 +97,7 @@ jobs:
             upsert_env "LLM_API_APP_VERSION" "$DEPLOY_VERSION" "$DEPLOY_ENV_FILE"
             upsert_env "LLM_API_APP_COMMIT" "$DEPLOY_SHA" "$DEPLOY_ENV_FILE"
             upsert_env "LLM_API_APP_BUILT_AT" "$DEPLOY_BUILT_AT" "$DEPLOY_ENV_FILE"
+            upsert_env "LLM_API_ENABLE_LOCAL_MODELS" "false" "$DEPLOY_ENV_FILE"
 
             FRONTEND_VERSION_FILE="$APP_ROOT/frontend/web/version.json"
             cat > "$FRONTEND_VERSION_FILE" <<EOF
