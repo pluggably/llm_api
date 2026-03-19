@@ -641,6 +641,7 @@ class _ChatInput extends StatelessWidget {
       'azure',
       'xai',
       'deepseek',
+      'groq',
       'huggingface',
     };
     return commercial.contains(provider.toLowerCase());

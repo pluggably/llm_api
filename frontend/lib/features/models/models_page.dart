@@ -14,6 +14,7 @@ class ModelsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final modelsAsync = ref.watch(filteredModelsProvider);
+    final featureFlagsAsync = ref.watch(featureFlagsProvider);
     final providersAsync = ref.watch(visibleModelProvidersProvider);
     final providerCountsAsync = ref.watch(visibleModelProviderCountsProvider);
     final selectedModality = ref.watch(selectedModalityProvider);
@@ -22,6 +23,8 @@ class ModelsPage extends ConsumerWidget {
     final query = ref.watch(modelSearchQueryProvider);
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isDesktop = screenWidth >= 1024;
+    final localHostingDisabled =
+        featureFlagsAsync.valueOrNull?.localModelsEnabled == false;
 
     return Scaffold(
       appBar: AppBar(
@@ -65,6 +68,7 @@ class ModelsPage extends ConsumerWidget {
               if (value == 'add') {
                 _showAddModelDialog(context, ref);
               } else if (value == 'refresh') {
+                ref.invalidate(featureFlagsProvider);
                 ref.invalidate(modelsProvider);
                 ref.invalidate(jobsProvider);
               } else if (value == 'downloads') {
@@ -121,14 +125,60 @@ class ModelsPage extends ConsumerWidget {
                     ],
                   ),
                 ),
+                if (localHostingDisabled)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.amber.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            size: 18,
+                            color: Colors.amber.shade800,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Local model hosting is disabled by backend configuration. '
+                              'Only hosted/commercial providers are available.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.amber.shade900,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 const SizedBox(height: 8),
                 providersAsync.when(
                   loading: () => const SizedBox.shrink(),
                   error: (_, _) => const SizedBox.shrink(),
                   data: (providers) {
-                    if (providers.isEmpty) return const SizedBox.shrink();
                     final providerCounts = providerCountsAsync.valueOrNull;
-                    final allProviders = providers.toSet();
+                    final providerSet = <String>{
+                      ...providers,
+                      'huggingface',
+                      'local',
+                    };
+                    final displayProviders = sortProviders(providerSet);
+                    if (displayProviders.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    final allProviders = displayProviders
+                        .where(
+                          (provider) =>
+                              !(provider == 'local' && localHostingDisabled),
+                        )
+                        .toSet();
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Align(
@@ -148,24 +198,41 @@ class ModelsPage extends ConsumerWidget {
                                     .showAll();
                               },
                             ),
-                            for (final provider in providers)
-                              FilterChip(
-                                label: Text(
-                                  '${providerDisplayName(provider)} (${providerCounts?[provider] ?? 0})',
-                                ),
-                                selected:
-                                    selectedProviders?.contains(provider) ??
-                                    true,
-                                onSelected: (isSelected) {
-                                  ref
-                                      .read(
-                                        selectedVisibleProvidersProvider
-                                            .notifier,
-                                      )
-                                      .toggleProvider(
-                                        provider,
-                                        allProviders: allProviders,
-                                      );
+                            for (final provider in displayProviders)
+                              Builder(
+                                builder: (context) {
+                                  final isLocalDisabled =
+                                      provider == 'local' &&
+                                      localHostingDisabled;
+                                  return FilterChip(
+                                    label: Text(
+                                      '${providerDisplayName(provider)} (${providerCounts?[provider] ?? 0})',
+                                      style: isLocalDisabled
+                                          ? TextStyle(
+                                              color: Colors.grey.shade600,
+                                            )
+                                          : null,
+                                    ),
+                                    selected: isLocalDisabled
+                                        ? false
+                                        : (selectedProviders?.contains(
+                                                provider,
+                                              ) ??
+                                              true),
+                                    onSelected: isLocalDisabled
+                                        ? null
+                                        : (isSelected) {
+                                            ref
+                                                .read(
+                                                  selectedVisibleProvidersProvider
+                                                      .notifier,
+                                                )
+                                                .toggleProvider(
+                                                  provider,
+                                                  allProviders: allProviders,
+                                                );
+                                          },
+                                  );
                                 },
                               ),
                           ],
@@ -414,6 +481,32 @@ class ModelsPage extends ConsumerWidget {
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
+                                    if (model.hfHostedSupported == false) ...[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.shade50,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.orange.shade200,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Hosted unavailable',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: Colors.orange.shade900,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                    ],
                                     if (model.downloads != null) ...[
                                       Icon(
                                         Icons.download,
@@ -453,7 +546,8 @@ class ModelsPage extends ConsumerWidget {
                               onPressed: () =>
                                   _selectAndAddModel(context, ref, model),
                             ),
-                            onTap: () => _selectAndAddModel(context, ref, model),
+                            onTap: () =>
+                                _selectAndAddModel(context, ref, model),
                           ),
                         );
                       },
@@ -476,11 +570,9 @@ class ModelsPage extends ConsumerWidget {
   Future<void> _downloadModel(
     BuildContext context,
     WidgetRef ref,
-    ModelSearchResult model,
-    {
-      required bool installLocal,
-    }
-  ) async {
+    ModelSearchResult model, {
+    required bool installLocal,
+  }) async {
     try {
       final client = ref.read(apiClientProvider);
       await client.downloadModel(
@@ -521,6 +613,7 @@ class ModelsPage extends ConsumerWidget {
   }
 
   bool _supportsHfHosted(ModelSearchResult model) {
+    if (model.hfHostedSupported == false) return false;
     if (model.modalityHints.isEmpty) return true;
     return model.modalityHints.any((m) => m == 'text' || m == 'image');
   }
@@ -530,8 +623,35 @@ class ModelsPage extends ConsumerWidget {
     WidgetRef ref,
     ModelSearchResult model,
   ) async {
+    final featureFlags = ref.read(featureFlagsProvider).valueOrNull;
+    final knownModels = ref.read(modelsProvider).valueOrNull;
+    final localEnabled =
+        featureFlags?.localModelsEnabled ??
+        (knownModels == null
+            ? true
+            : knownModels.any(
+                (m) => canonicalModelProvider(m.provider) == 'local',
+              ));
+
     if (!_supportsHfHosted(model)) {
+      if (!localEnabled) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'This model requires local install, but local hosting is disabled.',
+              ),
+            ),
+          );
+        }
+        return;
+      }
       await _downloadModel(context, ref, model, installLocal: true);
+      return;
+    }
+
+    if (!localEnabled) {
+      await _downloadModel(context, ref, model, installLocal: false);
       return;
     }
 
@@ -559,12 +679,7 @@ class ModelsPage extends ConsumerWidget {
     );
 
     if (!context.mounted || action == null) return;
-    await _downloadModel(
-      context,
-      ref,
-      model,
-      installLocal: action == 'local',
-    );
+    await _downloadModel(context, ref, model, installLocal: action == 'local');
   }
 
   Widget _modalityIcon(List<String> modalityHints) {

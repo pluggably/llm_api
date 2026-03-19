@@ -368,16 +368,34 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                                 return
                             yield ": heartbeat\n\n"
                 except ProviderError as exc:
-                    # Tiered fallback on rate-limit / provider overload:
+                    # Tiered fallback on rate-limit / provider overload / token limits:
                     #   1) Same provider's cheaper tier model (skips if quota exhausted)
-                    #   2) Local free model
-                    if exc.status_code in (429, 503):
+                    #   2) HuggingFace as default fallback for token-limit errors
+                    #   3) Local free model
+                    #
+                    # Token limit errors (400 with context_length_exceeded or token patterns)
+                    # are treated like 429/503 to trigger fallback chain
+                    is_token_error = (
+                        exc.status_code == 400 and exc.message and (
+                            "context_length_exceeded" in exc.message.lower() or
+                            "context length" in exc.message.lower() or
+                            "token" in exc.message.lower() or
+                            "max_tokens" in exc.message.lower()
+                        )
+                    )
+                    
+                    if exc.status_code in (429, 503) or is_token_error:
                         failed_provider = selection.model.provider or ""
-                        base_reason = "rate_limited" if exc.status_code == 429 else "provider_overloaded"
+                        if is_token_error:
+                            base_reason = "context_length_exceeded"
+                        else:
+                            base_reason = "rate_limited" if exc.status_code == 429 else "provider_overloaded"
                         is_quota_exceeded = exc.error_code == "insufficient_quota"
                         logger.warning(
-                            "generate: provider %s returned %d (error_code=%s), starting fallback chain",
-                            failed_provider, exc.status_code, exc.error_code,
+                            "generate: provider %s returned %d%s (error_code=%s), starting fallback chain",
+                            failed_provider, exc.status_code,
+                            " (token_error)" if is_token_error else "",
+                            exc.error_code,
                         )
 
                         # Write back rate-limit / quota status to the availability cache
@@ -401,7 +419,7 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                         fallback_output: Optional[str] = None
 
                         # Step 1: cheaper tier from same provider (skip if quota exhausted)
-                        if not is_quota_exceeded:
+                        if not is_quota_exceeded and not is_token_error:
                             try:
                                 fb = select_provider_tier_fallback(
                                     failed_provider,
@@ -433,8 +451,47 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                                 )
                                 fb = None
 
-                        # Step 2: local free model
-                        if fb is None:
+                        # Step 2: HuggingFace fallback (for token errors or when tier fallback unavailable)
+                        if fb is None and is_token_error:
+                            hf_reason = "token_error_fallback_huggingface"
+                            try:
+                                logger.info("generate: attempting HuggingFace fallback for token_error from %s", failed_provider)
+                                hf_fb = select_backend(
+                                    "huggingface:mistral-7b-instruct",
+                                    registry, settings,
+                                    modality=effective_modality,
+                                    selection_mode="model",
+                                    provider_credentials=provider_credentials,
+                                    parameters=request_parameters,
+                                )
+                                fallback_output = await asyncio.wait_for(
+                                    asyncio.to_thread(
+                                        lambda: hf_fb.adapter.generate_text(
+                                            request.input.prompt or "",
+                                            system_prompt=effective_system_prompt,
+                                            history=conversation_history or None,
+                                            parameters=request_parameters,
+                                        ),
+                                    ),
+                                    timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
+                                )
+                                hf_fb.selection = _SelectionInfo(
+                                    selected_model=hf_fb.model.id,
+                                    selected_provider=hf_fb.model.provider,
+                                    fallback_used=True,
+                                    fallback_reason=hf_reason,
+                                )
+                                fb = hf_fb
+                                logger.info(
+                                    "generate: HuggingFace fallback to %s succeeded after token_error from %s",
+                                    hf_fb.model.id, failed_provider,
+                                )
+                            except Exception as hf_exc:
+                                logger.warning("generate: HuggingFace fallback failed: %s", hf_exc)
+                                fb = None
+
+                        # Step 3: local free model as final fallback
+                        if fb is None and settings.enable_local_models:
                             local_reason = "quota_exceeded" if is_quota_exceeded else f"{base_reason}_local"
                             try:
                                 local_fb = select_backend(
@@ -472,6 +529,10 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                                 )
                             except Exception as fb_exc:
                                 logger.warning("generate: local fallback also failed: %s", fb_exc)
+                        elif fb is None:
+                            logger.info(
+                                "generate: local fallback skipped because local hosting is disabled"
+                            )
 
                         if fb is not None and fallback_output is not None:
                             fb_reason = fb.selection.fallback_reason if fb.selection else base_reason
@@ -736,7 +797,7 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                             )
 
                     # Step 2: local free model
-                    if fb_ns is None:
+                    if fb_ns is None and settings.enable_local_models:
                         local_reason = "quota_exceeded" if is_quota_exceeded else f"{base_reason}_local"
                         try:
                             local_fb = select_backend(
@@ -775,6 +836,11 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                         except Exception as fb_exc:
                             logger.warning("generate: local fallback also failed: %s", fb_exc)
                             raise exc  # re-raise original error
+                    elif fb_ns is None:
+                        logger.info(
+                            "generate: local fallback skipped because local hosting is disabled"
+                        )
+                        raise exc
 
                     if fb_ns is not None:
                         selection = fb_ns

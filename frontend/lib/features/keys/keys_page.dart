@@ -113,6 +113,8 @@ class KeysPage extends ConsumerWidget {
         return const Color(0xFF1D1D1D);
       case 'deepseek':
         return const Color(0xFF4D6BFE);
+      case 'groq':
+        return const Color(0xFFF55036);
       case 'azure':
         return const Color(0xFF0078D4);
       case 'huggingface':
@@ -146,6 +148,7 @@ class KeysPage extends ConsumerWidget {
                 DropdownMenuItem(value: 'google', child: Text('Google')),
                 DropdownMenuItem(value: 'xai', child: Text('xAI (Grok)')),
                 DropdownMenuItem(value: 'deepseek', child: Text('DeepSeek')),
+                DropdownMenuItem(value: 'groq', child: Text('Groq')),
                 DropdownMenuItem(value: 'azure', child: Text('Azure OpenAI')),
                 DropdownMenuItem(
                   value: 'huggingface',

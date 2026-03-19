@@ -49,6 +49,8 @@ String providerDisplayName(String provider) {
       return 'Local';
     case 'xai':
       return 'xAI';
+    case 'groq':
+      return 'Groq';
     default:
       if (provider.isEmpty) return 'Unknown';
       return '${provider[0].toUpperCase()}${provider.substring(1)}';
@@ -60,6 +62,7 @@ List<String> sortProviders(Iterable<String> providers) {
     'openai',
     'google',
     'anthropic',
+    'groq',
     'huggingface',
     'local',
   ];
@@ -211,12 +214,36 @@ final backendVersionProvider = FutureProvider<VersionInfo>((ref) async {
   return client.getVersion();
 });
 
+/// Backend feature flags (local hosting, hosted modality support, etc.).
+final featureFlagsProvider = FutureProvider<FeatureFlags>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  return client.getFeatureFlags();
+});
+
 // ==================== Models State ====================
 
 /// State for the list of available models.
 final modelsProvider = FutureProvider<List<Model>>((ref) async {
   final client = ref.watch(apiClientProvider);
-  return client.listModels();
+  final models = await client.listModels();
+
+  // Defensive filtering: when backend feature flags disable local hosting,
+  // hide all providers that normalize to "local" in the UI even if stale
+  // rows still exist in the registry.
+  bool localModelsEnabled = true;
+  try {
+    final features = await ref.watch(featureFlagsProvider.future);
+    localModelsEnabled = features.localModelsEnabled;
+  } catch (_) {
+    // If feature flags fail to load, keep current behavior.
+  }
+
+  if (!localModelsEnabled) {
+    return models
+        .where((model) => canonicalModelProvider(model.provider) != 'local')
+        .toList();
+  }
+  return models;
 });
 
 /// Currently selected model ID.
@@ -270,15 +297,21 @@ final filteredModelsProvider = Provider<AsyncValue<List<Model>>>((ref) {
   final modality = ref.watch(selectedModalityProvider);
   final query = ref.watch(modelSearchQueryProvider).toLowerCase();
   final selectedProviders = ref.watch(selectedVisibleProvidersProvider);
+  final localHostingDisabled =
+      ref.watch(featureFlagsProvider).valueOrNull?.localModelsEnabled == false;
+  final effectiveSelectedProviders =
+      localHostingDisabled && selectedProviders != null
+      ? selectedProviders.where((p) => p != 'local').toSet()
+      : selectedProviders;
 
   return modelsAsync.whenData((models) {
-    final byProvider = selectedProviders == null
+    final byProvider = effectiveSelectedProviders == null
         ? models
         : models
               .where(
                 (m) =>
                     m.isDefault ||
-                    selectedProviders.contains(
+                    effectiveSelectedProviders.contains(
                       canonicalModelProvider(m.provider),
                     ),
               )

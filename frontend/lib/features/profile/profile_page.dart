@@ -243,6 +243,13 @@ const _providers = [
     keyHint: 'xai-...',
   ),
   _ProviderMeta(
+    id: 'groq',
+    name: 'Groq',
+    color: Color(0xFFF55036),
+    icon: Icons.bolt,
+    keyHint: 'gsk_...',
+  ),
+  _ProviderMeta(
     id: 'azure',
     name: 'Azure OpenAI',
     color: Color(0xFF0078D4),
