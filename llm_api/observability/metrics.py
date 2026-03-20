@@ -52,9 +52,10 @@ def get_log_handler() -> _LogBufferHandler:
         _handler.setFormatter(logging.Formatter("%(levelname)s:%(name)s:%(message)s"))
         # Root logger catches all app records that propagate.
         logging.getLogger().addHandler(_handler)
-        # Uvicorn's loggers have propagate=False — attach explicitly so that
-        # access logs and server lifecycle messages are also captured.
-        for _name in ("uvicorn", "uvicorn.access", "uvicorn.error"):
+        # Uvicorn loggers: `uvicorn` has propagate=False (add directly),
+        # `uvicorn.error` propagates to `uvicorn` so skip it,
+        # `uvicorn.access` has propagate=False (add directly).
+        for _name in ("uvicorn", "uvicorn.access"):
             logging.getLogger(_name).addHandler(_handler)
     return _handler
 
