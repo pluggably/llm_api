@@ -451,11 +451,11 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                                 )
                                 fb = None
 
-                        # Step 2: HuggingFace fallback (for token errors or when tier fallback unavailable)
-                        if fb is None and is_token_error:
+                        # Step 2: HuggingFace fallback (for token errors or rate limits with no working tier fallback)
+                        if fb is None and (is_token_error or exc.status_code == 429):
                             hf_reason = "token_error_fallback_huggingface"
                             try:
-                                logger.info("generate: attempting HuggingFace fallback for token_error from %s", failed_provider)
+                                logger.info("generate: attempting HuggingFace fallback for %s from %s", "token_error" if is_token_error else "rate_limit", failed_provider)
                                 hf_fb = select_backend(
                                     "huggingface:mistral-7b-instruct",
                                     registry, settings,
@@ -483,8 +483,8 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                                 )
                                 fb = hf_fb
                                 logger.info(
-                                    "generate: HuggingFace fallback to %s succeeded after token_error from %s",
-                                    hf_fb.model.id, failed_provider,
+                                    "generate: HuggingFace fallback to %s succeeded after %s from %s",
+                                    hf_fb.model.id, "token_error" if is_token_error else "rate_limit", failed_provider,
                                 )
                             except Exception as hf_exc:
                                 logger.warning("generate: HuggingFace fallback failed: %s", hf_exc)
@@ -796,7 +796,45 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                                 failed_provider, tier_exc,
                             )
 
-                    # Step 2: local free model
+                    # Step 2: HuggingFace fallback on rate limit when tier fallback unavailable
+                    if fb_ns is None and exc.status_code == 429:
+                        hf_reason = "rate_limit_fallback_huggingface"
+                        try:
+                            logger.info("generate: attempting HuggingFace fallback for rate_limit from %s", failed_provider)
+                            hf_fb = select_backend(
+                                "huggingface:mistral-7b-instruct",
+                                registry, settings,
+                                modality=effective_modality,
+                                selection_mode="model",
+                                provider_credentials=provider_credentials,
+                                parameters=request_parameters,
+                            )
+                            output_text = await asyncio.wait_for(
+                                asyncio.to_thread(
+                                    lambda: hf_fb.adapter.generate_text(
+                                        request.input.prompt or "",
+                                        system_prompt=effective_system_prompt,
+                                        history=conversation_history or None,
+                                        parameters=request_parameters,
+                                    ),
+                                ),
+                                timeout=TEXT_GENERATION_TIMEOUT_SECONDS,
+                            )
+                            hf_fb.selection = _SelectionInfo(
+                                selected_model=hf_fb.model.id,
+                                selected_provider=hf_fb.model.provider,
+                                fallback_used=True,
+                                fallback_reason=hf_reason,
+                            )
+                            fb_ns = hf_fb
+                            logger.info(
+                                "generate: HuggingFace fallback to %s succeeded after rate_limit from %s",
+                                hf_fb.model.id, failed_provider,
+                            )
+                        except Exception as hf_exc:
+                            logger.warning("generate: HuggingFace fallback failed: %s", hf_exc)
+
+                    # Step 3: local free model
                     if fb_ns is None and settings.enable_local_models:
                         local_reason = "quota_exceeded" if is_quota_exceeded else f"{base_reason}_local"
                         try:
