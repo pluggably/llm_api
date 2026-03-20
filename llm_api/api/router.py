@@ -40,6 +40,7 @@ from llm_api.api.schemas import (
 )
 from llm_api.auth import require_api_key
 from llm_api.config import get_settings
+from llm_api.observability import get_metrics_store
 from llm_api.jobs import get_job_store
 from llm_api.jobs.downloader import DownloadService
 from llm_api.registry import get_registry
@@ -457,7 +458,7 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                             try:
                                 logger.info("generate: attempting HuggingFace fallback for %s from %s", "token_error" if is_token_error else "rate_limit", failed_provider)
                                 hf_fb = select_backend(
-                                    "huggingface:mistral-7b-instruct",
+                                    "huggingface:Qwen/Qwen2.5-7B-Instruct",
                                     registry, settings,
                                     modality=effective_modality,
                                     selection_mode="model",
@@ -545,11 +546,13 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                                 "fallback_used": True,
                                 "fallback_reason": fb_reason,
                             })
+                            get_metrics_store().record_provider(fb.model.provider or "unknown", fallback=True)
                             yield f"data: {fb_payload}\n\n"
                             payload = json.dumps({"choices": [{"delta": {"content": fallback_output}}]})
                             yield f"data: {payload}\n\n"
                             yield "data: [DONE]\n\n"
                             return
+                    get_metrics_store().record_provider("failed")
                     error = map_provider_error(exc)
                     payload = json.dumps({"error": {"code": error.code, "message": error.message}})
                     yield f"data: {payload}\n\n"
@@ -557,11 +560,13 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                     return
                 except Exception as exc:
                     logger.exception("generate: unexpected error during local text generation")
+                    get_metrics_store().record_provider("failed")
                     err_payload = json.dumps({"error": {"code": "internal_error", "message": str(exc)}})
                     yield f"data: {err_payload}\n\n"
                     yield "data: [DONE]\n\n"
                     return
 
+                get_metrics_store().record_provider(selection.model.provider or "unknown")
                 payload = json.dumps({"choices": [{"delta": {"content": output_text}}]})
                 yield f"data: {payload}\n\n"
                 yield "data: [DONE]\n\n"
@@ -802,7 +807,7 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
                         try:
                             logger.info("generate: attempting HuggingFace fallback for rate_limit from %s", failed_provider)
                             hf_fb = select_backend(
-                                "huggingface:mistral-7b-instruct",
+                                "huggingface:Qwen/Qwen2.5-7B-Instruct",
                                 registry, settings,
                                 modality=effective_modality,
                                 selection_mode="model",
@@ -930,6 +935,11 @@ async def generate(request: GenerateRequest, http_request: Request) -> JSONRespo
 
     # Rewrite artifact URLs to absolute
     output = _make_output_urls_absolute(output, base_url)
+
+    get_metrics_store().record_provider(
+        selection.model.provider or "unknown",
+        fallback=bool(selection.selection and selection.selection.fallback_used),
+    )
 
     response = GenerateResponse(
         request_id=request_id,

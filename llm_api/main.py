@@ -140,6 +140,20 @@ def create_app() -> FastAPI:
         store = get_metrics_store()
         return PlainTextResponse(store.render_prometheus())
 
+    @app.get("/v1/stats")
+    async def stats():
+        """JSON stats endpoint for the g-hub monitoring panel."""
+        store = get_metrics_store()
+        recent = store.latencies_ms[-100:] if store.latencies_ms else []
+        avg_latency = round(sum(recent) / len(recent), 1) if recent else 0.0
+        return JSONResponse({
+            "request_count": store.request_count,
+            "error_count": store.error_count,
+            "fallback_count": store.fallback_count,
+            "avg_latency_ms": avg_latency,
+            "provider_counts": dict(store.provider_counts),
+        })
+
     # Lifecycle router must be included BEFORE api_router so that
     # /v1/models/loaded is registered before /v1/models/{model_id}
     app.include_router(lifecycle_router)

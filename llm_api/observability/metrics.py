@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, field
-from time import time
-from typing import List
+from typing import Dict, List
 
 
 @dataclass
 class MetricsStore:
     request_count: int = 0
     error_count: int = 0
+    fallback_count: int = 0
     latencies_ms: List[float] = field(default_factory=list)
+    provider_counts: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
     def record_request(self) -> None:
         self.request_count += 1
@@ -19,6 +21,11 @@ class MetricsStore:
 
     def record_latency(self, latency_ms: float) -> None:
         self.latencies_ms.append(latency_ms)
+
+    def record_provider(self, provider: str, fallback: bool = False) -> None:
+        self.provider_counts[provider] += 1
+        if fallback:
+            self.fallback_count += 1
 
     def render_prometheus(self) -> str:
         lines = [
