@@ -15,7 +15,8 @@ from llm_api.api.lifecycle_router import lifecycle_router
 from llm_api.config import get_settings
 from llm_api.db import init_db
 from llm_api.lifecycle import get_lifecycle_manager
-from llm_api.observability import get_metrics_store
+from llm_api.observability import get_metrics_store, get_log_handler
+from llm_api.observability.metrics import _LOG_BUFFER_MAX
 from llm_api.registry import get_registry
 from llm_api.queue import get_queue_manager
 from llm_api.runner.local_runner import clear_model_caches
@@ -102,6 +103,10 @@ def create_app() -> FastAPI:
 
     registry = get_registry()
 
+    # Install in-memory log handler early so all subsequent log records are
+    # captured and available via /v1/logs.
+    get_log_handler()
+
     @app.middleware("http")
     async def metrics_middleware(request: Request, call_next):
         start = time.time()
@@ -153,6 +158,12 @@ def create_app() -> FastAPI:
             "avg_latency_ms": avg_latency,
             "provider_counts": dict(store.provider_counts),
         })
+
+    @app.get("/v1/logs")
+    async def logs(n: int = 200):
+        """Return the last N in-memory log records as JSON."""
+        n = min(max(n, 1), _LOG_BUFFER_MAX)
+        return JSONResponse({"logs": get_log_handler().recent(n)})
 
     # Lifecycle router must be included BEFORE api_router so that
     # /v1/models/loaded is registered before /v1/models/{model_id}

@@ -1,8 +1,57 @@
 from __future__ import annotations
 
+import collections
+import logging
+import threading
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Dict, List
+
+
+# ---------------------------------------------------------------------------
+# In-memory log buffer
+# ---------------------------------------------------------------------------
+
+_LOG_BUFFER_MAX = 500
+
+
+class _LogBufferHandler(logging.Handler):
+    """Captures recent log records into a deque for the /v1/logs endpoint."""
+
+    def __init__(self, maxlen: int = _LOG_BUFFER_MAX) -> None:
+        super().__init__()
+        self._lock = threading.Lock()
+        self._records: collections.deque[dict] = collections.deque(maxlen=maxlen)
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            entry = {
+                "ts": record.created,
+                "level": record.levelname,
+                "name": record.name,
+                "msg": self.format(record),
+            }
+            with self._lock:
+                self._records.append(entry)
+        except Exception:
+            pass
+
+    def recent(self, n: int = 200) -> list[dict]:
+        with self._lock:
+            records = list(self._records)
+        return records[-n:]
+
+
+_handler: _LogBufferHandler | None = None
+
+
+def get_log_handler() -> _LogBufferHandler:
+    global _handler
+    if _handler is None:
+        _handler = _LogBufferHandler()
+        _handler.setFormatter(logging.Formatter("%(levelname)s:%(name)s:%(message)s"))
+        logging.getLogger().addHandler(_handler)
+    return _handler
 
 
 @dataclass
