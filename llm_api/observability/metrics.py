@@ -15,6 +15,9 @@ from typing import Dict, List
 _LOG_BUFFER_MAX = 500
 
 
+_INTERNAL_POLL_PATHS = ("/v1/stats", "/v1/logs")
+
+
 class _LogBufferHandler(logging.Handler):
     """Captures recent log records into a deque for the /v1/logs endpoint."""
 
@@ -25,6 +28,11 @@ class _LogBufferHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
+            # Drop the monitor's own polling noise from the console.
+            if record.name == "uvicorn.access":
+                msg = record.getMessage()
+                if any(p in msg for p in _INTERNAL_POLL_PATHS):
+                    return
             entry = {
                 "ts": record.created,
                 "level": record.levelname,
