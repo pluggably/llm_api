@@ -57,7 +57,7 @@ PROVIDER_TIER_FALLBACK: Dict[str, list[str]] = {
     "xai": ["grok-2"],
     "deepseek": ["deepseek-chat"],
     # Groq free-tier: try a different model family first (separate per-model TPM quota)
-    "groq": ["gemma2-9b-it", "llama-3.3-70b-versatile"],
+    "groq": ["llama3-8b-8192", "llama-3.3-70b-versatile"],
 }
 
 

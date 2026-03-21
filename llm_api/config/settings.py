@@ -12,7 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Class-level defaults for model IDs.  Defined here so the validator can
 # restore them when an empty string leaks in via .env / env vars.
-_DEFAULT_MODEL = "Qwen/Qwen2.5-3B-Instruct"
+_DEFAULT_MODEL = "llama-3.1-8b-instant"
 _DEFAULT_IMAGE_MODEL = "stabilityai/sdxl-turbo"
 _DEFAULT_3D_MODEL = "openai/shap-e"
 

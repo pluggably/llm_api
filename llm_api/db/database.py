@@ -69,6 +69,11 @@ def _normalize_database_url(raw_url: str, schema: str | None = None) -> str:
     return normalized
 
 
+def get_engine() -> Optional[Engine]:
+    """Return the active SQLAlchemy engine, or None if init_db() has not run yet."""
+    return _engine
+
+
 def init_db() -> None:
     """Initialize the database engine and create tables."""
     global _engine, _SessionLocal

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from contextlib import asynccontextmanager
@@ -16,6 +17,7 @@ from llm_api.config import get_settings
 from llm_api.db import init_db
 from llm_api.lifecycle import get_lifecycle_manager
 from llm_api.observability import get_metrics_store, get_log_handler
+from llm_api.observability.history import HistoryFlusher, query_history
 from llm_api.observability.metrics import _LOG_BUFFER_MAX
 from llm_api.registry import get_registry
 from llm_api.queue import get_queue_manager
@@ -49,7 +51,8 @@ def create_app() -> FastAPI:
         init_db()
         registry = get_registry()
         lifecycle = get_lifecycle_manager()
-        
+        history_flusher = HistoryFlusher()
+
         # Load default/pinned models for each modality
         if settings.default_model:
             lifecycle.default_model_id = settings.default_model
@@ -59,14 +62,16 @@ def create_app() -> FastAPI:
         if settings.enable_local_models and settings.default_image_model:
             lifecycle.pin_model(settings.default_image_model)
         
-        # Start idle monitor
+        # Start idle monitor and metrics history flusher
         await lifecycle.start_idle_monitor()
+        await history_flusher.start()
         
         yield
         
         try:
             # Shutdown — cancel/await background tasks with bounded waits so
             # Ctrl+C does not hang forever.
+            await history_flusher.stop(timeout=5.0)
             await get_background_task_registry().shutdown(
                 timeout=settings.shutdown_background_task_timeout_seconds,
             )
@@ -164,6 +169,18 @@ def create_app() -> FastAPI:
         """Return the last N in-memory log records as JSON."""
         n = min(max(n, 1), _LOG_BUFFER_MAX)
         return JSONResponse({"logs": get_log_handler().recent(n)})
+
+    @app.get("/v1/history")
+    async def history(range: str = "1d"):
+        """Return bucketed historical metrics (persisted across restarts).
+
+        range: '1d' (15-min buckets), '7d' (1-hour buckets), '30d' (6-hour buckets).
+        Requires PostgreSQL; returns empty buckets list when using SQLite.
+        """
+        allowed = {"1d", "7d", "30d"}
+        range_key = range if range in allowed else "1d"
+        data = await asyncio.to_thread(query_history, range_key)
+        return JSONResponse(data)
 
     # Lifecycle router must be included BEFORE api_router so that
     # /v1/models/loaded is registered before /v1/models/{model_id}

@@ -5,7 +5,7 @@ import logging
 import threading
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Any, Dict, List
 
 
 # ---------------------------------------------------------------------------
@@ -15,7 +15,7 @@ from typing import Dict, List
 _LOG_BUFFER_MAX = 500
 
 
-_INTERNAL_POLL_PATHS = ("/v1/stats", "/v1/logs")
+_INTERNAL_POLL_PATHS = ("/v1/stats", "/v1/logs", "/v1/history")
 
 
 class _LogBufferHandler(logging.Handler):
@@ -76,19 +76,55 @@ class MetricsStore:
     latencies_ms: List[float] = field(default_factory=list)
     provider_counts: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
+    def __post_init__(self) -> None:
+        # Delta counters: increments since last flush to DB.
+        # All reads/writes happen in the single asyncio event loop thread,
+        # so no explicit lock is needed for the counters themselves.
+        self._delta_requests: int = 0
+        self._delta_errors: int = 0
+        self._delta_fallbacks: int = 0
+        self._delta_latencies: List[float] = []
+        self._delta_providers: Dict[str, int] = defaultdict(int)
+
     def record_request(self) -> None:
         self.request_count += 1
+        self._delta_requests += 1
 
     def record_error(self) -> None:
         self.error_count += 1
+        self._delta_errors += 1
 
     def record_latency(self, latency_ms: float) -> None:
         self.latencies_ms.append(latency_ms)
+        self._delta_latencies.append(latency_ms)
 
     def record_provider(self, provider: str, fallback: bool = False) -> None:
         self.provider_counts[provider] += 1
+        self._delta_providers[provider] += 1
         if fallback:
             self.fallback_count += 1
+            self._delta_fallbacks += 1
+
+    def flush_delta(self) -> Dict[str, Any]:
+        """Return the delta since the last call and atomically reset counters.
+
+        Safe to call from the asyncio event loop — all record_* methods also
+        run there, so Python's GIL guarantees consistent snapshots.
+        """
+        snapshot: Dict[str, Any] = {
+            "requests": self._delta_requests,
+            "errors": self._delta_errors,
+            "fallbacks": self._delta_fallbacks,
+            "total_latency_ms": sum(self._delta_latencies),
+            "latency_count": len(self._delta_latencies),
+            "provider_counts": dict(self._delta_providers),
+        }
+        self._delta_requests = 0
+        self._delta_errors = 0
+        self._delta_fallbacks = 0
+        self._delta_latencies = []
+        self._delta_providers = defaultdict(int)
+        return snapshot
 
     def render_prometheus(self) -> str:
         lines = [

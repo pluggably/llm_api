@@ -71,6 +71,21 @@ class ModelRecord(Base):
     )
 
 
+class LLMMetricsBucket(Base):
+    """Per-minute aggregated LLM API metrics, persisted across container restarts."""
+    __tablename__ = "llm_metrics_buckets"
+
+    bucket_time: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), primary_key=True
+    )
+    requests: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    errors: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    fallbacks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    total_latency_ms: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    latency_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    provider_counts: Mapped[Dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
+
+
 class DefaultModelRecord(Base):
     """Default model per modality (text/image/3d)."""
     __tablename__ = "default_models"
